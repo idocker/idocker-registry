@@ -1,0 +1,98 @@
+// CSS Variables for theming
+
+// Default theme colors
+:root {
+  // Light theme colors
+  --primary-text: #25313b;
+  --neutral-text: #777777;
+  --background: #ffffff;
+  --hover-background: #eeeeee;
+  --accent-text: #5f7796;
+  --header-text: #ffffff;
+  --header-accent-text: #7b9ac2;
+  --header-background: #25313b;
+  --footer-text: #ffffff;
+  --footer-neutral-text: #adbacd;
+  --footer-background: #344251;
+  
+  // Component colors
+  --card-background: #ffffff;
+  --border-color: #e0e0e0;
+  --success-color: #4caf50;
+  --warning-color: #ff9800;
+  --error-color: #f44336;
+  
+  // Shadows
+  --shadow-1: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+  --shadow-2: 0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23);
+  --shadow-3: 0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23);
+  
+  // Z-index layers
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+  --z-toast: 1080;
+}
+
+// Dark theme colors
+body.dark-theme {
+  --primary-text: #98a8bd;
+  --neutral-text: #6d7fab;
+  --background: #22272e;
+  --hover-background: #343a4b;
+  --accent-text: #5c88ff;
+  --header-accent-text: #7ea1ff;
+  --header-background: #333a45;
+  
+  // Component colors
+  --card-background: #555;
+  --border-color: #3c434c;
+}
+
+// Breakpoints
+$breakpoint-xs: 0;
+$breakpoint-sm: 576px;
+$breakpoint-md: 768px;
+$breakpoint-lg: 992px;
+$breakpoint-xl: 1200px;
+$breakpoint-xxl: 1400px;
+
+// Spacing
+$spacing-xs: 0.25rem;
+$spacing-sm: 0.5rem;
+$spacing-md: 1rem;
+$spacing-lg: 1.5rem;
+$spacing-xl: 2rem;
+$spacing-xxl: 3rem;
+
+// Typography
+$font-size-xs: 0.75rem;
+$font-size-sm: 0.875rem;
+$font-size-base: 1rem;
+$font-size-lg: 1.125rem;
+$font-size-xl: 1.25rem;
+$font-size-xxl: 1.5rem;
+
+$font-weight-light: 300;
+$font-weight-normal: 400;
+$font-weight-medium: 500;
+$font-weight-bold: 700;
+
+$line-height-tight: 1.25;
+$line-height-base: 1.5;
+$line-height-loose: 1.75;
+
+// Border radius
+$border-radius-sm: 0.125rem;
+$border-radius: 0.25rem;
+$border-radius-lg: 0.5rem;
+$border-radius-xl: 1rem;
+
+// Transitions
+$transition-fast: 0.15s ease;
+$transition-base: 0.3s ease;
+$transition-slow: 0.5s ease;

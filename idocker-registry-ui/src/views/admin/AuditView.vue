@@ -1,0 +1,927 @@
+<template>
+    <ManagementLayout>
+        <div class="audit-container">
+
+            <div class="filters-card">
+
+                <div v-show="showFilters" class="filters-content">
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label for="user-filter">用户</label>
+                            <select id="user-filter" v-model="filters.userId">
+                                <option value="">所有用户</option>
+                                <option v-for="user in users" :key="user.id" :value="user.id">
+                                    {{ user.username }}
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label for="action-filter">操作</label>
+                            <select id="action-filter" v-model="filters.action">
+                                <option value="">所有操作</option>
+                                <option value="login">登录</option>
+                                <option value="create_user">创建用户</option>
+                                <option value="update_user">更新用户</option>
+                                <option value="delete_user">删除用户</option>
+                                <option value="create_project">创建项目</option>
+                                <option value="update_project">更新项目</option>
+                                <option value="delete_project">删除项目</option>
+                                <option value="create">创建资源</option>
+                                <option value="update">更新资源</option>
+                                <option value="delete">删除资源</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label for="resource-type-filter">资源类型</label>
+                            <select id="resource-type-filter" v-model="filters.resourceType">
+                                <option value="">所有类型</option>
+                                <option value="user">用户</option>
+                                <option value="project">项目</option>
+                                <option value="registry">注册表</option>
+                                <option value="replication_policy">复制策略</option>
+                                <option value="system">系统</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label for="date-range-filter">日期范围</label>
+                            <div class="date-range">
+                                <input type="date" id="date-range-filter" v-model="filters.startDate"
+                                    placeholder="开始日期" />
+                                <span>至</span>
+                                <input type="date" v-model="filters.endDate" placeholder="结束日期" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="filter-actions">
+                        <button class="btn btn-primary" @click="applyFilters">
+                            应用过滤
+                        </button>
+                        <button class="btn btn-ghost" @click="resetFilters">
+                            重置
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="logs-table-container">
+                <div class="table-controls">
+                    <div class="table-info">
+                        共 {{ totalLogs }} 条记录
+                    </div>
+                    <div class="table-actions">
+                        <button class="btn btn-ghost" @click="refreshLogs">
+                            <span class="material-icons">refresh</span>
+                            刷新
+                        </button>
+                        <button class="btn btn-danger" @click="showDeleteDialog = true">
+                            <span class="material-icons">delete_sweep</span>
+                            清理日志
+                        </button>
+                        <button class="btn btn-ghost" @click="toggleFilters">
+                            {{ showFilters ? '收起' : '过滤' }}
+                            <span class="material-icons">
+                                {{ showFilters ? 'expand_less' : 'expand_more' }}
+                            </span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="logs-table">
+                        <thead>
+                            <tr>
+                                <th>时间</th>
+                                <th>用户</th>
+                                <th>操作</th>
+                                <th>资源类型</th>
+                                <th>资源ID</th>
+                                <th>详情</th>
+                                <th>IP地址</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-if="isLoading">
+                                <td colspan="7" class="loading-cell">
+                                    <div class="loading-indicator">
+                                        <span class="material-icons">refresh</span>
+                                        加载中...
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr v-else-if="logs.length === 0">
+                                <td colspan="7" class="empty-cell">没有找到日志记录</td>
+                            </tr>
+                            <tr v-for="log in logs" :key="log.id">
+                                <td>{{ formatDateTime(log.created_at) }}</td>
+                                <td>{{ log.username || '-' }}</td>
+                                <td>
+                                    <span class="action-badge" :class="getActionClass(log.action)">
+                                        {{ getActionDisplay(log.action) }}
+                                    </span>
+                                </td>
+                                <td>{{ getResourceTypeDisplay(log.resource_type) }}</td>
+                                <td>{{ log.resource_id || '-' }}</td>
+                                <td>
+                                    <button class="btn-link" @click="selectedLog = log; showDetailsDialog = true"
+                                        v-if="log.details && Object.keys(log.details).length > 0">
+                                        查看详情
+                                    </button>
+                                    <span v-else>-</span>
+                                </td>
+                                <td>{{ log.ip_address || '-' }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pagination">
+                    <button class="btn btn-ghost" @click="currentPage = Math.max(1, currentPage - 1)"
+                        :disabled="currentPage === 1">
+                        上一页
+                    </button>
+                    <span class="page-info">
+                        {{ currentPage }} / {{ totalPages }}
+                    </span>
+                    <button class="btn btn-ghost" @click="currentPage = Math.min(totalPages, currentPage + 1)"
+                        :disabled="currentPage === totalPages">
+                        下一页
+                    </button>
+                </div>
+            </div>
+
+            <!-- 日志详情对话框 -->
+            <div v-if="showDetailsDialog" class="dialog-overlay" @click="showDetailsDialog = false">
+                <div class="dialog" @click.stop>
+                    <div class="dialog-header">
+                        <h3>日志详情</h3>
+                        <button class="dialog-close" @click="showDetailsDialog = false">
+                            <span class="material-icons">close</span>
+                        </button>
+                    </div>
+
+                    <div class="dialog-content">
+                        <div class="log-details">
+                            <div class="detail-item">
+                                <label>时间:</label>
+                                <span>{{ formatDateTime(selectedLog.created_at) }}</span>
+                            </div>
+                            <div class="detail-item">
+                                <label>用户:</label>
+                                <span>{{ selectedLog.username || '-' }}</span>
+                            </div>
+                            <div class="detail-item">
+                                <label>操作:</label>
+                                <span>{{ getActionDisplay(selectedLog.action) }}</span>
+                            </div>
+                            <div class="detail-item">
+                                <label>资源类型:</label>
+                                <span>{{ getResourceTypeDisplay(selectedLog.resource_type) }}</span>
+                            </div>
+                            <div class="detail-item">
+                                <label>资源ID:</label>
+                                <span>{{ selectedLog.resource_id || '-' }}</span>
+                            </div>
+                            <div class="detail-item">
+                                <label>IP地址:</label>
+                                <span>{{ selectedLog.ip_address || '-' }}</span>
+                            </div>
+                            <div v-if="selectedLog.details" class="detail-item full-width">
+                                <label>详情:</label>
+                                <pre>{{ JSON.stringify(selectedLog.details, null, 2) }}</pre>
+                            </div>
+                        </div>
+
+                        <div class="dialog-actions">
+                            <button class="btn btn-primary" @click="showDetailsDialog = false">关闭</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 清理日志对话框 -->
+            <div v-if="showDeleteDialog" class="dialog-overlay" @click="showDeleteDialog = false">
+                <div class="dialog" @click.stop>
+                    <div class="dialog-header">
+                        <h3>清理日志</h3>
+                        <button class="dialog-close" @click="showDeleteDialog = false">
+                            <span class="material-icons">close</span>
+                        </button>
+                    </div>
+
+                    <div class="dialog-content">
+                        <div class="cleanup-options">
+                            <h4>清理选项</h4>
+
+                            <div class="option">
+                                <label>
+                                    <input type="radio" value="by-date" v-model="deleteOption" />
+                                    按日期清理
+                                </label>
+                                <div v-if="deleteOption === 'by-date'" class="option-config">
+                                    <label for="days-old">删除多少天前的日志:</label>
+                                    <input id="days-old" type="number" v-model.number="daysOld" min="1" max="365" />
+                                </div>
+                            </div>
+
+                            <div class="option">
+                                <label>
+                                    <input type="radio" value="all" v-model="deleteOption" />
+                                    删除所有日志
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="dialog-actions">
+                            <button class="btn btn-ghost" @click="showDeleteDialog = false">取消</button>
+                            <button class="btn btn-danger" @click="confirmDelete" :disabled="isDeleting">
+                                <span v-if="isDeleting">删除中...</span>
+                                <span v-else>确认删除</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 消息提示 -->
+            <div v-if="message" class="snackbar" :class="`snackbar-${message.type}`">
+                {{ message.text }}
+                <button class="snackbar-close" @click="message = ''">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+        </div>
+    </ManagementLayout>
+</template>
+
+<script setup lang="ts">
+import { ref, reactive, onMounted } from 'vue'
+import axios from 'axios'
+import ManagementLayout from '@/components/admin/ManagementLayout.vue'
+
+// 状态
+const isLoading = ref(false)
+const isDeleting = ref(false)
+const message = ref('')
+const showFilters = ref(false)
+const showDetailsDialog = ref(false)
+const showDeleteDialog = ref(false)
+
+// 数据
+const logs = ref([])
+const users = ref([])
+const selectedLog = ref(null)
+const currentPage = ref(1)
+const pageSize = ref(8)
+const totalLogs = ref(0)
+
+// 过滤条件
+const filters = reactive({
+    userId: '',
+    action: '',
+    resourceType: '',
+    startDate: '',
+    endDate: ''
+})
+
+// 删除选项
+const deleteOption = ref('by-date')
+const daysOld = ref(30)
+
+// 计算总页数
+const totalPages = ref(1)
+
+// 获取操作显示类
+const getActionClass = (action: string) => {
+    switch (action) {
+        case 'login':
+            return 'action-success'
+        case 'create':
+            return 'action-success'
+        case 'update':
+            return 'action-warning'
+        case 'delete':
+            return 'action-danger'
+        default:
+            return 'action-info'
+    }
+}
+
+// 获取操作显示文本
+const getActionDisplay = (action: string) => {
+    switch (action) {
+        case 'login':
+            return '登录'
+        case 'logout':
+            return '退出'
+        case 'create_user':
+            return '创建用户'
+        case 'update_user':
+            return '更新用户'
+        case 'delete_user':
+            return '删除用户'
+        case 'create_project':
+            return '创建项目'
+        case 'update_project':
+            return '更新项目'
+        case 'delete_project':
+            return '删除项目'
+        case 'create':
+            return '创建资源'
+        case 'update':
+            return '更新资源'
+        case 'delete':
+            return '删除资源'
+        case 'change_password':
+            return '修改密码'
+        case 'delete_audit_logs':
+            return '删除审计日志'
+        case 'delete_old_logs':
+            return '清理旧日志'
+        default:
+            return action
+    }
+}
+
+// 获取资源类型显示文本
+const getResourceTypeDisplay = (resourceType: string) => {
+    switch (resourceType) {
+        case 'user':
+            return '用户'
+        case 'project':
+            return '项目'
+        case 'registry':
+            return '注册表'
+        case 'replication_policy':
+            return '复制策略'
+        case 'system':
+            return '系统'
+        default:
+            return resourceType || '-'
+    }
+}
+
+// 格式化日期时间
+const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    })
+}
+
+// 加载日志
+const loadLogs = async () => {
+    try {
+        isLoading.value = true
+
+        const params: any = {
+            limit: pageSize.value,
+            offset: (currentPage.value - 1) * pageSize.value
+        }
+
+        // 添加过滤条件
+        if (filters.userId) params.userId = filters.userId
+        if (filters.action) params.action = filters.action
+        if (filters.resourceType) params.resourceType = filters.resourceType
+        if (filters.startDate) params.startDate = filters.startDate
+        if (filters.endDate) params.endDate = filters.endDate
+
+        const response = await axios.get('/api/audit', { params })
+        logs.value = response.data.logs || []
+        totalLogs.value = response.data.total || 0
+        totalPages.value = Math.ceil(totalLogs.value / pageSize.value)
+    } catch (error) {
+        console.error('Failed to load audit logs:', error)
+        showMessage('加载审计日志失败', 'error')
+    } finally {
+        isLoading.value = false
+    }
+}
+
+// 加载用户列表
+const loadUsers = async () => {
+    try {
+        const response = await axios.get('/api/users')
+        users.value = response.data || []
+    } catch (error) {
+        console.error('Failed to load users:', error)
+    }
+}
+
+// 刷新日志
+const refreshLogs = () => {
+    loadLogs()
+}
+
+// 切换过滤条件显示
+const toggleFilters = () => {
+    showFilters.value = !showFilters.value
+}
+
+// 应用过滤条件
+const applyFilters = () => {
+    currentPage.value = 1
+    loadLogs()
+}
+
+// 重置过滤条件
+const resetFilters = () => {
+    Object.assign(filters, {
+        userId: '',
+        action: '',
+        resourceType: '',
+        startDate: '',
+        endDate: ''
+    })
+    currentPage.value = 1
+    loadLogs()
+}
+
+// 确认删除日志
+const confirmDelete = async () => {
+    try {
+        isDeleting.value = true
+
+        if (deleteOption.value === 'by-date') {
+            // 按日期删除
+            await axios.delete('/api/audit/old', {
+                data: { daysOld: daysOld.value }
+            })
+            showMessage(`已删除 ${daysOld.value} 天前的日志`, 'success')
+        } else {
+            // 删除所有日志
+            await axios.delete('/api/audit', {
+                data: filters
+            })
+            showMessage('已删除符合条件的日志', 'success')
+        }
+
+        showDeleteDialog.value = false
+
+        // 重新加载日志
+        loadLogs()
+    } catch (error) {
+        console.error('Failed to delete audit logs:', error)
+        showMessage('删除日志失败', 'error')
+    } finally {
+        isDeleting.value = false
+    }
+}
+
+// 显示消息
+const showMessage = (text: string, type: 'success' | 'error' | 'info' = 'info') => {
+    message.value = { text, type }
+}
+
+// 组件挂载时加载数据
+onMounted(() => {
+    loadLogs()
+    loadUsers()
+})
+</script>
+
+<style lang="scss" scoped>
+@use '@/styles/variables.scss' as *;
+@use '@/styles/mixins.scss' as *;
+
+.audit-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+
+    h1 {
+        margin: 0;
+        font-size: 28px;
+    }
+}
+
+.filters-card {
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    //margin-bottom: 24px;
+    overflow: hidden;
+}
+
+.filters-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    padding-top: 0px;
+    border-bottom: 1px solid var(--border-color);
+
+    h2 {
+        margin: 0;
+        font-size: 18px;
+    }
+}
+
+.filters-content {
+    padding: 16px;
+}
+
+.filter-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 16px;
+
+    @media (max-width: 768px) {
+        flex-direction: column;
+        gap: 12px;
+    }
+}
+
+.filter-group {
+    flex: 1;
+
+    label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+    }
+
+    select,
+    input {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        font-size: 14px;
+        background-color: var(--input-bg);
+        color: var(--text);
+
+        &:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+    }
+
+    .date-range {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        span {
+            color: var(--text-secondary);
+        }
+    }
+}
+
+.filter-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding-top: 8px;
+}
+
+.logs-table-container {
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.table-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+
+    .table-info {
+        color: var(--text-secondary);
+    }
+
+    .table-actions {
+        display: flex;
+        gap: 8px;
+    }
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+.logs-table {
+    width: 100%;
+    border-collapse: collapse;
+
+    th,
+    td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    th {
+        font-weight: 600;
+        color: var(--text-secondary);
+        background-color: var(--hover-bg);
+    }
+
+    tr:hover {
+        background-color: var(--hover-bg);
+    }
+
+    .loading-cell,
+    .empty-cell {
+        text-align: center;
+        padding: 40px 12px;
+        color: var(--text-muted);
+    }
+
+    .loading-indicator {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+
+        .material-icons {
+            animation: spin 1s linear infinite;
+        }
+    }
+
+    .action-badge {
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+
+        &.action-success {
+            background-color: rgba(var(--success-color-rgb), 0.1);
+            color: var(--success-color);
+        }
+
+        &.action-warning {
+            background-color: rgba(var(--warning-color-rgb), 0.1);
+            color: var(--warning-color);
+        }
+
+        &.action-danger {
+            background-color: rgba(var(--danger-color-rgb), 0.1);
+            color: var(--danger-color);
+        }
+
+        &.action-info {
+            background-color: rgba(var(--info-color-rgb), 0.1);
+            color: var(--info-color);
+        }
+    }
+
+    .btn-link {
+        background: none;
+        border: none;
+        color: var(--primary-color);
+        cursor: pointer;
+        text-decoration: underline;
+        font-size: 14px;
+
+        &:hover {
+            color: var(--primary-color);
+            filter: brightness(0.9);
+        }
+    }
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+
+    .page-info {
+        color: var(--text-secondary);
+    }
+}
+
+// 对话框样式
+.dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.dialog {
+    background-color: var(--card-bg);
+    border-radius: 12px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow: auto;
+}
+
+.dialog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+
+    h3 {
+        margin: 0;
+        font-size: 18px;
+    }
+
+    .dialog-close {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--text-muted);
+
+        .material-icons {
+            font-size: 20px;
+        }
+    }
+}
+
+.dialog-content {
+    padding: 16px;
+}
+
+.log-details {
+    .detail-item {
+        display: flex;
+        margin-bottom: 12px;
+
+        label {
+            font-weight: 500;
+            width: 120px;
+            color: var(--text-secondary);
+        }
+
+        span,
+        pre {
+            flex: 1;
+        }
+
+        &.full-width {
+            flex-direction: column;
+
+            label {
+                margin-bottom: 8px;
+                width: auto;
+            }
+        }
+
+        pre {
+            background-color: var(--code-bg);
+            border-radius: 4px;
+            padding: 12px;
+            font-size: 12px;
+            overflow: auto;
+            max-height: 200px;
+        }
+    }
+}
+
+.cleanup-options {
+    margin-bottom: 16px;
+
+    h4 {
+        margin-bottom: 16px;
+    }
+}
+
+.option {
+    margin-bottom: 16px;
+
+    label {
+        display: block;
+        margin-bottom: 8px;
+        cursor: pointer;
+        font-weight: 500;
+    }
+
+    .option-config {
+        margin-left: 24px;
+
+        label {
+            font-weight: normal;
+            margin-bottom: 8px;
+        }
+
+        input {
+            width: 100px;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+
+            &:focus {
+                outline: none;
+                border-color: var(--primary-color);
+            }
+        }
+    }
+}
+
+.dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.btn-danger {
+    background-color: var(--danger-color);
+    color: white;
+
+    &:hover {
+        //background-color: darken(var(--danger-color), 10%);
+        color: var(--primary-color);
+        filter: brightness(0.9);
+    }
+}
+
+// 提示框样式
+.snackbar {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 16px;
+    border-radius: 4px;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 1001;
+
+    &.snackbar-success {
+        background-color: var(--success-color);
+    }
+
+    &.snackbar-error {
+        background-color: var(--danger-color);
+    }
+
+    &.snackbar-info {
+        background-color: var(--info-color);
+    }
+
+    .snackbar-close {
+        background: none;
+        border: none;
+        color: white;
+        cursor: pointer;
+
+        .material-icons {
+            font-size: 18px;
+        }
+    }
+}
+
+// 动画
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+// 响应式设计
+@media (max-width: 768px) {
+    .audit-container {
+        padding: 16px;
+    }
+
+    .page-header {
+        flex-direction: column;
+        gap: 16px;
+        align-items: flex-start;
+    }
+
+    .dialog {
+        width: 95%;
+    }
+}
+</style>

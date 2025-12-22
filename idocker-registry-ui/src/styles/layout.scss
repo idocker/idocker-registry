@@ -1,0 +1,216 @@
+@use '@/styles/variables.scss' as *;
+@use '@/styles/components.scss' as *;
+@use '@/styles/mixins.scss' as *;
+
+// Layout styles for app structure
+
+// Main app layout
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-header {
+  background-color: var(--header-background);
+  color: var(--header-text);
+  padding: 0 $spacing-md;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: var(--shadow-1);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+}
+
+.app-content {
+  flex: 1;
+  padding: $spacing-md;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.app-footer {
+  background-color: var(--footer-background);
+  color: var(--footer-neutral-text);
+  padding: $spacing-md;
+  text-align: center;
+  font-size: $font-size-sm;
+}
+
+// Header components
+.header-title {
+  display: flex;
+  align-items: center;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-medium;
+  
+  .logo {
+    margin-right: $spacing-md;
+  }
+  
+  a {
+    color: var(--header-text);
+    text-decoration: none;
+    
+    &:hover {
+      color: var(--header-accent-text);
+    }
+  }
+}
+
+.header-menu {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+}
+
+// Navigation breadcrumbs
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  margin-bottom: $spacing-md;
+  font-size: $font-size-sm;
+  
+  .breadcrumb-item {
+    display: flex;
+    align-items: center;
+    
+    a {
+      color: var(--accent-text);
+      
+      &:hover {
+        color: var(--header-accent-text);
+      }
+    }
+    
+    &:not(:last-child)::after {
+      content: '/';
+      margin: 0 $spacing-sm;
+      color: var(--neutral-text);
+    }
+    
+    &:last-child {
+      color: var(--primary-text);
+      font-weight: $font-weight-medium;
+    }
+  }
+}
+
+// Cards
+.card {
+  @include card(1);
+  
+  &.card-elevated {
+    @include card(2);
+  }
+  
+  .card-title {
+    font-size: $font-size-lg;
+    font-weight: $font-weight-medium;
+    margin-bottom: $spacing-md;
+    color: var(--primary-text);
+  }
+  
+  .card-subtitle {
+    font-size: $font-size-sm;
+    color: var(--neutral-text);
+    margin-bottom: $spacing-lg;
+  }
+  
+  .card-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: $spacing-sm;
+    margin-top: $spacing-lg;
+  }
+}
+
+// Grid system
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0 (-$spacing-sm);
+}
+
+.col {
+  flex: 1;
+  padding: 0 $spacing-sm;
+  
+  &.col-12 { width: 100%; }
+  &.col-11 { width: 91.666666%; }
+  &.col-10 { width: 83.333333%; }
+  &.col-9 { width: 75%; }
+  &.col-8 { width: 66.666667%; }
+  &.col-7 { width: 58.333333%; }
+  &.col-6 { width: 50%; }
+  &.col-5 { width: 41.666667%; }
+  &.col-4 { width: 33.333333%; }
+  &.col-3 { width: 25%; }
+  &.col-2 { width: 16.666667%; }
+  &.col-1 { width: 8.333333%; }
+}
+
+// Responsive grid
+@include respond-to(sm) {
+  .col-sm {
+    flex: 1;
+    padding: 0 $spacing-sm;
+    
+    &.col-sm-12 { width: 100%; }
+    &.col-sm-11 { width: 91.666666%; }
+    &.col-sm-10 { width: 83.333333%; }
+    &.col-sm-9 { width: 75%; }
+    &.col-sm-8 { width: 66.666667%; }
+    &.col-sm-7 { width: 58.333333%; }
+    &.col-sm-6 { width: 50%; }
+    &.col-sm-5 { width: 41.666667%; }
+    &.col-sm-4 { width: 33.333333%; }
+    &.col-sm-3 { width: 25%; }
+    &.col-sm-2 { width: 16.666667%; }
+    &.col-sm-1 { width: 8.333333%; }
+  }
+}
+
+@include respond-to(md) {
+  .col-md {
+    flex: 1;
+    padding: 0 $spacing-sm;
+    
+    &.col-md-12 { width: 100%; }
+    &.col-md-11 { width: 91.666666%; }
+    &.col-md-10 { width: 83.333333%; }
+    &.col-md-9 { width: 75%; }
+    &.col-md-8 { width: 66.666667%; }
+    &.col-md-7 { width: 58.333333%; }
+    &.col-md-6 { width: 50%; }
+    &.col-md-5 { width: 41.666667%; }
+    &.col-md-4 { width: 33.333333%; }
+    &.col-md-3 { width: 25%; }
+    &.col-md-2 { width: 16.666667%; }
+    &.col-md-1 { width: 8.333333%; }
+  }
+}
+
+@include respond-to(lg) {
+  .col-lg {
+    flex: 1;
+    padding: 0 $spacing-sm;
+    
+    &.col-lg-12 { width: 100%; }
+    &.col-lg-11 { width: 91.666666%; }
+    &.col-lg-10 { width: 83.333333%; }
+    &.col-lg-9 { width: 75%; }
+    &.col-lg-8 { width: 66.666667%; }
+    &.col-lg-7 { width: 58.333333%; }
+    &.col-lg-6 { width: 50%; }
+    &.col-lg-5 { width: 41.666667%; }
+    &.col-lg-4 { width: 33.333333%; }
+    &.col-lg-3 { width: 25%; }
+    &.col-lg-2 { width: 16.666667%; }
+    &.col-lg-1 { width: 8.333333%; }
+  }
+}

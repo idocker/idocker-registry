@@ -1,0 +1,14 @@
+.DS_Store
+.idea
+.vacode
+.vscode
+
+**/*.log*
+
+idocker-registry-ui/dist/
+
+idocker-registry-ui/node_modules/
+idocker-registry-server/node_modules/
+
+idocker-registry-ui/package-lock.json
+idocker-registry-server/package-lock.json
