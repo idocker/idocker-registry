@@ -157,7 +157,7 @@
 
 ### 开发
 
-欢迎提交 Pull Request 和 Issue！请确保：
+欢迎提交 Pull Request 和 Issue请确保:
 
 1. 代码符合项目风格
 2. 提交前通过所有测试
