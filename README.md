@@ -1,5 +1,5 @@
 
-<div align="center" style="margin-top: 20px">
+<div align="center" style="margin-top: 50px">
 <img src="./idocker-registry-ui/src/assets/logo.png" alt="idocker-registry" width="400" >
 </div>
 
