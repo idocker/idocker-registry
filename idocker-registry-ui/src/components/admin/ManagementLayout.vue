@@ -61,6 +61,10 @@ const setPageTitle = () => {
       pageTitle.value = '审计日志'
       pageSubtitle.value = '查看系统操作记录和审计信息'
       break
+    case '/admin/sync':
+      pageTitle.value = '仓库同步'
+      pageSubtitle.value = '同步Docker Registry中的仓库数据到数据库'
+      break
     default:
       // 如果是项目详情页
       if (route.path.startsWith('/admin/projects/')) {
@@ -80,8 +84,8 @@ const checkMobile = () => {
 
 // 切换侧边栏
 const toggleSidebar = () => {
-  if (sidebarRef.value && isMobile.value) {
-    sidebarRef.value.classList.toggle('open')
+  if (sidebarRef.value && sidebarRef.value.$el && isMobile.value) {
+    sidebarRef.value.$el.classList.toggle('open')
   }
 }
 
@@ -122,7 +126,7 @@ onUnmounted(() => {
   align-items: center;
   padding: 16px 24px;
   border-bottom: 1px solid var(--border-color);
-  background-color: var(--card-bg);
+  //background-color: var(--card-bg);
   
   .sidebar-toggle {
     display: none;
@@ -168,11 +172,22 @@ onUnmounted(() => {
 
 // 响应式设计
 @media (max-width: 768px) {
+  .management-layout[data-v-5b26ef54] {
+    display: flex;
+    min-height: calc(100vh - 145px - 2rem);
+}
+
   .management-content {
     width: 100%;
+    min-height: calc(100vh - 145px - 2rem);
   }
-  
+    
+  .app-content {
+    min-height: calc(100vh - 145px - 2rem);
+  }
+
   .content-header {
+    padding: 0px;
     .sidebar-toggle {
       display: block;
     }

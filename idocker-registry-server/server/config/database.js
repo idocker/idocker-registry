@@ -172,6 +172,24 @@ export async function initDatabase() {
             )
           `);
 
+          // 创建同步日志表
+          db.run(`
+            CREATE TABLE IF NOT EXISTS sync_logs (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              sync_type VARCHAR(50) NOT NULL,
+              project_id INTEGER,
+              user_id INTEGER,
+              status VARCHAR(20) NOT NULL,
+              processed_count INTEGER DEFAULT 0,
+              error_count INTEGER DEFAULT 0,
+              duration INTEGER DEFAULT 0,
+              details TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL,
+              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+            )
+          `);
+
           // 创建索引以提高查询性能
           db.run('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)');
           db.run('CREATE INDEX IF NOT EXISTS idx_projects_name ON projects(name)');

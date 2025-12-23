@@ -170,6 +170,15 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: '/admin/sync',
+    name: 'admin-sync',
+    component: () => import('@/views/admin/SyncView.vue'),
+    meta: {
+      title: 'Registry Sync',
+      requiresAuth: true
+    }
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/views/NotFoundView.vue'),

@@ -11,9 +11,9 @@
                             刷新
                         </button>
                         <button class="btn btn-primary" @click="showCreateDialog = true">
-                    <span class="material-icons">add</span>
-                    添加用户
-                </button>
+                            <span class="material-icons">add</span>
+                            添加用户
+                        </button>
                     </div>
                 </div>
 
@@ -411,7 +411,7 @@ onMounted(async () => {
             console.error('Failed to fetch user profile:', error)
         }
     }
-    
+
     loadUsers()
 })
 </script>
@@ -523,7 +523,7 @@ onMounted(async () => {
     .role-badge {
         padding: 4px 8px;
         border-radius: 12px;
-        
+
         font-weight: 500;
 
         &.role-admin {
@@ -589,7 +589,7 @@ onMounted(async () => {
 
 .dialog {
     //background-color: var(--card-bg);
-    background-color: #222;
+    background-color: var(--card-background);
     border-radius: 12px;
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
     width: 90%;
@@ -625,7 +625,7 @@ onMounted(async () => {
 }
 
 .dialog-content {
-    padding: 16px;
+    padding: 36px;
 }
 
 .user-form {
@@ -638,13 +638,16 @@ onMounted(async () => {
             font-weight: 500;
         }
 
-        input,
+        input[type="text"],
+        input[type="email"],
+        input[type="password"],
         select {
             width: 100%;
-            padding: 10px;
+            padding: 8px 12px 8px 10px;
             border: 1px solid var(--border-color);
-            border-radius: 4px;
-            font-size: 14px;
+            border-radius: var(--border-radius);
+            background-color: var(--background) !important;
+            color: var(--primary-text);
 
             &:focus {
                 outline: none;

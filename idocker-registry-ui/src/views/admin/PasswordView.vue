@@ -187,7 +187,7 @@ const showMessage = (text: string, type: 'success' | 'error' | 'info' = 'info') 
 @use '@/styles/mixins.scss' as *;
 
 .password-container {
-    max-width: 600px;
+    //max-width: 600px;
     margin: 0 auto;
 }
 
@@ -200,6 +200,10 @@ const showMessage = (text: string, type: 'success' | 'error' | 'info' = 'info') 
 }
 
 .password-form {
+    max-width: 400px;
+    align-items: center;
+    margin: 0 auto;
+
     .form-group {
         margin-bottom: 24px;
 
@@ -209,12 +213,14 @@ const showMessage = (text: string, type: 'success' | 'error' | 'info' = 'info') 
             font-weight: 500;
         }
 
-        input {
+        input[type="password"] {
             width: 100%;
             padding: 12px;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
             font-size: 16px;
+            border: 1px solid var(--border-color);
+            background-color: var(--input-bg);
+            border-radius: var(--border-radius);
+            color: var(--input-color);
 
             &:focus {
                 outline: none;
@@ -232,7 +238,7 @@ const showMessage = (text: string, type: 'success' | 'error' | 'info' = 'info') 
 
         .strength-bar {
             flex: 1;
-            height: 4px;
+            height: 1px;
             background-color: var(--border-color);
             border-radius: 2px;
             overflow: hidden;

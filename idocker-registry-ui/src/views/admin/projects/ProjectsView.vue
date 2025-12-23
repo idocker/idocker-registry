@@ -304,6 +304,7 @@ onMounted(() => {
 
 .project-card {
   //background: white;
+  background-color: var(--card-bg);
   border-radius: 8px;
   border: 1px solid #525254;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
@@ -319,12 +320,13 @@ onMounted(() => {
   display: flex;
   align-items: flex-start;
   padding: 20px;
+  padding-bottom: 0px;
 
   .project-icon {
     width: 48px;
     height: 48px;
     border-radius: 50%;
-    background: rgba(52, 152, 219, 0.1);
+    //background: rgba(52, 152, 219, 0.1);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -343,6 +345,7 @@ onMounted(() => {
       font-size: 18px;
       font-weight: 600;
       //color: #2c3e50;
+      padding-top: 10px;
       margin-bottom: 5px;
     }
 
@@ -363,7 +366,7 @@ onMounted(() => {
 
 .project-stats {
   display: flex;
-  padding: 0 20px 15px;
+  padding: 0 20px 15px 82px;
 
   .stat {
     display: flex;
@@ -413,10 +416,11 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  backdrop-filter: blur(4px);
 }
 
 .modal {
-  background: white;
+  background-color: var(--border-color);
   border-radius: 8px;
   width: 90%;
   max-width: 500px;
@@ -433,7 +437,7 @@ onMounted(() => {
     h2 {
       font-size: 20px;
       font-weight: 600;
-      color: #2c3e50;
+      //color: #2c3e50;
     }
   }
 
@@ -447,7 +451,7 @@ onMounted(() => {
         display: block;
         margin-bottom: 8px;
         font-weight: 500;
-        color: #34495e;
+        //color: #34495e;
       }
 
       input,

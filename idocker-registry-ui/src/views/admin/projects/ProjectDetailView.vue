@@ -14,7 +14,7 @@
           </div>
         </div>
         
-        <div class="project-actions">
+        <div class="project-actions" v-if="false">
           <button class="btn btn-primary" @click="showRegistryModal = true">
             <span class="material-icons">add</span>
             Add Registry
@@ -891,7 +891,7 @@ onMounted(() => {
     
     h3 {
       font-size: 24px;
-      color: #2c3e50;
+      //color: #2c3e50;
       margin-bottom: 10px;
     }
     
@@ -1154,7 +1154,7 @@ onMounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 1);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1162,7 +1162,8 @@ onMounted(() => {
 }
 
 .modal {
-  background: white;
+  background-color: var(--border-color);
+  
   border-radius: 8px;
   width: 90%;
   max-width: 500px;
@@ -1179,7 +1180,7 @@ onMounted(() => {
     h2 {
       font-size: 20px;
       font-weight: 600;
-      color: #2c3e50;
+      //color: #2c3e50;
     }
   }
   
@@ -1193,7 +1194,7 @@ onMounted(() => {
         display: block;
         margin-bottom: 8px;
         font-weight: 500;
-        color: #34495e;
+        //color: #34495e;
       }
       
       input, select, textarea {

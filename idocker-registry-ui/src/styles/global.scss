@@ -43,10 +43,13 @@ a {
   }
 }
 
-input[type="text"] {
- background-color: #ccc;
- -webkit-background-color: #f2f2f2;
-  background-color: #f2f2f2;
+input[type="text"],textarea {
+ width: 100%;
+    padding: 8px 12px 8px 40px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background-color: var(--background);
+    color: var(--primary-text);
 }
 // Utility classes
 .text-center {

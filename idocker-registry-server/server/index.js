@@ -26,6 +26,7 @@ import userRoutes from './routes/users.js';
 import projectRoutes from './routes/projects.js';
 import repositoryRoutes from './routes/repository.js';
 import auditRoutes from './routes/audit.js';
+import syncRoutes from './routes/sync.js';
 import dockerRegistryRoutes from './routes/dockerRegistry.js';
 
 // 加载环境变量
@@ -70,6 +71,7 @@ app.use('/api/users', authMiddleware, userRoutes);
 app.use('/api/projects', authMiddleware, projectRoutes);
 app.use('/api/repository', authMiddleware, repositoryRoutes);
 app.use('/api/audit', authMiddleware, auditRoutes);
+app.use('/api/sync', authMiddleware, syncRoutes);
 app.use('/v2', authMiddleware, dockerRegistryRoutes); // Docker Repository API兼容端点
 
 // 静态文件服务（如果需要）

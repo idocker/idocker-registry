@@ -35,6 +35,10 @@
           <span class="material-icons">history</span>
           <span>审计日志</span>
         </router-link>
+        <router-link v-if="user && user.role === 'admin'" to="/admin/sync" class="nav-item" :class="{ active: isActive('/admin/sync') }">
+          <span class="material-icons">sync</span>
+          <span>仓库同步</span>
+        </router-link>
       </div>
     </div>
   </div>
@@ -62,7 +66,7 @@ const isActive = (path: string) => {
 
 .nav-sidebar {
   width: 250px;
-  background-color: var(--sidebar-bg, var(--card-bg));
+  //background-color: var(--sidebar-bg, var(--card-bg));
   border-right: 1px solid var(--border-color);
   min-height: calc(100vh - 117px - 2rem);
   position: sticky;
@@ -132,12 +136,22 @@ const isActive = (path: string) => {
 
 // 响应式设计
 @media (max-width: 768px) {
+
+
+  .content-header {
+    padding-left: 0;
+  }
+
   .nav-sidebar {
     position: fixed;
     left: 0;
     top: 64px;
     z-index: 999;
     transform: translateX(-100%);
+    background-color: var(--background);
+    backdrop-filter: blur(4px);
+    width: 100%;
+    min-height: calc(100vh - 125px - 2rem);
     
     &.open {
       transform: translateX(0);

@@ -179,7 +179,7 @@ onMounted(() => {
   gap: 20px;
   margin-bottom: 40px;
   width: 100%;
-  color: #999;
+  color: var(--primary-text);;
 
   .stat-card-box {
     display: flex;
@@ -191,7 +191,7 @@ onMounted(() => {
 
 
     .stat-card {
-      background: #343a4b;
+      background-color: var(--card-bg);
       border-radius: 8px;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
       padding: 15px;
@@ -222,13 +222,13 @@ onMounted(() => {
         .stat-value {
           font-size: 24px;
           font-weight: 600;
-          color: #999;
+          color: var(--primary-text);;
           margin-bottom: 4px;
         }
 
         .stat-label {
           font-size: 14px;
-          color: #7f8c8d;
+          color: var(--primary-text);;
         }
       }
     }
@@ -249,7 +249,7 @@ onMounted(() => {
 }
 
 .dashboard-section {
-  background: #343a4b;
+  background-color: var(--card-bg);
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   padding: 20px;
@@ -257,7 +257,7 @@ onMounted(() => {
   h2 {
     font-size: 18px;
     font-weight: 600;
-    color: #7f8c8d;
+    color:var(--primary-text);
     margin-bottom: 20px;
   }
 }
@@ -265,8 +265,8 @@ onMounted(() => {
 .dashboard-list {
   .empty-state {
     text-align: center;
-    padding: 30px 0;
-    color: #7f8c8d;
+    padding: 10px 0;
+    color: var(--primary-text);
 
     .material-icons {
       font-size: 48px;
@@ -291,6 +291,7 @@ onMounted(() => {
 
     &:hover {
       background: rgba(52, 152, 219, 0.05);
+      
       margin: 0 -20px;
       padding: 15px 20px;
     }
@@ -317,7 +318,7 @@ onMounted(() => {
 
     .list-title {
       font-weight: 500;
-      color: #999;
+      color: var(--primary-text);
       margin-bottom: 4px;
     }
 

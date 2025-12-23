@@ -3,6 +3,7 @@
 // Default theme colors
 :root {
   // Light theme colors
+  --primary-color: #777777;
   --primary-text: #25313b;
   --neutral-text: #777777;
   --background: #ffffff;
@@ -14,6 +15,11 @@
   --footer-text: #ffffff;
   --footer-neutral-text: #adbacd;
   --footer-background: #344251;
+
+  --card-bg: #eeeeee;
+  --border-radius: 0.4rem;
+  --input-bg: #fff;
+  --input-color: #333;
   
   // Component colors
   --card-background: #ffffff;
@@ -40,6 +46,7 @@
 
 // Dark theme colors
 body.dark-theme {
+  --primary-color: #5c88ff;
   --primary-text: #98a8bd;
   --neutral-text: #6d7fab;
   --background: #22272e;
@@ -49,8 +56,12 @@ body.dark-theme {
   --header-background: #333a45;
   
   // Component colors
-  --card-background: #555;
-  --border-color: #3c434c;
+  --card-background: #222;
+  --card-bg: #1c1f28;
+  --border-color: #2d2e2e;
+  --border-radius: 0.4rem;
+  --input-bg: #22272e;
+  --input-color: #eee;
 }
 
 // Breakpoints

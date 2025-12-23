@@ -117,6 +117,7 @@ const getRoleDisplay = (role: string) => {
   overflow: hidden;
   border: 1px solid var(--border-color);
   backdrop-filter: blur(10px);
+  color: var(--primary-text);
 }
 
 .user-menu-content {
@@ -141,7 +142,7 @@ const getRoleDisplay = (role: string) => {
     width: 48px;
     height: 48px;
     border-radius: 50%;
-    background-color: var(--primary-color-light);
+    //background-color: var(--primary-color-light);
     display: flex;
     align-items: center;
     justify-content: center;

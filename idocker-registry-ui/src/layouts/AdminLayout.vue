@@ -63,6 +63,7 @@ import ErrorComponent from '@/components/common/ErrorComponent.vue'
   .sidebar {
     width: 100%;
     height: auto;
+    background-color: var(--bg-color);
   }
   
   .main-content {

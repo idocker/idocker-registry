@@ -399,7 +399,7 @@ const loadLogs = async () => {
         const response = await axios.get('/api/audit/logs', { params })
         console.log('response', response)
         logs.value = response.data.data || []
-        totalLogs.value = response.data.data.total || 0
+        totalLogs.value = response.data.data.length || 0
         totalPages.value = Math.ceil(totalLogs.value / pageSize.value)
     } catch (error) {
         console.error('Failed to load audit logs:', error)

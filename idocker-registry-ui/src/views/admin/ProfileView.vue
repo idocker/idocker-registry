@@ -307,6 +307,7 @@ onMounted(() => {
     display: flex;
     flex-direction: column;
     gap: 32px;
+
 }
 
 .profile-section {
@@ -318,6 +319,14 @@ onMounted(() => {
     h2 {
         margin-bottom: 24px;
         font-size: 20px;
+    }
+
+    .profile-form{
+        margin: 0 auto;
+        max-width: 400px;
+        align-items: center;
+        justify-content: center;
+        padding-bottom: 20px;
     }
 }
 
@@ -370,11 +379,13 @@ onMounted(() => {
             font-weight: 500;
         }
 
-        input {
+        input[type="text"], input[type="email"], input[type="password"] {
             width: 100%;
             padding: 12px;
             border: 1px solid var(--border-color);
-            border-radius: 4px;
+            background-color: var(--input-bg);
+            border-radius: var(--border-radius);
+            color: var(--input-color);
             font-size: 16px;
 
             &:focus {
