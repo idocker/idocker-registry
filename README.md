@@ -1,5 +1,7 @@
 
-<div align=center><img src="./idocker-registry-ui/src/assets/logo.png" alt="idocker-registry" width="400" ></div>
+<div align="center" style="margin-top: 20px">
+<img src="./idocker-registry-ui/src/assets/logo.png" alt="idocker-registry" width="400" >
+</div>
 
 # iDocker Registry
 
