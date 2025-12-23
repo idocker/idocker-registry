@@ -80,7 +80,7 @@ export function requireRole(allowedRoles) {
 /**
  * 管理员权限检查中间件
  */
-export const requireAdmin = requireRole('admin');
+//export const requireAdmin = requireRole('admin');
 
 /**
  * Docker Registry API认证中间件
@@ -236,6 +236,27 @@ async function handleTokenService(req, res) {
     return res.status(500).json({
       errors: [{ code: 'INTERNAL_ERROR', message: '令牌服务错误', detail: null }]
     });
+  }
+}
+
+/**
+ * 管理员权限检查中间件
+ * 检查用户是否为管理员
+ */
+export async function requireAdmin(req, res, next) {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: '请先登录' });
+    }
+
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: '需要管理员权限' });
+    }
+
+    next();
+  } catch (error) {
+    logger.error('管理员权限检查错误:', error);
+    return res.status(500).json({ message: '权限检查失败' });
   }
 }
 

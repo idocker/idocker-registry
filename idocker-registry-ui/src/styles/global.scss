@@ -43,6 +43,11 @@ a {
   }
 }
 
+input[type="text"] {
+ background-color: #ccc;
+ -webkit-background-color: #f2f2f2;
+  background-color: #f2f2f2;
+}
 // Utility classes
 .text-center {
   text-align: center;

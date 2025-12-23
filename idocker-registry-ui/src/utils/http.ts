@@ -336,6 +336,52 @@ class RegistryHttpService {
     }
   }
 
+  // Generic HTTP methods for backend API calls
+  async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
+    try {
+      const response = await this.axiosInstance.get<T>(url, config)
+      return response.data
+    } catch (error) {
+      throw this.formatError(error)
+    }
+  }
+
+  async post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    try {
+      const response = await this.axiosInstance.post<T>(url, data, config)
+      return response.data
+    } catch (error) {
+      throw this.formatError(error)
+    }
+  }
+
+  async put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    try {
+      const response = await this.axiosInstance.put<T>(url, data, config)
+      return response.data
+    } catch (error) {
+      throw this.formatError(error)
+    }
+  }
+
+  async delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
+    try {
+      const response = await this.axiosInstance.delete<T>(url, config)
+      return response.data
+    } catch (error) {
+      throw this.formatError(error)
+    }
+  }
+
+  async patch<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    try {
+      const response = await this.axiosInstance.patch<T>(url, data, config)
+      return response.data
+    } catch (error) {
+      throw this.formatError(error)
+    }
+  }
+
   clearCache() {
     responseCache.clear()
   }

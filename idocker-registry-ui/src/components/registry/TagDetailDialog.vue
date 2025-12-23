@@ -84,6 +84,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import registryService from '@/services/registry.service'
 
 interface Props {
   modelValue: boolean
@@ -131,19 +132,36 @@ watch(() => props.modelValue, async (isOpen) => {
 const loadTagDetails = async () => {
   isLoading.value = true
   try {
-    // 这里应该调用 API 获取标签详情
-    // 暂时使用模拟数据
-    tagDetails.value = {
-      id: props.tagId,
-      name: 'latest',
-      digest: 'sha256:abc123def456...',
-      size: 12345678,
-      architecture: 'amd64',
-      os: 'linux',
-      createdAt: new Date().toISOString()
+    // 使用真实API获取标签详情
+    const response = await registryService.getImageTagDetails(props.imageId, props.tagId)
+    if (response.success) {
+      const { repository, tag } = response.data
+      
+      // 转换为组件期望的格式
+      tagDetails.value = {
+        id: tag.id.toString(),
+        name: tag.tag || tag.name,
+        digest: tag.digest,
+        size: tag.size,
+        architecture: tag.architecture || 'N/A',
+        os: tag.os || 'N/A',
+        createdAt: tag.created_at || tag.createdAt
+      }
+    } else {
+      throw new Error(response.message || '获取标签详情失败')
     }
   } catch (error) {
     console.error('加载标签详情失败:', error)
+    // 如果API失败，显示错误信息
+    tagDetails.value = {
+      id: props.tagId,
+      name: '加载失败',
+      digest: 'N/A',
+      size: 0,
+      architecture: 'N/A',
+      os: 'N/A',
+      createdAt: ''
+    }
   } finally {
     isLoading.value = false
   }

@@ -396,9 +396,10 @@ const loadLogs = async () => {
         if (filters.startDate) params.startDate = filters.startDate
         if (filters.endDate) params.endDate = filters.endDate
 
-        const response = await axios.get('/api/audit', { params })
-        logs.value = response.data.logs || []
-        totalLogs.value = response.data.total || 0
+        const response = await axios.get('/api/audit/logs', { params })
+        console.log('response', response)
+        logs.value = response.data.data || []
+        totalLogs.value = response.data.data.total || 0
         totalPages.value = Math.ceil(totalLogs.value / pageSize.value)
     } catch (error) {
         console.error('Failed to load audit logs:', error)

@@ -3,7 +3,7 @@
  * 
  * 提供镜像仓库的管理功能，包括镜像列表、标签管理、详细信息等
  * 
- * @author IDocker Registry Team
+ * @author IDocker Repository Team
  * @version 2.0.0
  */
 
@@ -17,7 +17,7 @@ import { logger } from '../utils/logger.js';
 const router = express.Router();
 
 /**
- * GET /api/registry/images
+ * GET /api/repository/images
  * 获取镜像列表
  * 支持按项目过滤、搜索和分页
  */
@@ -79,7 +79,7 @@ router.get('/images', asyncHandler(async (req, res) => {
 }));
 
 /**
- * GET /api/registry/projects/:projectId/images
+ * GET /api/repository/projects/:projectId/images
  * 获取特定项目的镜像列表
  */
 router.get('/projects/:projectId/images', asyncHandler(async (req, res) => {
@@ -146,7 +146,7 @@ router.get('/projects/:projectId/images', asyncHandler(async (req, res) => {
 }));
 
 /**
- * GET /api/registry/images/:imageId
+ * GET /api/repository/images/:imageId
  * 获取特定镜像的详细信息
  */
 router.get('/images/:imageId', asyncHandler(async (req, res) => {
@@ -197,20 +197,20 @@ router.get('/images/:imageId', asyncHandler(async (req, res) => {
     );
 
     // 为每个标签生成拉取和推送命令
-    const registryConfig = await db.get(
-      'SELECT * FROM registry_configs WHERE is_default = 1 AND is_active = 1'
+    const repositoryConfig = await db.get(
+      'SELECT * FROM repository_configs WHERE is_default = 1 AND is_active = 1'
     );
 
     for (const tag of tags) {
       tag.pullCommand = dockerRegistryService.getPullCommand(
         repository.name,
         tag.tag,
-        registryConfig
+        repositoryConfig
       );
       tag.pushCommand = dockerRegistryService.getPushCommand(
         repository.name,
         tag.tag,
-        registryConfig
+        repositoryConfig
       );
     }
 
@@ -234,7 +234,7 @@ router.get('/images/:imageId', asyncHandler(async (req, res) => {
 }));
 
 /**
- * GET /api/registry/images/:imageId/tags/:tagId
+ * GET /api/repository/images/:imageId/tags/:tagId
  * 获取特定镜像标签的详细信息
  */
 router.get('/images/:imageId/tags/:tagId', asyncHandler(async (req, res) => {
@@ -293,14 +293,14 @@ router.get('/images/:imageId/tags/:tagId', asyncHandler(async (req, res) => {
     // 获取构建历史
     let buildHistory = [];
     try {
-      const registryConfig = await db.get(
-        'SELECT * FROM registry_configs WHERE is_default = 1 AND is_active = 1'
+      const repositoryConfig = await db.get(
+        'SELECT * FROM repository_configs WHERE is_default = 1 AND is_active = 1'
       );
       
       buildHistory = await dockerRegistryService.getBuildHistory(
         repository.name,
         tag.tag,
-        registryConfig
+        repositoryConfig
       );
     } catch (error) {
       logger.warn(`获取构建历史失败: ${error.message}`);
@@ -308,19 +308,19 @@ router.get('/images/:imageId/tags/:tagId', asyncHandler(async (req, res) => {
     }
 
     // 生成拉取和推送命令
-    const registryConfig = await db.get(
-      'SELECT * FROM registry_configs WHERE is_default = 1 AND is_active = 1'
+    const repositoryConfig = await db.get(
+      'SELECT * FROM repository_configs WHERE is_default = 1 AND is_active = 1'
     );
 
     const pullCommand = dockerRegistryService.getPullCommand(
       repository.name,
       tag.tag,
-      registryConfig
+      repositoryConfig
     );
     const pushCommand = dockerRegistryService.getPushCommand(
       repository.name,
       tag.tag,
-      registryConfig
+      repositoryConfig
     );
 
     res.status(200).json({
@@ -348,7 +348,7 @@ router.get('/images/:imageId/tags/:tagId', asyncHandler(async (req, res) => {
 }));
 
 /**
- * DELETE /api/registry/images/:imageId/tags/:tagId
+ * DELETE /api/repository/images/:imageId/tags/:tagId
  * 删除镜像标签
  */
 router.delete('/images/:imageId/tags/:tagId', asyncHandler(async (req, res) => {
@@ -401,16 +401,16 @@ router.delete('/images/:imageId/tags/:tagId', asyncHandler(async (req, res) => {
       });
     }
 
-    // 从Docker Registry删除标签
-    const registryConfig = await db.get(
-      'SELECT * FROM registry_configs WHERE is_default = 1 AND is_active = 1'
+    // 从Docker Repository删除标签
+    const repositoryConfig = await db.get(
+      'SELECT * FROM repository_configs WHERE is_default = 1 AND is_active = 1'
     );
 
     const repositoryFullName = `${repository.project_name}/${repository.name}`;
     const deleteResult = await dockerRegistryService.deleteTag(
       repositoryFullName,
       tag.tag,
-      registryConfig
+      repositoryConfig
     );
 
     if (!deleteResult) {
@@ -455,8 +455,8 @@ router.delete('/images/:imageId/tags/:tagId', asyncHandler(async (req, res) => {
 }));
 
 /**
- * POST /api/registry/sync
- * 同步Docker Registry中的镜像信息到数据库
+ * POST /api/repository/sync
+ * 同步Docker Repository中的镜像信息到数据库
  * 这是一个长时间运行的操作，可能需要异步处理
  */
 router.post('/sync', asyncHandler(async (req, res) => {
@@ -471,20 +471,20 @@ router.post('/sync', asyncHandler(async (req, res) => {
   try {
     const db = await getDb();
     
-    // 获取默认的Registry配置
-    const registryConfig = await db.get(
-      'SELECT * FROM registry_configs WHERE is_default = 1 AND is_active = 1'
+    // 获取默认的Repository配置
+    const repositoryConfig = await db.get(
+      'SELECT * FROM repository_configs WHERE is_default = 1 AND is_active = 1'
     );
 
-    if (!registryConfig) {
+    if (!repositoryConfig) {
       return res.status(400).json({
         success: false,
-        message: '未找到有效的Registry配置'
+        message: '未找到有效的Repository配置'
       });
     }
 
     // 获取所有仓库列表
-    const repositories = await dockerRegistryService.getRepositories(registryConfig);
+    const repositories = await dockerRegistryService.getRepositories(repositoryConfig);
     
     let syncCount = 0;
     
@@ -545,7 +545,7 @@ router.post('/sync', asyncHandler(async (req, res) => {
         }
         
         // 获取仓库标签
-        const tagsData = await dockerRegistryService.getTags(repoName, registryConfig);
+        const tagsData = await dockerRegistryService.getTags(repoName, repositoryConfig);
         
         // 同步标签信息
         for (const tagInfo of tagsData.tags) {
@@ -586,9 +586,9 @@ router.post('/sync', asyncHandler(async (req, res) => {
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
           req.user.id,
-          'SYNC_REGISTRY',
-          'registry',
-          registryConfig.id.toString(),
+          'SYNC_REPOSITORY',
+          'repository',
+          repositoryConfig.id.toString(),
           JSON.stringify({ syncedCount: syncCount }),
           req.ip,
           req.headers['user-agent']
@@ -618,31 +618,31 @@ router.post('/sync', asyncHandler(async (req, res) => {
 }));
 
 /**
- * GET /api/registry/config
- * 获取Registry配置信息
+ * GET /api/repository/config
+ * 获取Repository配置信息
  */
 router.get('/config', asyncHandler(async (req, res) => {
   try {
     const db = await getDb();
     
-    // 获取Registry配置（不包含密码）
-    const registryConfigs = await db.all(
+    // 获取Repository配置（不包含密码）
+    const repositoryConfigs = await db.all(
       `SELECT id, name, url, is_default, is_active, created_at, updated_at
-       FROM registry_configs
+       FROM repository_configs
        ORDER BY is_default DESC, name`
     );
     
     res.status(200).json({
       success: true,
       data: {
-        registries: registryConfigs
+        repositories: repositoryConfigs
       }
     });
   } catch (error) {
-    logger.error('获取Registry配置时出错:', error);
+    logger.error('获取Repository配置时出错:', error);
     res.status(500).json({
       success: false,
-      message: '获取Registry配置失败'
+      message: '获取Repository配置失败'
     });
   }
 }));

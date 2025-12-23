@@ -177,7 +177,7 @@ const formatDate = (dateString: string) => {
 // 加载用户信息
 const loadUserProfile = async () => {
     try {
-        const response = await axios.get('/api/users/profile/me')
+        const response = await axios.get('/api/users/'+authStore.user.id)
 
         // 更新表单数据
         Object.assign(profileForm, response.data)
@@ -208,7 +208,7 @@ const updateProfile = async () => {
     try {
         isUpdatingProfile.value = true
 
-        const response = await axios.put('/api/users/profile/me', {
+        const response = await axios.put('/api/users/'+authStore.user.id, {
             username: profileForm.username,
             email: profileForm.email
         })

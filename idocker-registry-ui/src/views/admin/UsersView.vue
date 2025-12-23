@@ -226,6 +226,7 @@ const filteredUsers = computed(() => {
 const paginatedUsers = computed(() => {
     const start = (currentPage.value - 1) * pageSize.value
     const end = start + pageSize.value
+    console.log('filteredUsers', filteredUsers.value)
     return filteredUsers.value.slice(start, end)
 })
 
@@ -266,7 +267,7 @@ const loadUsers = async () => {
                 'Authorization': `Bearer ${authStore.token}`
             }
         })
-        users.value = response.data || []
+        users.value = response.data.data || []
     } catch (error) {
         console.error('Failed to load users:', error)
         showMessage('加载用户列表失败', 'error')
@@ -456,6 +457,7 @@ onMounted(async () => {
         border: 1px solid var(--border-color);
         border-radius: 4px;
         font-size: 14px;
+        background-color: var(--bg-color);
 
         &:focus {
             outline: none;
@@ -476,6 +478,7 @@ onMounted(async () => {
 .users-table {
     width: 100%;
     border-collapse: collapse;
+    font-size: 14px;
 
     th,
     td {
@@ -520,7 +523,7 @@ onMounted(async () => {
     .role-badge {
         padding: 4px 8px;
         border-radius: 12px;
-        font-size: 12px;
+        
         font-weight: 500;
 
         &.role-admin {
@@ -542,7 +545,7 @@ onMounted(async () => {
     .badge {
         padding: 2px 6px;
         border-radius: 10px;
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 500;
 
         &.badge-success {
@@ -576,7 +579,7 @@ onMounted(async () => {
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
+    //background-color: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(4px);
     display: flex;
     align-items: center;
@@ -585,7 +588,8 @@ onMounted(async () => {
 }
 
 .dialog {
-    background-color: var(--card-bg);
+    //background-color: var(--card-bg);
+    background-color: #222;
     border-radius: 12px;
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
     width: 90%;

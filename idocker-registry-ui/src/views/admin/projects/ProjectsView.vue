@@ -47,7 +47,7 @@
             <div class="project-stats">
               <div class="stat">
                 <span class="material-icons">storage</span>
-                <span>{{ project.registryCount || 0 }} Registries</span>
+                <span>{{ project.repositoryCount || 0 }} Repositories</span>
               </div>
               <div class="stat">
                 <span class="material-icons">people</span>
@@ -77,6 +77,12 @@
             <div class="form-group">
               <label for="name">Project Name *</label>
               <input id="name" type="text" v-model="projectForm.name" placeholder="Enter project name" required />
+            </div>
+
+            <div class="form-group">
+              <label for="namespace">Namespace *</label>
+              <input id="namespace" type="text" v-model="projectForm.namespace" placeholder="Enter namespace (lowercase letters, numbers, hyphens)" required />
+              <small class="form-help">Namespace can only contain lowercase letters, numbers, and hyphens</small>
             </div>
 
             <div class="form-group">
@@ -115,6 +121,7 @@ const editingProject = ref(null)
 
 const projectForm = reactive({
   name: '',
+  namespace: '',
   description: ''
 })
 
@@ -130,7 +137,7 @@ const fetchProjects = async () => {
 
     if (response.ok) {
       const data = await response.json()
-      projects.value = data.projects || []
+      projects.value = data.data || []
     } else {
       throw new Error('Failed to fetch projects')
     }
@@ -179,6 +186,7 @@ const saveProject = async () => {
 const editProject = (project) => {
   editingProject.value = project
   projectForm.name = project.name
+  projectForm.namespace = project.namespace || ''
   projectForm.description = project.description || ''
   showCreateModal.value = true
 }
@@ -209,6 +217,7 @@ const deleteProject = async (project) => {
 const resetForm = () => {
   editingProject.value = null
   projectForm.name = ''
+  projectForm.namespace = ''
   projectForm.description = ''
 }
 
@@ -231,7 +240,7 @@ onMounted(() => {
   h1 {
     font-size: 28px;
     font-weight: 600;
-    color: #2c3e50;
+    //color: #2c3e50;
   }
 
   .btn {
@@ -249,7 +258,7 @@ onMounted(() => {
   .loading {
     text-align: center;
     padding: 40px 0;
-    color: #7f8c8d;
+    //color: #7f8c8d;
 
     .material-icons {
       font-size: 48px;
@@ -270,7 +279,7 @@ onMounted(() => {
 
     h3 {
       font-size: 24px;
-      color: #2c3e50;
+      //color: #2c3e50;
       margin-bottom: 10px;
     }
 
@@ -294,8 +303,9 @@ onMounted(() => {
 }
 
 .project-card {
-  background: white;
+  //background: white;
   border-radius: 8px;
+  border: 1px solid #525254;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   overflow: hidden;
   transition: box-shadow 0.2s;
@@ -332,7 +342,7 @@ onMounted(() => {
     h3 {
       font-size: 18px;
       font-weight: 600;
-      color: #2c3e50;
+      //color: #2c3e50;
       margin-bottom: 5px;
     }
 
@@ -453,6 +463,14 @@ onMounted(() => {
           border-color: #3498db;
           box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
         }
+      }
+
+      .form-help {
+        display: block;
+        margin-top: 5px;
+        font-size: 0.8rem;
+        color: #7f8c8d;
+        font-style: italic;
       }
     }
   }

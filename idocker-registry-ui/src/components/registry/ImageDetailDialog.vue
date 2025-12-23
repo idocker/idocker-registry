@@ -61,6 +61,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import registryService from '@/services/registry.service'
 
 interface Props {
   modelValue: boolean
@@ -111,19 +112,33 @@ watch(() => props.modelValue, async (isOpen) => {
 const loadImageDetails = async () => {
   isLoading.value = true
   try {
-    // 这里应该调用 API 获取镜像详情
-    // 暂时使用模拟数据
-    imageDetails.value = {
-      name: props.imageId,
-      tagCount: 5,
-      tags: [
-        { id: '1', name: 'latest', digest: 'sha256:abc123', size: 12345678 },
-        { id: '2', name: 'v1.0', digest: 'sha256:def456', size: 12345678 },
-        { id: '3', name: 'v2.0', digest: 'sha256:ghi789', size: 12345678 }
-      ]
+    // 使用真实API获取镜像详情
+    const response = await registryService.getImageDetails(props.imageId)
+    if (response.success) {
+      const { repository, tags } = response.data
+      
+      // 转换为组件期望的格式
+      imageDetails.value = {
+        name: repository.fullName || repository.name,
+        tagCount: tags.length,
+        tags: tags.map(tag => ({
+          id: tag.id.toString(),
+          name: tag.tag || tag.name,
+          digest: tag.digest,
+          size: tag.size
+        }))
+      }
+    } else {
+      throw new Error(response.message || '获取镜像详情失败')
     }
   } catch (error) {
     console.error('加载镜像详情失败:', error)
+    // 如果API失败，显示错误信息
+    imageDetails.value = {
+      name: '加载失败',
+      tagCount: 0,
+      tags: []
+    }
   } finally {
     isLoading.value = false
   }

@@ -1,125 +1,39 @@
 /**
- * 项目管理路由模块
+ * 项目管理路由模块（重构版）
  * 
  * 提供项目的CRUD操作和成员管理
- * 支持基于项目的权限控制
+ * 支持项目权限控制和分页查询
  * 
  * @author IDocker Registry Team
  * @version 2.0.0
  */
 
 import express from 'express';
-import { dbGet, dbAll, dbRun, dbPaginate } from '../utils/dbHelper.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
-import { requireProjectPermission, requireAdmin } from '../middleware/auth.js';
+import { authMiddleware, requireAdmin } from '../middleware/auth.js';
 import { logger } from '../utils/logger.js';
+import { ProjectModel } from '../models/ProjectModel.js';
+import { UserModel } from '../models/UserModel.js';
 
+const projectModel = new ProjectModel();
+const userModel = new UserModel();
 const router = express.Router();
 
 /**
  * GET /api/projects
  * 获取项目列表
- * 支持分页和搜索，根据用户权限过滤
+ * 支持分页和搜索，根据用户角色返回不同权限的项目
  */
-router.get('/', asyncHandler(async (req, res) => {
+router.get('/', authMiddleware, asyncHandler(async (req, res) => {
   const { page = 1, limit = 20, search = '' } = req.query;
-  const offset = (page - 1) * limit;
+  const { id: userId, role: userRole } = req.user;
 
   try {
-    const db = await getDb();
-    
-    // 管理员可以查看所有项目，普通用户只能查看有权限的项目
-    let query;
-    let params;
-    
-    if (req.user.role === 'admin') {
-      query = `
-        SELECT p.id, p.name, p.description, p.namespace, p.is_active, p.created_at, p.updated_at, 
-               u.username as created_by_username, u.full_name as created_by_name
-        FROM projects p
-        LEFT JOIN users u ON p.created_by = u.id
-        WHERE 1=1
-      `;
-      params = [];
-      
-      if (search) {
-        query += ' AND (p.name LIKE ? OR p.description LIKE ? OR p.namespace LIKE ?)';
-        params.push(`%${search}%`, `%${search}%`, `%${search}%`);
-      }
-    } else {
-      query = `
-        SELECT p.id, p.name, p.description, p.namespace, p.is_active, p.created_at, p.updated_at,
-               u.username as created_by_username, u.full_name as created_by_name,
-               pm.role as member_role, pm.created_at as member_since
-        FROM projects p
-        LEFT JOIN users u ON p.created_by = u.id
-        JOIN project_members pm ON p.id = pm.project_id
-        WHERE pm.user_id = ? AND p.is_active = 1
-      `;
-      params = [req.user.id];
-      
-      if (search) {
-        query += ' AND (p.name LIKE ? OR p.description LIKE ? OR p.namespace LIKE ?)';
-        params.push(`%${search}%`, `%${search}%`, `%${search}%`);
-      }
-    }
-
-    query += ' ORDER BY p.name LIMIT ? OFFSET ?';
-    params.push(parseInt(limit), offset);
-
-    const projects = await db.all(query, params);
-
-    // 获取项目成员数量
-    for (const project of projects) {
-      const memberCount = await db.get(
-        'SELECT COUNT(*) as count FROM project_members WHERE project_id = ?',
-        [project.id]
-      );
-      project.memberCount = memberCount.count;
-      
-      // 获取仓库数量
-      const repoCount = await db.get(
-        'SELECT COUNT(*) as count FROM repositories WHERE project_id = ? AND is_active = 1',
-        [project.id]
-      );
-      project.repositoryCount = repoCount.count;
-    }
-
-    // 获取总数
-    let countQuery;
-    let countParams;
-    
-    if (req.user.role === 'admin') {
-      countQuery = 'SELECT COUNT(*) as total FROM projects WHERE 1=1';
-      countParams = [];
-      
-      if (search) {
-        countQuery += ' AND (name LIKE ? OR description LIKE ? OR namespace LIKE ?)';
-        countParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
-      }
-    } else {
-      countQuery = 'SELECT COUNT(*) as total FROM project_members pm JOIN projects p ON pm.project_id = p.id WHERE pm.user_id = ? AND p.is_active = 1';
-      countParams = [req.user.id];
-      
-      if (search) {
-        countQuery += ' AND (p.name LIKE ? OR p.description LIKE ? OR p.namespace LIKE ?)';
-        countParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
-      }
-    }
-
-    const { total } = await db.get(countQuery, countParams);
-
+    const result = await projectModel.getProjectsList(userId, userRole, { page, limit, search });
+console.log(result)
     res.status(200).json({
       success: true,
-      data: {
-        projects,
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          total,
-          totalPages: Math.ceil(total / limit)
-        }
-      }
+      data: result.data
     });
   } catch (error) {
     logger.error('获取项目列表时出错:', error);
@@ -133,68 +47,52 @@ router.get('/', asyncHandler(async (req, res) => {
 /**
  * GET /api/projects/:id
  * 获取特定项目详情
+ * 检查用户是否有访问权限
  */
-router.get('/:id', asyncHandler(async (req, res) => {
+router.get('/:id', authMiddleware, asyncHandler(async (req, res) => {
   const { id } = req.params;
+  const { id: userId, role: userRole } = req.user;
 
   try {
-    const db = await getDb();
-    
-    // 检查项目是否存在和权限
-    let project;
-    if (req.user.role === 'admin') {
-      project = await db.get(
-        `SELECT p.id, p.name, p.description, p.namespace, p.is_active, p.created_at, p.updated_at,
-                u.username as created_by_username, u.full_name as created_by_name
-         FROM projects p
-         LEFT JOIN users u ON p.created_by = u.id
-         WHERE p.id = ?`,
-        [id]
-      );
-    } else {
-      project = await db.get(
-        `SELECT p.id, p.name, p.description, p.namespace, p.is_active, p.created_at, p.updated_at,
-                u.username as created_by_username, u.full_name as created_by_name,
-                pm.role as member_role, pm.created_at as member_since
-         FROM projects p
-         LEFT JOIN users u ON p.created_by = u.id
-         JOIN project_members pm ON p.id = pm.project_id
-         WHERE p.id = ? AND pm.user_id = ?`,
-        [id, req.user.id]
-      );
-    }
-
-    if (!project) {
+    // 检查项目是否存在
+    const projectExists = await projectModel.projectExists(id);
+    if (!projectExists) {
       return res.status(404).json({
         success: false,
-        message: '项目不存在或无权访问'
+        message: '项目不存在'
       });
     }
 
-    // 获取项目成员
-    const members = await db.all(`
-      SELECT u.id, u.username, u.email, u.full_name, u.role as user_role, u.is_active,
-             pm.role as member_role, pm.created_at as member_since
-      FROM users u
-      JOIN project_members pm ON u.id = pm.user_id
-      WHERE pm.project_id = ? AND u.is_active = 1
-      ORDER BY pm.created_at
-    `, [id]);
+    // 检查用户是否有访问权限
+    const hasPermission = await projectModel.checkProjectPermission(id, userId, userRole);
+    if (!hasPermission) {
+      return res.status(403).json({
+        success: false,
+        message: '没有权限访问此项目'
+      });
+    }
 
-    // 获取项目仓库
-    const repositories = await db.all(`
-      SELECT id, name, description, is_public, created_at, updated_at
-      FROM repositories
-      WHERE project_id = ? AND is_active = 1
-      ORDER BY name
-    `, [id]);
+    // 获取项目详情
+    const project = await projectModel.findById(id);
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        message: '项目不存在'
+      });
+    }
+
+    // 获取项目成员列表
+    const members = await projectModel.getProjectMembers(id);
+    
+    // 获取项目仓库数量
+    const repositoryCount = await projectModel.getProjectRepositoryCount(id);
 
     res.status(200).json({
       success: true,
       data: {
         ...project,
-        members,
-        repositories
+        members: members || [],
+        repositoryCount: repositoryCount.count || 0
       }
     });
   } catch (error) {
@@ -209,78 +107,74 @@ router.get('/:id', asyncHandler(async (req, res) => {
 /**
  * POST /api/projects
  * 创建新项目
+ * 只有管理员可以创建项目
  */
-router.post('/', asyncHandler(async (req, res) => {
+router.post('/', authMiddleware, requireAdmin, asyncHandler(async (req, res) => {
   const { name, description, namespace } = req.body;
+  const { id: createdBy } = req.user;
 
   // 验证必填字段
-  if (!name) {
+  if (!name || !namespace) {
     return res.status(400).json({
       success: false,
-      message: '项目名称不能为空'
+      message: '项目名称和命名空间不能为空'
+    });
+  }
+
+  // 验证命名空间格式
+  if (!/^[a-z0-9-]+$/.test(namespace)) {
+    return res.status(400).json({
+      success: false,
+      message: '命名空间只能包含小写字母、数字和连字符'
     });
   }
 
   try {
-    const db = await getDb();
-
-    // 检查项目名称是否已存在
-    const existingProject = await db.get(
-      'SELECT id FROM projects WHERE name = ?',
-      [name]
-    );
-
-    if (existingProject) {
+    // 检查项目名称是否唯一
+    const isNameUnique = await projectModel.isProjectNameUnique(name);
+    if (!isNameUnique) {
       return res.status(409).json({
         success: false,
         message: '项目名称已存在'
       });
     }
 
-    // 创建项目
-    const result = await db.run(
-      `INSERT INTO projects (name, description, namespace, created_by, is_active)
-       VALUES (?, ?, ?, ?, 1)`,
-      [name, description, namespace, req.user.id]
+    // 检查命名空间是否唯一
+    const existingNamespace = await projectModel.get(
+      'SELECT id FROM projects WHERE namespace = ? AND is_active = 1',
+      [namespace]
     );
+    if (existingNamespace) {
+      return res.status(409).json({
+        success: false,
+        message: '命名空间已存在'
+      });
+    }
 
-    const projectId = result.lastID;
+    // 创建项目数据
+    const projectData = {
+      name,
+      description: description || '',
+      namespace,
+      is_active: 1
+    };
+
+    const newProject = await projectModel.createProject(projectData, createdBy);
 
     // 将创建者添加为项目所有者
-    await db.run(
-      'INSERT INTO project_members (project_id, user_id, role) VALUES (?, ?, ?)',
-      [projectId, req.user.id, 'owner']
-    );
+    await projectModel.addProjectMember(newProject.id, createdBy, 'owner');
 
-    // 记录操作日志
-    await db.run(
-      `INSERT INTO audit_logs (user_id, action, resource_type, resource_id, details, ip_address, user_agent)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [
-        req.user.id,
-        'CREATE_PROJECT',
-        'project',
-        projectId.toString(),
-        JSON.stringify({ name, description, namespace }),
-        req.ip,
-        req.headers['user-agent']
-      ]
-    );
-
-    // 返回创建的项目信息
-    const newProject = await db.get(
-      `SELECT p.id, p.name, p.description, p.namespace, p.is_active, p.created_at,
-              u.username as created_by_username
-       FROM projects p
-       LEFT JOIN users u ON p.created_by = u.id
-       WHERE p.id = ?`,
-      [projectId]
-    );
+    // 获取创建后的项目详情
+    const projectDetails = await projectModel.findById(newProject.id);
+    const members = await projectModel.getProjectMembers(newProject.id);
 
     res.status(201).json({
       success: true,
       message: '项目创建成功',
-      data: newProject
+      data: {
+        ...projectDetails,
+        members
+      }
     });
   } catch (error) {
     logger.error('创建项目时出错:', error);
@@ -294,50 +188,42 @@ router.post('/', asyncHandler(async (req, res) => {
 /**
  * PUT /api/projects/:id
  * 更新项目信息
+ * 需要项目所有者或管理员权限
  */
-router.put('/:id', asyncHandler(async (req, res) => {
+router.put('/:id', authMiddleware, asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { name, description, namespace, isActive } = req.body;
+  const { name, description, isActive } = req.body;
+  const { id: userId, role: userRole } = req.user;
 
   try {
-    const db = await getDb();
-    
-    // 检查项目是否存在和权限
-    const project = await db.get(
-      'SELECT id, name FROM projects WHERE id = ?',
-      [id]
-    );
-
-    if (!project) {
+    // 检查项目是否存在
+    const projectExists = await projectModel.projectExists(id);
+    if (!projectExists) {
       return res.status(404).json({
         success: false,
         message: '项目不存在'
       });
     }
 
-    // 检查权限：只有管理员或项目所有者可以更新项目
-    if (req.user.role !== 'admin') {
-      const membership = await db.get(
-        'SELECT role FROM project_members WHERE project_id = ? AND user_id = ?',
-        [id, req.user.id]
-      );
-
-      if (!membership || membership.role !== 'owner') {
-        return res.status(403).json({
-          success: false,
-          message: '无权更新该项目'
-        });
-      }
+    // 检查用户是否有修改权限（管理员或项目所有者）
+    let hasPermission = false;
+    if (userRole === 'admin') {
+      hasPermission = true;
+    } else {
+      hasPermission = await projectModel.isProjectOwner(id, userId);
     }
 
-    // 检查项目名称是否已存在（如果要更新名称）
-    if (name && name !== project.name) {
-      const existingProject = await db.get(
-        'SELECT id FROM projects WHERE name = ? AND id != ?',
-        [name, id]
-      );
+    if (!hasPermission) {
+      return res.status(403).json({
+        success: false,
+        message: '没有权限修改此项目'
+      });
+    }
 
-      if (existingProject) {
+    // 检查项目名称是否唯一（如果要更新名称）
+    if (name) {
+      const isNameUnique = await projectModel.isProjectNameUnique(name, id);
+      if (!isNameUnique) {
         return res.status(409).json({
           success: false,
           message: '项目名称已存在'
@@ -345,69 +231,24 @@ router.put('/:id', asyncHandler(async (req, res) => {
       }
     }
 
-    // 构建更新语句
-    const updates = [];
-    const params = [];
+    // 构建更新数据
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (isActive !== undefined) updateData.is_active = isActive ? 1 : 0;
 
-    if (name !== undefined) {
-      updates.push('name = ?');
-      params.push(name);
-    }
-
-    if (description !== undefined) {
-      updates.push('description = ?');
-      params.push(description);
-    }
-
-    if (namespace !== undefined) {
-      updates.push('namespace = ?');
-      params.push(namespace);
-    }
-
-    if (isActive !== undefined) {
-      updates.push('is_active = ?');
-      params.push(isActive ? 1 : 0);
-    }
-
-    if (updates.length === 0) {
+    if (Object.keys(updateData).length === 0) {
       return res.status(400).json({
         success: false,
         message: '没有提供任何要更新的字段'
       });
     }
 
-    updates.push('updated_at = CURRENT_TIMESTAMP');
-    params.push(id);
+    // 更新项目信息
+    const result = await projectModel.updateProject(id, updateData);
 
-    await db.run(
-      `UPDATE projects SET ${updates.join(', ')} WHERE id = ?`,
-      params
-    );
-
-    // 记录操作日志
-    await db.run(
-      `INSERT INTO audit_logs (user_id, action, resource_type, resource_id, details, ip_address, user_agent)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [
-        req.user.id,
-        'UPDATE_PROJECT',
-        'project',
-        id,
-        JSON.stringify({ name, description, namespace, isActive }),
-        req.ip,
-        req.headers['user-agent']
-      ]
-    );
-
-    // 返回更新后的项目信息
-    const updatedProject = await db.get(
-      `SELECT p.id, p.name, p.description, p.namespace, p.is_active, p.created_at, p.updated_at,
-              u.username as created_by_username
-       FROM projects p
-       LEFT JOIN users u ON p.created_by = u.id
-       WHERE p.id = ?`,
-      [id]
-    );
+    // 获取更新后的项目信息
+    const updatedProject = await projectModel.findById(id);
 
     res.status(200).json({
       success: true,
@@ -425,62 +266,24 @@ router.put('/:id', asyncHandler(async (req, res) => {
 
 /**
  * DELETE /api/projects/:id
- * 删除项目
+ * 删除项目（软删除）
+ * 需要管理员权限
  */
-router.delete('/:id', asyncHandler(async (req, res) => {
+router.delete('/:id', authMiddleware, requireAdmin, asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   try {
-    const db = await getDb();
-    
     // 检查项目是否存在
-    const project = await db.get(
-      'SELECT id, name FROM projects WHERE id = ?',
-      [id]
-    );
-
-    if (!project) {
+    const projectExists = await projectModel.projectExists(id);
+    if (!projectExists) {
       return res.status(404).json({
         success: false,
         message: '项目不存在'
       });
     }
 
-    // 检查权限：只有管理员或项目所有者可以删除项目
-    if (req.user.role !== 'admin') {
-      const membership = await db.get(
-        'SELECT role FROM project_members WHERE project_id = ? AND user_id = ?',
-        [id, req.user.id]
-      );
-
-      if (!membership || membership.role !== 'owner') {
-        return res.status(403).json({
-          success: false,
-          message: '无权删除该项目'
-        });
-      }
-    }
-
-    // 删除项目（设置为非活跃状态，而不是物理删除）
-    await db.run(
-      'UPDATE projects SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [id]
-    );
-
-    // 记录操作日志
-    await db.run(
-      `INSERT INTO audit_logs (user_id, action, resource_type, resource_id, details, ip_address, user_agent)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [
-        req.user.id,
-        'DELETE_PROJECT',
-        'project',
-        id,
-        JSON.stringify({ projectName: project.name }),
-        req.ip,
-        req.headers['user-agent']
-      ]
-    );
+    // 软删除项目
+    await projectModel.deleteProject(id);
 
     res.status(200).json({
       success: true,
@@ -498,65 +301,39 @@ router.delete('/:id', asyncHandler(async (req, res) => {
 /**
  * GET /api/projects/:id/members
  * 获取项目成员列表
+ * 需要项目访问权限
  */
-router.get('/:id/members', asyncHandler(async (req, res) => {
+router.get('/:id/members', authMiddleware, asyncHandler(async (req, res) => {
   const { id } = req.params;
+  const { id: userId, role: userRole } = req.user;
 
   try {
-    const db = await getDb();
-    
-    // 检查项目是否存在和权限
-    const project = await db.get(
-      'SELECT id, name FROM projects WHERE id = ?',
-      [id]
-    );
-
-    if (!project) {
+    // 检查项目是否存在
+    const projectExists = await projectModel.projectExists(id);
+    if (!projectExists) {
       return res.status(404).json({
         success: false,
         message: '项目不存在'
       });
     }
 
-    // 检查权限
-    if (req.user.role !== 'admin') {
-      const membership = await db.get(
-        'SELECT role FROM project_members WHERE project_id = ? AND user_id = ?',
-        [id, req.user.id]
-      );
-
-      if (!membership) {
-        return res.status(403).json({
-          success: false,
-          message: '无权查看项目成员'
-        });
-      }
+    // 检查用户是否有访问权限
+    const hasPermission = await projectModel.checkProjectPermission(id, userId, userRole);
+    if (!hasPermission) {
+      return res.status(403).json({
+        success: false,
+        message: '没有权限访问此项目'
+      });
     }
 
-    // 获取项目成员
-    const members = await db.all(`
-      SELECT u.id, u.username, u.email, u.full_name, u.role as user_role, u.is_active,
-             pm.role as member_role, pm.created_at as member_since
-      FROM users u
-      JOIN project_members pm ON u.id = pm.user_id
-      WHERE pm.project_id = ? AND u.is_active = 1
-      ORDER BY 
-        CASE pm.role 
-          WHEN 'owner' THEN 1
-          WHEN 'maintainer' THEN 2
-          WHEN 'viewer' THEN 3
-        END,
-        pm.created_at
-    `, [id]);
+    // 获取项目成员列表
+    const members = await projectModel.getProjectMembers(id);
 
     res.status(200).json({
       success: true,
       data: {
-        project: {
-          id: project.id,
-          name: project.name
-        },
-        members
+        project: { id },
+        members: members || []
       }
     });
   } catch (error) {
@@ -570,11 +347,21 @@ router.get('/:id/members', asyncHandler(async (req, res) => {
 
 /**
  * POST /api/projects/:id/members
- * 添加成员到项目
+ * 添加项目成员
+ * 需要项目所有者或管理员权限
  */
-router.post('/:id/members', asyncHandler(async (req, res) => {
+router.post('/:id/members', authMiddleware, asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { userId, role = 'viewer' } = req.body;
+  const { id: currentUserId, role: currentUserRole } = req.user;
+
+  // 验证必填字段
+  if (!userId) {
+    return res.status(400).json({
+      success: false,
+      message: '用户ID不能为空'
+    });
+  }
 
   // 验证角色
   if (!['owner', 'maintainer', 'viewer'].includes(role)) {
@@ -585,43 +372,33 @@ router.post('/:id/members', asyncHandler(async (req, res) => {
   }
 
   try {
-    const db = await getDb();
-    
     // 检查项目是否存在
-    const project = await db.get(
-      'SELECT id, name FROM projects WHERE id = ?',
-      [id]
-    );
-
-    if (!project) {
+    const projectExists = await projectModel.projectExists(id);
+    if (!projectExists) {
       return res.status(404).json({
         success: false,
         message: '项目不存在'
       });
     }
 
-    // 检查权限：只有管理员或项目所有者可以添加成员
-    if (req.user.role !== 'admin') {
-      const membership = await db.get(
-        'SELECT role FROM project_members WHERE project_id = ? AND user_id = ?',
-        [id, req.user.id]
-      );
-
-      if (!membership || membership.role !== 'owner') {
-        return res.status(403).json({
-          success: false,
-          message: '无权添加项目成员'
-        });
-      }
+    // 检查用户是否有修改权限（管理员或项目所有者）
+    let hasPermission = false;
+    if (currentUserRole === 'admin') {
+      hasPermission = true;
+    } else {
+      hasPermission = await projectModel.isProjectOwner(id, currentUserId);
     }
 
-    // 检查用户是否存在且活跃
-    const user = await db.get(
-      'SELECT id, username FROM users WHERE id = ? AND is_active = 1',
-      [userId]
-    );
+    if (!hasPermission) {
+      return res.status(403).json({
+        success: false,
+        message: '没有权限修改此项目成员'
+      });
+    }
 
-    if (!user) {
+    // 检查要添加的用户是否存在且活跃
+    const user = await userModel.findById(userId);
+    if (!user || user.is_active === 0) {
       return res.status(404).json({
         success: false,
         message: '用户不存在或已被禁用'
@@ -629,12 +406,8 @@ router.post('/:id/members', asyncHandler(async (req, res) => {
     }
 
     // 检查用户是否已经是项目成员
-    const existingMembership = await db.get(
-      'SELECT id FROM project_members WHERE project_id = ? AND user_id = ?',
-      [id, userId]
-    );
-
-    if (existingMembership) {
+    const memberExists = await projectModel.memberExists(id, userId);
+    if (memberExists) {
       return res.status(409).json({
         success: false,
         message: '用户已经是项目成员'
@@ -642,29 +415,11 @@ router.post('/:id/members', asyncHandler(async (req, res) => {
     }
 
     // 添加用户到项目
-    await db.run(
-      'INSERT INTO project_members (project_id, user_id, role) VALUES (?, ?, ?)',
-      [id, userId, role]
-    );
-
-    // 记录操作日志
-    await db.run(
-      `INSERT INTO audit_logs (user_id, action, resource_type, resource_id, details, ip_address, user_agent)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [
-        req.user.id,
-        'ADD_MEMBER',
-        'project_member',
-        `${id}:${userId}`,
-        JSON.stringify({ project: project.name, user: user.username, role }),
-        req.ip,
-        req.headers['user-agent']
-      ]
-    );
+    await projectModel.addProjectMember(id, userId, role);
 
     res.status(201).json({
       success: true,
-      message: '成员添加成功'
+      message: '用户已添加到项目'
     });
   } catch (error) {
     logger.error('添加项目成员时出错:', error);
@@ -678,13 +433,15 @@ router.post('/:id/members', asyncHandler(async (req, res) => {
 /**
  * PUT /api/projects/:id/members/:userId
  * 更新项目成员角色
+ * 需要项目所有者或管理员权限
  */
-router.put('/:id/members/:userId', asyncHandler(async (req, res) => {
+router.put('/:id/members/:userId', authMiddleware, asyncHandler(async (req, res) => {
   const { id, userId } = req.params;
   const { role } = req.body;
+  const { id: currentUserId, role: currentUserRole } = req.user;
 
   // 验证角色
-  if (!['owner', 'maintainer', 'viewer'].includes(role)) {
+  if (!role || !['owner', 'maintainer', 'viewer'].includes(role)) {
     return res.status(400).json({
       success: false,
       message: '无效的项目角色'
@@ -692,93 +449,69 @@ router.put('/:id/members/:userId', asyncHandler(async (req, res) => {
   }
 
   try {
-    const db = await getDb();
-    
     // 检查项目是否存在
-    const project = await db.get(
-      'SELECT id, name FROM projects WHERE id = ?',
-      [id]
-    );
-
-    if (!project) {
+    const projectExists = await projectModel.projectExists(id);
+    if (!projectExists) {
       return res.status(404).json({
         success: false,
         message: '项目不存在'
       });
     }
 
-    // 检查权限：只有管理员或项目所有者可以更新成员角色
-    if (req.user.role !== 'admin') {
-      const membership = await db.get(
-        'SELECT role FROM project_members WHERE project_id = ? AND user_id = ?',
-        [id, req.user.id]
-      );
+    // 检查用户是否有修改权限（管理员或项目所有者）
+    let hasPermission = false;
+    if (currentUserRole === 'admin') {
+      hasPermission = true;
+    } else {
+      hasPermission = await projectModel.isProjectOwner(id, currentUserId);
+    }
 
-      if (!membership || membership.role !== 'owner') {
-        return res.status(403).json({
-          success: false,
-          message: '无权更新成员角色'
-        });
-      }
+    if (!hasPermission) {
+      return res.status(403).json({
+        success: false,
+        message: '没有权限修改此项目成员'
+      });
     }
 
     // 检查成员是否存在
-    const member = await db.get(
-      'SELECT role FROM project_members WHERE project_id = ? AND user_id = ?',
-      [id, userId]
-    );
-
-    if (!member) {
+    const memberExists = await projectModel.memberExists(id, userId);
+    if (!memberExists) {
       return res.status(404).json({
         success: false,
         message: '用户不是项目成员'
       });
     }
 
-    // 防止所有者修改自己的角色（可能导致项目没有所有者）
-    if (parseInt(userId) === req.user.id && role !== 'owner') {
-      return res.status(400).json({
-        success: false,
-        message: '不能修改自己的所有者角色'
-      });
+    // 检查是否要修改最后一个所有者的角色
+    if (role !== 'owner') {
+      const ownerCount = await projectModel.getProjectOwnerCount(id);
+      if (ownerCount <= 1) {
+        const currentMemberRole = await projectModel.get(
+          'SELECT role FROM project_members WHERE project_id = ? AND user_id = ?',
+          [id, userId]
+        );
+        
+        if (currentMemberRole && currentMemberRole.role === 'owner') {
+          return res.status(400).json({
+            success: false,
+            message: '不能修改最后一个项目所有者的角色'
+          });
+        }
+      }
     }
 
     // 更新成员角色
-    await db.run(
-      'UPDATE project_members SET role = ? WHERE project_id = ? AND user_id = ?',
-      [role, id, userId]
-    );
-
-    // 获取用户信息用于日志
-    const user = await db.get(
-      'SELECT username FROM users WHERE id = ?',
-      [userId]
-    );
-
-    // 记录操作日志
-    await db.run(
-      `INSERT INTO audit_logs (user_id, action, resource_type, resource_id, details, ip_address, user_agent)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [
-        req.user.id,
-        'UPDATE_MEMBER_ROLE',
-        'project_member',
-        `${id}:${userId}`,
-        JSON.stringify({ project: project.name, user: user?.username, role, previousRole: member.role }),
-        req.ip,
-        req.headers['user-agent']
-      ]
-    );
+    await projectModel.updateProjectMemberRole(id, userId, role);
 
     res.status(200).json({
       success: true,
-      message: '成员角色更新成功'
+      message: '项目成员角色更新成功'
     });
   } catch (error) {
     logger.error('更新项目成员角色时出错:', error);
     res.status(500).json({
       success: false,
-      message: '更新成员角色失败'
+      message: '更新项目成员角色失败'
     });
   }
 }));
@@ -786,70 +519,55 @@ router.put('/:id/members/:userId', asyncHandler(async (req, res) => {
 /**
  * DELETE /api/projects/:id/members/:userId
  * 从项目中移除成员
+ * 需要项目所有者或管理员权限
  */
-router.delete('/:id/members/:userId', asyncHandler(async (req, res) => {
+router.delete('/:id/members/:userId', authMiddleware, asyncHandler(async (req, res) => {
   const { id, userId } = req.params;
+  const { id: currentUserId, role: currentUserRole } = req.user;
 
   try {
-    const db = await getDb();
-    
     // 检查项目是否存在
-    const project = await db.get(
-      'SELECT id, name FROM projects WHERE id = ?',
-      [id]
-    );
-
-    if (!project) {
+    const projectExists = await projectModel.projectExists(id);
+    if (!projectExists) {
       return res.status(404).json({
         success: false,
         message: '项目不存在'
       });
     }
 
-    // 检查权限：只有管理员或项目所有者可以移除成员
-    if (req.user.role !== 'admin') {
-      const membership = await db.get(
-        'SELECT role FROM project_members WHERE project_id = ? AND user_id = ?',
-        [id, req.user.id]
-      );
+    // 检查用户是否有修改权限（管理员或项目所有者）
+    let hasPermission = false;
+    if (currentUserRole === 'admin') {
+      hasPermission = true;
+    } else {
+      hasPermission = await projectModel.isProjectOwner(id, currentUserId);
+    }
 
-      if (!membership || membership.role !== 'owner') {
-        return res.status(403).json({
-          success: false,
-          message: '无权移除项目成员'
-        });
-      }
+    if (!hasPermission) {
+      return res.status(403).json({
+        success: false,
+        message: '没有权限修改此项目成员'
+      });
     }
 
     // 检查成员是否存在
-    const member = await db.get(
-      'SELECT role FROM project_members WHERE project_id = ? AND user_id = ?',
-      [id, userId]
-    );
-
-    if (!member) {
+    const memberExists = await projectModel.memberExists(id, userId);
+    if (!memberExists) {
       return res.status(404).json({
         success: false,
         message: '用户不是项目成员'
       });
     }
 
-    // 防止所有者移除自己
-    if (parseInt(userId) === req.user.id) {
-      return res.status(400).json({
-        success: false,
-        message: '不能从项目中移除自己'
-      });
-    }
-
-    // 检查是否是最后一个所有者
-    if (member.role === 'owner') {
-      const ownerCount = await db.get(
-        'SELECT COUNT(*) as count FROM project_members WHERE project_id = ? AND role = "owner"',
-        [id]
-      );
-
-      if (ownerCount.count <= 1) {
+    // 检查是否要移除最后一个所有者
+    const currentMemberRole = await projectModel.get(
+      'SELECT role FROM project_members WHERE project_id = ? AND user_id = ?',
+      [id, userId]
+    );
+    
+    if (currentMemberRole && currentMemberRole.role === 'owner') {
+      const ownerCount = await projectModel.getProjectOwnerCount(id);
+      if (ownerCount <= 1) {
         return res.status(400).json({
           success: false,
           message: '不能移除最后一个项目所有者'
@@ -857,42 +575,18 @@ router.delete('/:id/members/:userId', asyncHandler(async (req, res) => {
       }
     }
 
-    // 从项目中移除成员
-    await db.run(
-      'DELETE FROM project_members WHERE project_id = ? AND user_id = ?',
-      [id, userId]
-    );
-
-    // 获取用户信息用于日志
-    const user = await db.get(
-      'SELECT username FROM users WHERE id = ?',
-      [userId]
-    );
-
-    // 记录操作日志
-    await db.run(
-      `INSERT INTO audit_logs (user_id, action, resource_type, resource_id, details, ip_address, user_agent)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [
-        req.user.id,
-        'REMOVE_MEMBER',
-        'project_member',
-        `${id}:${userId}`,
-        JSON.stringify({ project: project.name, user: user?.username, role: member.role }),
-        req.ip,
-        req.headers['user-agent']
-      ]
-    );
+    // 从项目中移除用户
+    await projectModel.removeProjectMember(id, userId);
 
     res.status(200).json({
       success: true,
-      message: '成员移除成功'
+      message: '用户已从项目中移除'
     });
   } catch (error) {
-    logger.error('移除项目成员时出错:', error);
+    logger.error('从项目移除成员时出错:', error);
     res.status(500).json({
       success: false,
-      message: '移除项目成员失败'
+      message: '从项目移除成员失败'
     });
   }
 }));

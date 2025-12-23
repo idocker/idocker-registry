@@ -396,7 +396,7 @@ class DockerRegistryService {
         FROM repositories r
         JOIN projects p ON r.project_id = p.id
         LEFT JOIN image_tags t ON r.id = t.repository_id
-        WHERE r.is_active = 1 AND p.is_active = 1
+        WHERE p.is_active = 1
       `;
       
       const params = [];

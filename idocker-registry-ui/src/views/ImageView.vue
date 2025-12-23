@@ -74,7 +74,7 @@
         >
           <v-card-title class="d-flex align-center">
             <v-icon class="mr-2">mdi-package-variant-closed</v-icon>
-            <span class="image-name">{{ image.namespace ? image.namespace + '/' : '' }}{{ image.project }}/{{ image.name }}</span>
+            <span class="image-name">{{ image.fullName || `${image.namespace ? image.namespace + '/' : ''}${image.project_name || image.project}/${image.name}` }}</span>
             <v-spacer></v-spacer>
             <v-chip
               v-if="image.tags && image.tags.length > 0"
@@ -100,12 +100,12 @@
                   class="mr-2 mb-2"
                   @click.stop="viewTagDetails(image.id, tag.id)"
                 >
-                  {{ tag.name }}
+                  {{ tag.name || tag.tag }}
                   <v-tooltip activator="parent" location="top">
                     <div>
                       <div>大小: {{ formatFileSize(tag.size) }}</div>
                       <div>架构: {{ tag.architecture || '未知' }}</div>
-                      <div>创建时间: {{ formatDate(tag.createdAt) }}</div>
+                      <div>创建时间: {{ formatDate(tag.createdAt || tag.created_at) }}</div>
                     </div>
                   </v-tooltip>
                 </v-chip>
@@ -212,7 +212,8 @@ const hasPermission = computed(() => {
 const loadProjects = async () => {
   try {
     const result = await projectService.getProjects({ limit: 1000 })
-    if (result.success) {
+    console.log('result', result)
+    if (result.success && result.projects && result.projects.length > 0) {
       projectOptions.value = result.projects.map((project: Project) => ({
         text: project.name,
         value: project.id.toString()
@@ -230,19 +231,34 @@ const loadImages = async (page: number = 1) => {
     limit: 20
   }
 
-  if (searchTerm.value) {
+  if (searchTerm && searchTerm.value) {
     params.search = searchTerm.value
   }
 
-  if (selectedProject.value) {
+  if (selectedProject && selectedProject.value) {
     params.projectId = selectedProject.value
   }
 
   await loadPage(page, params.limit, async (page, limit) => {
     const response = await registryService.getImages({ ...params, page, limit })
     if (response.success) {
+      // 适配数据格式，确保组件可以正确使用
+      const adaptedImages = response.data.images.map((img: any) => ({
+        ...img,
+        // 确保有完整的镜像名称
+        fullName: img.fullName || `${img.namespace ? img.namespace + '/' : ''}${img.project_name || img.project}/${img.name}`,
+        // 确保标签数据格式一致
+        tags: (img.tags || []).map((tag: any) => ({
+          ...tag,
+          // 确保标签名称字段一致
+          name: tag.tag || tag.name,
+          // 确保创建时间字段一致
+          createdAt: tag.created_at || tag.createdAt
+        }))
+      }))
+      
       return {
-        items: response.data.images,
+        items: adaptedImages,
         pagination: response.data.pagination
       }
     }
@@ -286,8 +302,23 @@ const refreshImages = async () => {
   await loadPage(currentPage.value, params.limit, async (page, limit) => {
     const response = await registryService.getImages({ ...params, page, limit })
     if (response.success) {
+      // 适配数据格式，确保组件可以正确使用
+      const adaptedImages = response.data.images.map((img: any) => ({
+        ...img,
+        // 确保有完整的镜像名称
+        fullName: img.fullName || `${img.namespace ? img.namespace + '/' : ''}${img.project_name || img.project}/${img.name}`,
+        // 确保标签数据格式一致
+        tags: (img.tags || []).map((tag: any) => ({
+          ...tag,
+          // 确保标签名称字段一致
+          name: tag.tag || tag.name,
+          // 确保创建时间字段一致
+          createdAt: tag.created_at || tag.createdAt
+        }))
+      }))
+      
       return {
-        items: response.data.images,
+        items: adaptedImages,
         pagination: response.data.pagination
       }
     }

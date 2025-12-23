@@ -38,47 +38,47 @@
     </div>
     
     <div class="project-content">
-      <!-- Registries Tab -->
-      <div v-if="activeTab === 'registries'" class="tab-content">
+      <!-- Repositories Tab -->
+      <div v-if="activeTab === 'repositories'" class="tab-content">
         <div v-if="isLoading" class="loading">
           <span class="material-icons">refresh</span>
-          <p>Loading registries...</p>
+          <p>Loading repositories...</p>
         </div>
         
-        <div v-else-if="registries.length === 0" class="empty-state">
+        <div v-else-if="repositories.length === 0" class="empty-state">
           <span class="material-icons">storage</span>
-          <h3>No registries yet</h3>
-          <p>Add your first Docker registry to this project</p>
-          <button class="btn btn-primary" @click="showRegistryModal = true">
+          <h3>No repositories yet</h3>
+          <p>Add your first Docker repository to this project</p>
+          <button class="btn btn-primary" @click="showRepositoryModal = true">
             <span class="material-icons">add</span>
-            Add Your First Registry
+            Add Your First Repository
           </button>
         </div>
         
-        <div v-else class="registries-grid">
-          <div v-for="registry in registries" :key="registry.id" class="registry-card">
-            <div class="registry-header">
-              <div class="registry-icon">
+        <div v-else class="repositories-grid">
+          <div v-for="repository in repositories" :key="repository.id" class="repository-card">
+            <div class="repository-header">
+              <div class="repository-icon">
                 <span class="material-icons">storage</span>
               </div>
-              <div class="registry-title">
-                <h3>{{ registry.name }}</h3>
-                <p>{{ registry.url }}</p>
+              <div class="repository-title">
+                <h3>{{ repository.name }}</h3>
+                <p>{{ repository.url }}</p>
               </div>
-              <div class="registry-actions">
-                <button class="btn btn-ghost btn-icon" @click="editRegistry(registry)">
+              <div class="repository-actions">
+                <button class="btn btn-ghost btn-icon" @click="editRepository(repository)">
                   <span class="material-icons">edit</span>
                 </button>
-                <button class="btn btn-ghost btn-icon" @click="deleteRegistry(registry)">
+                <button class="btn btn-ghost btn-icon" @click="deleteRepository(repository)">
                   <span class="material-icons">delete</span>
                 </button>
               </div>
             </div>
             
-            <div class="registry-stats">
+            <div class="repository-stats">
               <div class="stat">
                 <span class="material-icons">dns</span>
-                <span>{{ registry.type }}</span>
+                <span>{{ repository.type }}</span>
               </div>
             </div>
           </div>
@@ -395,22 +395,22 @@ const route = useRoute()
 const router = useRouter()
 
 const project = ref({})
-const registries = ref([])
+const repositories = ref([])
 const members = ref([])
 const replicationPolicies = ref([])
 const availableUsers = ref([])
 const isLoading = ref(false)
 const isSubmitting = ref(false)
-const activeTab = ref('registries')
+const activeTab = ref('repositories')
 
-const showRegistryModal = ref(false)
+const showRepositoryModal = ref(false)
 const showAddMemberModal = ref(false)
 const showReplicationModal = ref(false)
 
-const editingRegistry = ref(null)
+const editingRepository = ref(null)
 const editingReplication = ref(null)
 
-const registryForm = reactive({
+const repositoryForm = reactive({
   name: '',
   url: '',
   type: 'docker',
@@ -428,14 +428,14 @@ const memberForm = reactive({
 
 const replicationForm = reactive({
   name: '',
-  sourceRegistryId: '',
-  targetRegistryId: '',
+  sourceRepositoryId: '',
+  targetRepositoryId: '',
   schedule: 'manual',
   enabled: true
 })
 
 const tabs = [
-  { id: 'registries', name: 'Registries' },
+  { id: 'repositories', name: 'Repositories' },
   { id: 'members', name: 'Members' },
   { id: 'replication', name: 'Replication Policies' }
 ]
@@ -446,13 +446,13 @@ const fetchProjectData = async () => {
     const projectId = route.params.id
     const token = localStorage.getItem('auth_token')
     
-    const [projectResponse, registriesResponse] = await Promise.all([
+    const [projectResponse, repositoriesResponse] = await Promise.all([
       fetch(`/api/projects/${projectId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       }),
-      fetch(`/api/registries?projectId=${projectId}`, {
+      fetch(`/api/repositories?projectId=${projectId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -461,13 +461,13 @@ const fetchProjectData = async () => {
     
     if (projectResponse.ok) {
       const data = await projectResponse.json()
-      project.value = data.project
-      members.value = data.project.members || []
+      project.value = data.data
+      members.value = data.data.members || []
     }
     
-    if (registriesResponse.ok) {
-      const data = await registriesResponse.json()
-      registries.value = data.registries || []
+    if (repositoriesResponse.ok) {
+      const data = await repositoriesResponse.json()
+      repositories.value = data.data || []
     }
     
     // Mock data for available users and replication policies
@@ -817,7 +817,7 @@ onMounted(() => {
       h1 {
         font-size: 28px;
         font-weight: 600;
-        color: #2c3e50;
+        //color: #2c3e50;
         margin-bottom: 8px;
       }
       
@@ -910,7 +910,7 @@ onMounted(() => {
     h2 {
       font-size: 20px;
       font-weight: 600;
-      color: #2c3e50;
+      //color: #2c3e50;
     }
   }
 }
@@ -960,7 +960,7 @@ onMounted(() => {
     h3 {
       font-size: 18px;
       font-weight: 600;
-      color: #2c3e50;
+      //color: #2c3e50;
       margin-bottom: 5px;
     }
     
@@ -1001,8 +1001,9 @@ onMounted(() => {
 }
 
 .members-list {
-  background: white;
+  //background: white;
   border-radius: 8px;
+  border: 1px solid #525254;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   overflow: hidden;
 }
@@ -1035,7 +1036,7 @@ onMounted(() => {
     
     .member-name {
       font-weight: 600;
-      color: #2c3e50;
+      //color: #2c3e50;
       margin-bottom: 4px;
     }
     

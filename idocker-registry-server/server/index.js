@@ -24,7 +24,7 @@ import { logger } from './utils/logger.js';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 import projectRoutes from './routes/projects.js';
-import registryRoutes from './routes/registry.js';
+import repositoryRoutes from './routes/repository.js';
 import auditRoutes from './routes/audit.js';
 import dockerRegistryRoutes from './routes/dockerRegistry.js';
 
@@ -68,9 +68,9 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/users', authMiddleware, userRoutes);
 app.use('/api/projects', authMiddleware, projectRoutes);
-app.use('/api/registry', authMiddleware, registryRoutes);
+app.use('/api/repository', authMiddleware, repositoryRoutes);
 app.use('/api/audit', authMiddleware, auditRoutes);
-app.use('/v2', authMiddleware, dockerRegistryRoutes); // Docker Registry API兼容端点
+app.use('/v2', authMiddleware, dockerRegistryRoutes); // Docker Repository API兼容端点
 
 // 静态文件服务（如果需要）
 app.use(express.static('public'));
