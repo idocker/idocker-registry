@@ -1,4 +1,7 @@
-# iDocker Registry UI
+
+<div align=center><img src="./idocker-registry-ui/src/assets/logo.png" alt="idocker-registry" width="300" ></div>
+
+# iDocker Registry
 
 这是一个使用 Vue 3、TypeScript 和 Vite 重写的 Docker Registry Web UI 界面。原项目使用 Riot.js，此版本提供了现代化的 Vue 3 替代方案。
 
