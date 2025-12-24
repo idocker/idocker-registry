@@ -7,6 +7,7 @@
 
 idocker-registry-ui/dist/
 
+node_modules/
 idocker-registry-ui/node_modules/
 idocker-registry-server/node_modules/
 
