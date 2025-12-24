@@ -2,7 +2,7 @@
   <div v-if="showNotification" class="version-notification">
     <span class="material-icons">info</span>
     <span class="notification-text">
-      A new version ({{ latestVersion }}) is available!
+      {{ $t('versionNotification.newVersionAvailable', { version: latestVersion }) }}
     </span>
     <button class="btn btn-ghost btn-icon" @click="dismiss">
       <span class="material-icons">close</span>
@@ -12,8 +12,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { getFromStorage, setToStorage } from '@/utils/helpers'
 
+const { t } = useI18n()
 const currentVersion = ref('0.1.0') // Default version
 const latestVersion = ref('')
 const showNotification = ref(false)

@@ -2,7 +2,7 @@
   <div class="modal-overlay" @click.self="$emit('close')">
     <div class="modal auth-modal">
       <div class="modal-header">
-        <h3 class="modal-title">Registry Authentication</h3>
+        <h3 class="modal-title">{{ $t('dialogs.auth.title') }}</h3>
         <button class="btn btn-ghost btn-icon modal-close" @click="$emit('close')">
           <span class="material-icons">close</span>
         </button>
@@ -10,42 +10,42 @@
       
       <div class="modal-body">
         <div class="auth-info">
-          <p>This registry requires authentication. Please provide your credentials to continue.</p>
+          <p>{{ $t('dialogs.auth.description') }}</p>
           
           <div class="server-info">
             <div class="server-url">
-              <strong>Server:</strong> {{ realm }}
+              <strong>{{ $t('dialogs.auth.server') }}:</strong> {{ realm }}
             </div>
             
             <div class="service-info">
-              <strong>Service:</strong> {{ service }}
+              <strong>{{ $t('dialogs.auth.service') }}:</strong> {{ service }}
             </div>
             
             <div class="scope-info">
-              <strong>Scope:</strong> {{ scope }}
+              <strong>{{ $t('dialogs.auth.scope') }}:</strong> {{ scope }}
             </div>
           </div>
         </div>
         
         <div class="auth-form">
           <div class="form-group">
-            <label class="form-label">Username</label>
+            <label class="form-label">{{ $t('dialogs.auth.username') }}</label>
             <input
               type="text"
               class="form-input"
               v-model="credentials.username"
-              placeholder="Enter your username"
+              :placeholder="$t('dialogs.auth.usernamePlaceholder')"
               @keyup.enter="handleAuthenticate"
             />
           </div>
           
           <div class="form-group">
-            <label class="form-label">Password</label>
+            <label class="form-label">{{ $t('dialogs.auth.password') }}</label>
             <input
               type="password"
               class="form-input"
               v-model="credentials.password"
-              placeholder="Enter your password"
+              :placeholder="$t('dialogs.auth.passwordPlaceholder')"
               @keyup.enter="handleAuthenticate"
             />
           </div>
@@ -58,7 +58,7 @@
       
       <div class="modal-footer">
         <button class="btn btn-secondary" @click="$emit('close')">
-          Cancel
+          {{ $t('dialogs.auth.cancel') }}
         </button>
         <button
           class="btn btn-primary"
@@ -66,7 +66,7 @@
           :disabled="isAuthenticating || !credentials.username || !credentials.password"
         >
           <span v-if="isAuthenticating" class="spinner small"></span>
-          Authenticate
+          {{ isAuthenticating ? $t('dialogs.auth.authenticating') : $t('dialogs.auth.authenticate') }}
         </button>
       </div>
     </div>
@@ -75,6 +75,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { AuthenticationInfo } from '@/types'
 
 interface Props {
@@ -85,6 +86,7 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const { t } = useI18n()
 
 const emit = defineEmits<{
   close: []
@@ -112,12 +114,12 @@ watch(() => props.isOpen, (newVal) => {
 
 const handleAuthenticate = async () => {
   if (!credentials.value.username || !credentials.value.password) {
-    errorMessage.value = 'Please enter both username and password'
+    errorMessage.value = t('dialogs.auth.error.missingCredentials')
     return
   }
   
   if (!props.realm) {
-    errorMessage.value = 'Authentication realm is missing'
+    errorMessage.value = t('dialogs.auth.error.missingRealm')
     return
   }
   
@@ -142,7 +144,7 @@ const handleAuthenticate = async () => {
     })
     
     if (!response.ok) {
-      throw new Error(`Authentication failed: ${response.status} ${response.statusText}`)
+      throw new Error(`${t('dialogs.auth.error.authenticationFailed')}: ${response.status} ${response.statusText}`)
     }
     
     const tokenData = await response.json()
@@ -151,7 +153,7 @@ const handleAuthenticate = async () => {
     const token = tokenData.token || tokenData.access_token
     
     if (!token) {
-      throw new Error('No token received from authentication server')
+      throw new Error(t('dialogs.auth.error.noTokenReceived'))
     }
     
     // Emit success
@@ -159,7 +161,7 @@ const handleAuthenticate = async () => {
     emit('close')
   } catch (error) {
     console.error('Authentication error:', error)
-    errorMessage.value = error instanceof Error ? error.message : 'Authentication failed'
+    errorMessage.value = error instanceof Error ? error.message : t('dialogs.auth.error.authenticationFailed')
   } finally {
     isAuthenticating.value = false
   }

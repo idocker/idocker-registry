@@ -1,23 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
-// 路由保护
-const requireAuth = (to: any, from: any, next: any) => {
-  const authStore = useAuthStore()
-  
-  if (!authStore.isAuthenticated) {
-    // 显示提示消息
-    authStore.showLoginPrompt = true
-    authStore.loginRedirectPath = to.fullPath
-    
-    next({
-      path: '/admin/login',
-      query: { redirect: to.fullPath }
-    })
-  } else {
-    next()
-  }
-}
 
 // 检查页面是否需要授权的函数
 const checkAuthRequired = (to) => {
@@ -27,10 +10,7 @@ const checkAuthRequired = (to) => {
   }
   
   // 对于以下页面，由于它们需要与后端API交互，也需要认证
-  const protectedRoutes = [
-    'taglist',
-    'taghistory'
-  ]
+  const protectedRoutes: string | any[] = []
   
   return protectedRoutes.includes(to.name)
 }

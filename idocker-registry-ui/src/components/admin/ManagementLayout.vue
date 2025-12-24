@@ -4,7 +4,7 @@
     
     <div class="management-content">
       <div class="content-header">
-        <button class="sidebar-toggle" @click="toggleSidebar" title="Toggle Sidebar">
+        <button class="sidebar-toggle" @click="toggleSidebar" :title="$t('managementLayout.toggleSidebar')">
           <span class="material-icons">menu</span>
         </button>
         
@@ -25,10 +25,12 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import NavigationSidebar from '@/components/admin/NavigationSidebar.vue'
+import { useI18n } from 'vue-i18n'
 
 const route = useRoute()
 const sidebarRef = ref(null)
 const isMobile = ref(false)
+const { t } = useI18n()
 
 // 页面标题
 const pageTitle = ref('')
@@ -38,40 +40,40 @@ const pageSubtitle = ref('')
 const setPageTitle = () => {
   switch (route.path) {
     case '/admin/profile':
-      pageTitle.value = '基本信息'
-      pageSubtitle.value = '管理您的个人信息和偏好设置'
+      pageTitle.value = t('pageTitles.basicInfo')
+      pageSubtitle.value = t('pageTitles.basicInfoSubtitle')
       break
     case '/admin/password':
-      pageTitle.value = '修改密码'
-      pageSubtitle.value = '为了您的账户安全，请定期更新密码'
+      pageTitle.value = t('pageTitles.changePassword')
+      pageSubtitle.value = t('pageTitles.changePasswordSubtitle')
       break
     case '/admin/dashboard':
-      pageTitle.value = '仪表盘'
-      pageSubtitle.value = '系统概览和统计信息'
+      pageTitle.value = t('pageTitles.dashboard')
+      pageSubtitle.value = t('pageTitles.dashboardSubtitle')
       break
     case '/admin/projects':
-      pageTitle.value = '项目管理'
-      pageSubtitle.value = '管理系统中的所有项目和权限'
+      pageTitle.value = t('pageTitles.projectManagement')
+      pageSubtitle.value = t('pageTitles.projectManagementSubtitle')
       break
     case '/admin/users':
-      pageTitle.value = '用户管理'
-      pageSubtitle.value = '管理系统中的所有用户和角色'
+      pageTitle.value = t('pageTitles.userManagement')
+      pageSubtitle.value = t('pageTitles.userManagementSubtitle')
       break
     case '/admin/audit':
-      pageTitle.value = '审计日志'
-      pageSubtitle.value = '查看系统操作记录和审计信息'
+      pageTitle.value = t('pageTitles.auditLog')
+      pageSubtitle.value = t('pageTitles.auditLogSubtitle')
       break
     case '/admin/sync':
-      pageTitle.value = '仓库同步'
-      pageSubtitle.value = '同步Docker Registry中的仓库数据到数据库'
+      pageTitle.value = t('pageTitles.warehouseSync')
+      pageSubtitle.value = t('pageTitles.warehouseSyncSubtitle')
       break
     default:
       // 如果是项目详情页
       if (route.path.startsWith('/admin/projects/')) {
-        pageTitle.value = '项目详情'
-        pageSubtitle.value = '查看和管理项目详情'
+        pageTitle.value = t('pageTitles.projectDetail')
+        pageSubtitle.value = t('pageTitles.projectDetailSubtitle')
       } else {
-        pageTitle.value = '管理中心'
+        pageTitle.value = t('pageTitles.managementCenter')
         pageSubtitle.value = ''
       }
   }

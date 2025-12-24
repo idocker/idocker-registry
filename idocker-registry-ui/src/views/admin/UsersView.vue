@@ -4,15 +4,15 @@
 
             <div class="users-table-container">
                 <div class="table-controls">
-                    <input type="text" placeholder="搜索用户..." v-model="searchQuery" class="search-input" />
+                    <input type="text" :placeholder="$t('userList.searchUsers')" v-model="searchQuery" class="search-input" />
                     <div class="table-actions">
                         <button class="btn btn-ghost" @click="refreshUsers">
                             <span class="material-icons">refresh</span>
-                            刷新
+                            {{ $t('userList.refresh') }}
                         </button>
                         <button class="btn btn-primary" @click="showCreateDialog = true">
                             <span class="material-icons">add</span>
-                            添加用户
+                            {{ $t('userList.addUser') }}
                         </button>
                     </div>
                 </div>
@@ -21,13 +21,13 @@
                     <table class="users-table">
                         <thead>
                             <tr>
-                                <th>用户名</th>
-                                <th>邮箱</th>
-                                <th>角色</th>
-                                <th>LDAP用户</th>
-                                <th>创建时间</th>
-                                <th>最后登录</th>
-                                <th>操作</th>
+                                <th>{{ $t('userList.username') }}</th>
+                                <th>{{ $t('userList.email') }}</th>
+                                <th>{{ $t('userList.role') }}</th>
+                                <th>{{ $t('userList.ldapUser') }}</th>
+                                <th>{{ $t('userList.createdAt') }}</th>
+                                <th>{{ $t('userList.lastLogin') }}</th>
+                                <th>{{ $t('userList.actions') }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -35,12 +35,12 @@
                                 <td colspan="7" class="loading-cell">
                                     <div class="loading-indicator">
                                         <span class="material-icons">refresh</span>
-                                        加载中...
+                                        {{ $t('userList.loading') }}
                                     </div>
                                 </td>
                             </tr>
                             <tr v-else-if="filteredUsers.length === 0">
-                                <td colspan="7" class="empty-cell">没有找到用户</td>
+                                <td colspan="7" class="empty-cell">{{ $t('userList.noUsersFound') }}</td>
                             </tr>
                             <tr v-for="user in paginatedUsers" :key="user.id">
                                 <td>{{ user.username }}</td>
@@ -51,16 +51,16 @@
                                     </span>
                                 </td>
                                 <td>
-                                    <span v-if="user.ldap_user" class="badge badge-success">是</span>
-                                    <span v-else class="badge badge-muted">否</span>
+                                    <span v-if="user.ldap_user" class="badge badge-success">{{ $t('userList.yes') }}</span>
+                                    <span v-else class="badge badge-muted">{{ $t('userList.no') }}</span>
                                 </td>
                                 <td>{{ formatDate(user.created_at) }}</td>
-                                <td>{{ user.last_login ? formatDate(user.last_login) : '从未登录' }}</td>
+                                <td>{{ user.last_login ? formatDate(user.last_login) : $t('userList.neverLoggedIn') }}</td>
                                 <td class="action-buttons">
-                                    <button class="btn-icon btn-ghost" @click="editUser(user)" title="编辑用户">
+                                    <button class="btn-icon btn-ghost" @click="editUser(user)" :title="$t('userList.editUser')">
                                         <span class="material-icons">edit</span>
                                     </button>
-                                    <button class="btn-icon btn-ghost" @click="deleteUser(user)" title="删除用户">
+                                    <button class="btn-icon btn-ghost" @click="deleteUser(user)" :title="$t('userList.deleteUser')">
                                         <span class="material-icons">delete</span>
                                     </button>
                                 </td>
@@ -72,14 +72,14 @@
                 <div class="pagination">
                     <button class="btn btn-ghost" @click="currentPage = Math.max(1, currentPage - 1)"
                         :disabled="currentPage === 1">
-                        上一页
+                        {{ $t('common.previousPage') }}
                     </button>
                     <span class="page-info">
                         {{ currentPage }} / {{ totalPages }}
                     </span>
                     <button class="btn btn-ghost" @click="currentPage = Math.min(totalPages, currentPage + 1)"
                         :disabled="currentPage === totalPages">
-                        下一页
+                        {{ $t('common.nextPage') }}
                     </button>
                 </div>
             </div>
@@ -88,7 +88,7 @@
             <div v-if="showCreateDialog || showEditDialog" class="dialog-overlay" @click="closeDialogs">
                 <div class="dialog" @click.stop>
                     <div class="dialog-header">
-                        <h3>{{ showEditDialog ? '编辑用户' : '添加用户' }}</h3>
+                        <h3>{{ showEditDialog ? $t('userList.editUser') : $t('userList.createUser') }}</h3>
                         <button class="dialog-close" @click="closeDialogs">
                             <span class="material-icons">close</span>
                         </button>
@@ -97,44 +97,44 @@
                     <div class="dialog-content">
                         <form @submit.prevent="saveUser" class="user-form">
                             <div class="form-group">
-                                <label for="username">用户名</label>
+                                <label for="username">{{ $t('userList.username') }}</label>
                                 <input id="username" type="text" v-model="userForm.username" required
                                     :disabled="showEditDialog" />
                             </div>
 
                             <div class="form-group">
-                                <label for="email">邮箱</label>
+                                <label for="email">{{ $t('userList.email') }}</label>
                                 <input id="email" type="email" v-model="userForm.email" required />
                             </div>
 
                             <div class="form-group">
-                                <label for="password" v-if="!showEditDialog">密码</label>
-                                <label for="password" v-else>新密码（留空则不修改）</label>
+                                <label for="password" v-if="!showEditDialog">{{ $t('users.password') }}</label>
+                                <label for="password" v-else>{{ $t('userList.newPasswordPlaceholder') }}</label>
                                 <input id="password" type="password" v-model="userForm.password"
                                     :required="!showEditDialog" />
                             </div>
 
                             <div class="form-group">
-                                <label for="role">角色</label>
+                                <label for="role">{{ $t('userList.role') }}</label>
                                 <select id="role" v-model="userForm.role" required>
-                                    <option value="user">用户</option>
-                                    <option value="maintainer">维护者</option>
-                                    <option value="admin">管理员</option>
+                                    <option value="user">{{ $t('userList.roleUser') }}</option>
+                                    <option value="maintainer">{{ $t('userList.roleMaintainer') }}</option>
+                                    <option value="admin">{{ $t('userList.roleAdmin') }}</option>
                                 </select>
                             </div>
 
                             <div class="form-group">
                                 <label>
                                     <input type="checkbox" v-model="userForm.ldapUser" />
-                                    LDAP用户
+                                    {{ $t('userList.ldapUser') }}
                                 </label>
                             </div>
 
                             <div class="dialog-actions">
-                                <button type="button" class="btn btn-ghost" @click="closeDialogs">取消</button>
+                                <button type="button" class="btn btn-ghost" @click="closeDialogs">{{ $t('common.cancel') }}</button>
                                 <button type="submit" class="btn btn-primary" :disabled="isSaving">
-                                    <span v-if="isSaving">保存中...</span>
-                                    <span v-else>保存</span>
+                                    <span v-if="isSaving">{{ $t('userList.saving') }}...</span>
+                                    <span v-else>{{ $t('common.save') }}</span>
                                 </button>
                             </div>
                         </form>
@@ -146,20 +146,20 @@
             <div v-if="showDeleteDialog" class="dialog-overlay" @click="showDeleteDialog = false">
                 <div class="dialog" @click.stop>
                     <div class="dialog-header">
-                        <h3>确认删除</h3>
+                        <h3>{{ $t('confirm.deleteTitle') }}</h3>
                         <button class="dialog-close" @click="showDeleteDialog = false">
                             <span class="material-icons">close</span>
                         </button>
                     </div>
 
                     <div class="dialog-content">
-                        <p>确定要删除用户 <strong>{{ userToDelete?.username }}</strong> 吗？此操作不可撤销。</p>
+                        <p>{{ $t('userList.confirmDeleteUser', { username: userToDelete?.username }) }}</p>
 
                         <div class="dialog-actions">
-                            <button class="btn btn-ghost" @click="showDeleteDialog = false">取消</button>
+                            <button class="btn btn-ghost" @click="showDeleteDialog = false">{{ $t('common.cancel') }}</button>
                             <button class="btn btn-danger" @click="confirmDelete" :disabled="isDeleting">
-                                <span v-if="isDeleting">删除中...</span>
-                                <span v-else>确认删除</span>
+                                <span v-if="isDeleting">{{ $t('userList.deleting') }}...</span>
+                                <span v-else>{{ $t('common.confirm') }} {{ $t('common.delete') }}</span>
                             </button>
                         </div>
                     </div>
@@ -179,9 +179,12 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
 import { useAuthStore } from '@/stores/auth'
+
+const { t, locale } = useI18n()
 
 // 状态
 const isLoading = ref(false)
@@ -238,20 +241,20 @@ const totalPages = computed(() => {
 const getRoleDisplay = (role: string) => {
     switch (role) {
         case 'admin':
-            return '管理员'
+            return t('userList.roleAdmin')
         case 'maintainer':
-            return '维护者'
+            return t('userList.roleMaintainer')
         case 'member':
-            return '成员'
+            return t('projects.roleViewer')
         default:
-            return '用户'
+            return t('userList.roleUser')
     }
 }
 
 // 格式化日期
 const formatDate = (dateString: string) => {
     const date = new Date(dateString)
-    return date.toLocaleDateString('zh-CN', {
+    return date.toLocaleDateString(locale.value, {
         year: 'numeric',
         month: 'short',
         day: 'numeric'
@@ -270,7 +273,7 @@ const loadUsers = async () => {
         users.value = response.data.data || []
     } catch (error) {
         console.error('Failed to load users:', error)
-        showMessage('加载用户列表失败', 'error')
+        showMessage(t('userList.loadUsersFailed'), 'error')
     } finally {
         isLoading.value = false
     }
@@ -316,12 +319,12 @@ const confirmDelete = async () => {
             users.value.splice(index, 1)
         }
 
-        showMessage('用户删除成功', 'success')
+        showMessage(t('userList.userDeleted'), 'success')
         showDeleteDialog.value = false
         userToDelete.value = null
     } catch (error) {
         console.error('Failed to delete user:', error)
-        showMessage('删除用户失败', 'error')
+        showMessage(t('userList.deleteUserFailed'), 'error')
     } finally {
         isDeleting.value = false
     }
@@ -351,7 +354,7 @@ const saveUser = async () => {
                 Object.assign(users.value[index], userForm)
             }
 
-            showMessage('用户更新成功', 'success')
+            showMessage(t('userList.userUpdated'), 'success')
         } else {
             // 创建用户
             const response = await axios.post('/api/users', {
@@ -365,13 +368,13 @@ const saveUser = async () => {
             // 添加到列表
             users.value.unshift(response.data)
 
-            showMessage('用户创建成功', 'success')
+            showMessage(t('userList.userCreated'), 'success')
         }
 
         closeDialogs()
     } catch (error) {
         console.error('Failed to save user:', error)
-        showMessage(showEditDialog.value ? '更新用户失败' : '创建用户失败', 'error')
+        showMessage(showEditDialog.value ? t('userList.saveUserFailed') : t('userList.saveUserFailed'), 'error')
     } finally {
         isSaving.value = false
     }

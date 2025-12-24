@@ -4,13 +4,13 @@
             <div class="password-card">
                 <form @submit.prevent="changePassword" class="password-form">
                     <div class="form-group">
-                        <label for="currentPassword">当前密码</label>
+                        <label for="currentPassword">{{ $t('password.currentPassword') }}</label>
                         <input id="currentPassword" type="password" v-model="passwordForm.currentPassword"
                             :disabled="isChangingPassword" required />
                     </div>
 
                     <div class="form-group">
-                        <label for="newPassword">新密码</label>
+                        <label for="newPassword">{{ $t('password.newPassword') }}</label>
                         <input id="newPassword" type="password" v-model="passwordForm.newPassword"
                             :disabled="isChangingPassword" required />
                         <div class="password-strength">
@@ -22,48 +22,48 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="confirmPassword">确认新密码</label>
+                        <label for="confirmPassword">{{ $t('password.confirmPassword') }}</label>
                         <input id="confirmPassword" type="password" v-model="passwordForm.confirmPassword"
                             :disabled="isChangingPassword" required />
                         <div v-if="passwordForm.confirmPassword && !isPasswordMatch" class="password-mismatch">
-                            密码不匹配
+                            {{ $t('password.passwordMismatch') }}
                         </div>
                     </div>
 
                     <div class="password-requirements">
-                        <p class="requirements-title">密码要求：</p>
+                        <p class="requirements-title">{{ $t('password.passwordRequirements') }}</p>
                         <ul>
                             <li :class="{ 'requirement-met': passwordRequirements.length }">
                                 <span class="material-icons">{{ passwordRequirements.length ? 'check_circle' :
                                     'radio_button_unchecked' }}</span>
-                                至少6个字符
+                                {{ $t('password.requirementLength') }}
                             </li>
                             <li :class="{ 'requirement-met': passwordRequirements.uppercase }">
                                 <span class="material-icons">{{ passwordRequirements.uppercase ? 'check_circle' :
                                     'radio_button_unchecked' }}</span>
-                                包含大写字母
+                                {{ $t('password.requirementUppercase') }}
                             </li>
                             <li :class="{ 'requirement-met': passwordRequirements.lowercase }">
                                 <span class="material-icons">{{ passwordRequirements.lowercase ? 'check_circle' :
                                     'radio_button_unchecked' }}</span>
-                                包含小写字母
+                                {{ $t('password.requirementLowercase') }}
                             </li>
                             <li :class="{ 'requirement-met': passwordRequirements.number }">
                                 <span class="material-icons">{{ passwordRequirements.number ? 'check_circle' :
                                     'radio_button_unchecked' }}</span>
-                                包含数字
+                                {{ $t('password.requirementNumber') }}
                             </li>
                         </ul>
                     </div>
 
                     <div class="form-actions">
                         <button type="button" class="btn btn-ghost" @click="resetForm">
-                            重置
+                            {{ $t('common.reset') }}
                         </button>
                         <button type="submit" class="btn btn-primary"
                             :disabled="isChangingPassword || !isPasswordValid || !isPasswordMatch">
-                            <span v-if="isChangingPassword">修改中...</span>
-                            <span v-else>修改密码</span>
+                            <span v-if="isChangingPassword">{{ $t('password.changing') }}...</span>
+                            <span v-else>{{ $t('password.changePassword') }}</span>
                         </button>
                     </div>
                 </form>
@@ -83,8 +83,11 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
+
+const { t } = useI18n()
 
 // 状态
 const isChangingPassword = ref(false)
@@ -132,11 +135,11 @@ const passwordStrengthClass = computed(() => {
 const passwordStrengthText = computed(() => {
     switch (passwordStrength.value) {
         case 'weak':
-            return '弱'
+            return t('password.strengthWeak')
         case 'medium':
-            return '中等'
+            return t('password.strengthMedium')
         case 'strong':
-            return '强'
+            return t('password.strengthStrong')
         default:
             return ''
     }
@@ -145,7 +148,7 @@ const passwordStrengthText = computed(() => {
 // 修改密码
 const changePassword = async () => {
     if (!isPasswordValid.value || !isPasswordMatch.value) {
-        showMessage('请检查新密码输入', 'error')
+        showMessage(t('password.checkPasswordInput'), 'error')
         return
     }
 
@@ -160,10 +163,10 @@ const changePassword = async () => {
         // 清空密码表单
         resetForm()
 
-        showMessage('密码修改成功', 'success')
+        showMessage(t('password.passwordChanged'), 'success')
     } catch (error: any) {
         console.error('Failed to change password:', error)
-        showMessage(error.response?.data?.error || '修改密码失败', 'error')
+        showMessage(error.response?.data?.error || t('password.changePasswordFailed'), 'error')
     } finally {
         isChangingPassword.value = false
     }

@@ -6,17 +6,17 @@
       </div>
       
       <h1>404</h1>
-      <h2>Page Not Found</h2>
-      <p>The page you're looking for doesn't exist or has been moved.</p>
+      <h2>{{ $t('notFound.title') }}</h2>
+      <p>{{ $t('notFound.description') }}</p>
       
       <div class="actions">
         <button class="btn btn-primary" @click="goHome">
           <span class="material-icons">home</span>
-          Go Home
+          {{ $t('notFound.goHome') }}
         </button>
         <button class="btn btn-secondary" @click="goBack">
           <span class="material-icons">arrow_back</span>
-          Go Back
+          {{ $t('notFound.goBack') }}
         </button>
       </div>
     </div>
@@ -25,8 +25,10 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
+const { t } = useI18n()
 
 const goHome = () => {
   router.push({ name: 'catalog' })

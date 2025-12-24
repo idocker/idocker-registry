@@ -1,9 +1,9 @@
 /**
- * 认证路由模块
- * 
- * 处理用户登录、登出、注册等认证相关操作
- * 支持JWT令牌认证和LDAP集成
- * 
+ * Authentication Routes Module
+ *
+ * Handles user login, logout, registration, and other authentication operations
+ * Supports JWT token authentication and LDAP integration
+ *
  * @author IDocker Registry Team
  * @version 2.0.0
  */
@@ -11,118 +11,88 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { dbGet, dbRun } from '../utils/dbHelper.js';
+import { AuthModel } from '../models/AuthModel.js';
+import { AuditModel } from '../models/AuditModel.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
+import { success, error } from '../utils/apiResponse.js';
 
 const router = express.Router();
+const authModel = new AuthModel();
+const auditModel = new AuditModel();
 
 /**
  * POST /api/auth/login
- * 用户登录
- * 验证用户凭据并返回JWT令牌
+ * User login
+ * Validate user credentials and return JWT token
  */
 router.post('/login', asyncHandler(async (req, res) => {
     const { username, password } = req.body;
 
     if (!username || !password) {
-        return res.status(400).json({
-            success: false,
-            message: '用户名和密码不能为空'
-        });
+        return res.status(400).json(error('Username and password cannot be empty', 400));
     }
 
     try {
-        // 从数据库获取用户信息
-        //let user = undefined;
-        //let self = this;
-        await dbGet(
-            'SELECT id, username, password, email, full_name, role, is_active FROM users WHERE username = ?',
-            [username]
-        ).then(user => {
-            //self.user = _user;
-            logger.info(user);
+        // Get user information from database
+        const user = await authModel.findByUsernameWithPassword(username);
 
-            if (!user) {
-                return res.status(401).json({
-                    success: false,
-                    message: '用户名或密码错误'
-                });
-            }
-            logger.info(!user.is_active + "  " + user.is_active)
-            if (!user.is_active) {
-                return res.status(401).json({
-                    success: false,
-                    message: '用户账户已被禁用，请联系管理员'
-                });
-            }
+        if (!user) {
+            return res.status(401).json(error('Invalid username or password', 401));
+        }
 
+        if (!user.is_active) {
+            return res.status(401).json(error('User account has been disabled, please contact administrator', 401));
+        }
 
+        // Verify password
+        const passwordMatch = bcrypt.compare(password, user.password);
+        if (!passwordMatch) {
+            return res.status(401).json(error('Invalid username or password', 401));
+        }
 
-            // 验证密码
-            const passwordMatch = bcrypt.compare(password, user.password);
-            if (!passwordMatch) {
-                return res.status(401).json({
-                    success: false,
-                    message: '用户名或密码错误'
-                });
-            }
+        // Generate JWT token
+        const token = jwt.sign(
+            { userId: user.id, username: user.username, role: user.role },
+            process.env.JWT_SECRET || 'default_secret_key',
+            { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+        );
 
-            // 生成JWT令牌
-            const token = jwt.sign(
-                { userId: user.id, username: user.username, role: user.role },
-                process.env.JWT_SECRET || 'default_secret_key',
-                { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
-            );
+        // Log login
+        await authModel.logAudit({
+            user_id: user.id,
+            action: 'LOGIN',
+            resource_type: 'user',
+            resource_id: user.id.toString(),
+            details: { username },
+            ip_address: req.ip,
+            user_agent: req.headers['user-agent']
+        });
 
-            // 记录登录日志
-            dbRun(
-                `INSERT INTO audit_logs (user_id, action, resource_type, resource_id, details, ip_address, user_agent)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                [
-                    user.id,
-                    'LOGIN',
-                    'user',
-                    user.id.toString(),
-                    JSON.stringify({ username }),
-                    req.ip,
-                    req.headers['user-agent']
-                ]
-            );
-
-            // 返回用户信息和令牌
-            res.status(200).json({
-                success: true,
-                message: '登录成功',
-                data: {
-                    token,
-                    user: {
-                        id: user.id,
-                        username: user.username,
-                        email: user.email,
-                        fullName: user.full_name,
-                        role: user.role
-                    }
+        // Return user information and token
+        res.status(200).json(success({
+            token,
+                user: {
+                    id: user.id,
+                    username: user.username,
+                    email: user.email,
+                    fullName: user.full_name,
+                    role: user.role
                 }
-            });
-        });
-
+        }, 'Login successful'));
     } catch (error) {
-        logger.error('登录过程中出错:', error);
-        res.status(500).json({
-            success: false,
-            message: '服务器内部错误'
-        });
+        logger.error('Error during login:', error);
+        res.status(500).json(error('Internal server error'));
     }
 }));
 
 /**
  * POST /api/auth/logout
- * 用户登出
- * 记录登出日志，实际令牌失效由客户端处理
+ * User logout
+ * Log logout event, actual token invalidation handled by client
  */
 router.post('/logout', asyncHandler(async (req, res) => {
-    // 从请求头获取令牌
+    // Get token from request header
     const authHeader = req.headers.authorization;
     let userId = null;
 
@@ -132,375 +102,256 @@ router.post('/logout', asyncHandler(async (req, res) => {
             const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_secret_key');
             userId = decoded.userId;
 
-            // 记录登出日志
-            dbRun(
-                `INSERT INTO audit_logs (user_id, action, resource_type, resource_id, details, ip_address, user_agent)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                [
-                    userId,
-                    'LOGOUT',
-                    'user',
-                    userId?.toString(),
-                    '{}',
-                    req.ip,
-                    req.headers['user-agent']
-                ]
-            );
+            // Log logout
+            await authModel.logAudit({
+                user_id: userId,
+                action: 'LOGOUT',
+                resource_type: 'user',
+                resource_id: userId?.toString(),
+                details: {},
+                ip_address: req.ip,
+                user_agent: req.headers['user-agent']
+            });
         } catch (error) {
-            // 令牌无效，忽略错误
+            // Token invalid, ignore error
         }
     }
 
-    res.status(200).json({
-        success: true,
-        message: '登出成功'
-    });
+    res.status(200).json(success(null, 'Logout successful'));
 }));
 
 /**
  * POST /api/auth/register
- * 用户注册
- * 创建新用户账户（如果允许注册）
+ * User registration
+ * Create new user account (if registration is allowed)
  */
 router.post('/register', asyncHandler(async (req, res) => {
     const { username, password, email, fullName } = req.body;
 
-    // 检查是否允许注册
+    // Check if registration is allowed
     if (process.env.ALLOW_USER_REGISTRATION !== 'true') {
-        return res.status(403).json({
-            success: false,
-            message: '注册功能已禁用，请联系管理员创建账户'
-        });
+        return res.status(403).json(error('Registration is disabled, please contact administrator to create account', 403));
     }
 
-    // 验证必填字段
+    // Validate required fields
     if (!username || !password) {
-        return res.status(400).json({
-            success: false,
-            message: '用户名和密码不能为空'
-        });
+        return res.status(400).json(error('Username and password cannot be empty', 400));
     }
 
-    // 验证密码强度
+    // Validate password strength
     if (password.length < 6) {
-        return res.status(400).json({
-            success: false,
-            message: '密码长度不能少于6个字符'
-        });
+        return res.status(400).json(error('Password must be at least 6 characters', 400));
     }
 
     try {
-        // 检查用户名是否已存在
-        const existingUser = dbGet(
-            'SELECT id FROM users WHERE username = ?',
-            [username]
-        );
+        // Check if username already exists
+        const usernameExists = await authModel.isUsernameExists(username);
 
-        if (existingUser) {
-            return res.status(409).json({
-                success: false,
-                message: '用户名已存在'
-            });
+        if (usernameExists) {
+            return res.status(409).json(error('Username already exists', 409, 'UNIQUE_VIOLATION'));
         }
 
-        // 哈希密码
+        // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // 创建用户
-        const result = dbRun(
-            `INSERT INTO users (username, password, email, full_name, role, is_active)
-       VALUES (?, ?, ?, ?, 'user', 1)`,
-            [username, hashedPassword, email, fullName]
-        );
-
-        const userId = result.lastInsertRowid;
-
-        // 记录注册日志
-        dbRun(
-            `INSERT INTO audit_logs (user_id, action, resource_type, resource_id, details, ip_address, user_agent)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [
-                userId,
-                'REGISTER',
-                'user',
-                userId.toString(),
-                JSON.stringify({ username, email }),
-                req.ip,
-                req.headers['user-agent']
-            ]
-        );
-
-        res.status(201).json({
-            success: true,
-            message: '用户注册成功，请使用新账户登录'
+        // Create user
+        const result = await authModel.createUser({
+            username,
+            password: hashedPassword,
+            email,
+            full_name: fullName,
+            role: 'user',
+            is_active: 1
         });
+
+        const userId = result.id;
+
+        // Log registration
+        await authModel.logAudit({
+            user_id: userId,
+            action: 'REGISTER',
+            resource_type: 'user',
+            resource_id: userId.toString(),
+            details: { username, email },
+            ip_address: req.ip,
+            user_agent: req.headers['user-agent']
+        });
+
+        res.status(201).json(success(null, 'Registration successful, please login with your new account'));
     } catch (error) {
-        logger.error('注册过程中出错:', error);
-        res.status(500).json({
-            success: false,
-            message: '服务器内部错误'
-        });
+        logger.error('Error during registration:', error);
+        res.status(500).json(error('Internal server error'));
     }
 }));
 
 /**
  * GET /api/auth/profile
- * 获取当前用户信息
- * 需要有效的JWT令牌
+ * Get current user information
+ * Requires valid JWT token
  */
 router.get('/profile', asyncHandler(async (req, res) => {
-    // 从请求头获取令牌
+    // Get token from request header
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({
-            success: false,
-            message: '缺少认证令牌'
-        });
+        return res.status(401).json(error('Authentication token missing', 401));
     }
 
     try {
         const token = authHeader.split(' ')[1];
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_secret_key');
 
-        const user = dbGet(
-            `SELECT id, username, email, full_name, role, is_active, created_at
-       FROM users WHERE id = ?`,
-            [decoded.userId]
-        );
+        const user = await authModel.getUserById(decoded.userId);
 
         if (!user) {
-            return res.status(401).json({
-                success: false,
-                message: '用户不存在'
-            });
+            return res.status(401).json(error('User not found', 401));
         }
 
         if (!user.is_active) {
-            return res.status(401).json({
-                success: false,
-                message: '用户账户已被禁用'
-            });
+            return res.status(401).json(error('User account has been disabled', 401));
         }
 
-        res.status(200).json({
-            success: true,
-            data: {
-                id: user.id,
-                username: user.username,
-                email: user.email,
-                fullName: user.full_name,
-                role: user.role,
-                isActive: user.is_active,
-                createdAt: user.created_at
-            }
-        });
+        res.status(200).json(success({
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            fullName: user.full_name,
+            role: user.role,
+            isActive: user.is_active,
+            createdAt: user.created_at
+        }));
     } catch (error) {
         if (error.name === 'JsonWebTokenError') {
-            return res.status(401).json({
-                success: false,
-                message: '无效的认证令牌'
-            });
+            return res.status(401).json(error('Invalid authentication token', 401));
         } else if (error.name === 'TokenExpiredError') {
-            return res.status(401).json({
-                success: false,
-                message: '认证令牌已过期'
-            });
+            return res.status(401).json(error('Authentication token has expired', 401));
         } else {
-            logger.error('获取用户信息时出错:', error);
-            res.status(500).json({
-                success: false,
-                message: '服务器内部错误'
-            });
+            logger.error('Error getting user information:', error);
+            res.status(500).json(error('Internal server error'));
         }
     }
 }));
 
 /**
  * PUT /api/auth/change-password
- * 修改密码
- * 需要当前密码和新密码
+ * Change password
+ * Requires current password and new password
  */
 router.put('/change-password', asyncHandler(async (req, res) => {
     const { currentPassword, newPassword } = req.body;
 
-    // 验证必填字段
+    // Validate required fields
     if (!currentPassword || !newPassword) {
-        return res.status(400).json({
-            success: false,
-            message: '当前密码和新密码不能为空'
-        });
+        return res.status(400).json(error('Current password and new password cannot be empty', 400));
     }
 
-    // 验证新密码强度
+    // Validate new password strength
     if (newPassword.length < 6) {
-        return res.status(400).json({
-            success: false,
-            message: '新密码长度不能少于6个字符'
-        });
+        return res.status(400).json(error('New password must be at least 6 characters', 400));
     }
 
-    // 从请求头获取令牌
+    // Get token from request header
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({
-            success: false,
-            message: '缺少认证令牌'
-        });
+        return res.status(401).json(error('Authentication token missing', 401));
     }
 
     try {
         const token = authHeader.split(' ')[1];
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_secret_key');
 
-        const user = dbGet(
-            'SELECT id, password, is_active FROM users WHERE id = ?',
-            [decoded.userId]
-        );
+        const user = await authModel.getUserForPasswordUpdate(decoded.userId);
 
         if (!user) {
-            return res.status(401).json({
-                success: false,
-                message: '用户不存在'
-            });
+            return res.status(401).json(error('User not found', 401));
         }
 
         if (!user.is_active) {
-            return res.status(401).json({
-                success: false,
-                message: '用户账户已被禁用'
-            });
+            return res.status(401).json(error('User account has been disabled', 401));
         }
 
-        // 验证当前密码
+        // Verify current password
         const passwordMatch = await bcrypt.compare(currentPassword, user.password);
         if (!passwordMatch) {
-            return res.status(401).json({
-                success: false,
-                message: '当前密码不正确'
-            });
+            return res.status(401).json(error('Current password is incorrect', 401));
         }
 
-        // 哈希新密码
+        // Hash new password
         const hashedNewPassword = await bcrypt.hash(newPassword, 10);
 
-        // 更新密码
-        dbRun(
-            'UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-            [hashedNewPassword, user.id]
-        );
+        // Update password
+        await authModel.updatePassword(user.id, hashedNewPassword);
 
-        // 记录修改密码日志
-        dbRun(
-            `INSERT INTO audit_logs (user_id, action, resource_type, resource_id, details, ip_address, user_agent)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [
-                user.id,
-                'CHANGE_PASSWORD',
-                'user',
-                user.id.toString(),
-                '{}',
-                req.ip,
-                req.headers['user-agent']
-            ]
-        );
-
-        res.status(200).json({
-            success: true,
-            message: '密码修改成功'
+        // Log password change
+        await authModel.logAudit({
+            user_id: user.id,
+            action: 'CHANGE_PASSWORD',
+            resource_type: 'user',
+            resource_id: user.id.toString(),
+            details: {},
+            ip_address: req.ip,
+            user_agent: req.headers['user-agent']
         });
+
+        res.status(200).json(success(null, 'Password changed successfully'));
     } catch (error) {
         if (error.name === 'JsonWebTokenError') {
-            return res.status(401).json({
-                success: false,
-                message: '无效的认证令牌'
-            });
+            return res.status(401).json(error('Invalid authentication token', 401));
         } else if (error.name === 'TokenExpiredError') {
-            return res.status(401).json({
-                success: false,
-                message: '认证令牌已过期'
-            });
+            return res.status(401).json(error('Authentication token has expired', 401));
         } else {
-            logger.error('修改密码时出错:', error);
-            res.status(500).json({
-                success: false,
-                message: '服务器内部错误'
-            });
+            logger.error('Error changing password:', error);
+            res.status(500).json(error('Internal server error'));
         }
     }
 }));
 
 /**
  * GET /api/auth/refresh
- * 刷新令牌
- * 使用当前有效的令牌生成新令牌
+ * Refresh token
+ * Generate new token using currently valid token
  */
 router.get('/refresh', asyncHandler(async (req, res) => {
-    // 从请求头获取令牌
+    // Get token from request header
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({
-            success: false,
-            message: '缺少认证令牌'
-        });
+        return res.status(401).json(error('Authentication token missing', 401));
     }
 
     try {
         const token = authHeader.split(' ')[1];
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_secret_key');
 
-        // 检查用户是否仍然有效
-        const user = dbGet(
-            'SELECT id, username, role, is_active FROM users WHERE id = ?',
-            [decoded.userId]
-        );
+        // Check if user is still valid
+        const user = await authModel.getUserBasicInfo(decoded.userId);
 
         if (!user) {
-            return res.status(401).json({
-                success: false,
-                message: '用户不存在'
-            });
+            return res.status(401).json(error('User not found', 401));
         }
 
         if (!user.is_active) {
-            return res.status(401).json({
-                success: false,
-                message: '用户账户已被禁用'
-            });
+            return res.status(401).json(error('User account has been disabled', 401));
         }
 
-        // 生成新令牌
+        // Generate new token
         const newToken = jwt.sign(
             { userId: user.id, username: user.username, role: user.role },
             process.env.JWT_SECRET || 'default_secret_key',
             { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
         );
 
-        res.status(200).json({
-            success: true,
-            message: '令牌刷新成功',
-            data: {
-                token: newToken
-            }
-        });
+        res.status(200).json(success({
+            token: newToken
+        }, 'Token refreshed successfully'));
     } catch (error) {
         if (error.name === 'JsonWebTokenError') {
-            return res.status(401).json({
-                success: false,
-                message: '无效的认证令牌'
-            });
+            return res.status(401).json(error('Invalid authentication token', 401));
         } else if (error.name === 'TokenExpiredError') {
-            return res.status(401).json({
-                success: false,
-                message: '认证令牌已过期，请重新登录'
-            });
+            return res.status(401).json(error('Authentication token has expired, please login again', 401));
         } else {
-            logger.error('刷新令牌时出错:', error);
-            res.status(500).json({
-                success: false,
-                message: '服务器内部错误'
-            });
+            logger.error('Error refreshing token:', error);
+            res.status(500).json(error('Internal server error'));
         }
     }
 }));

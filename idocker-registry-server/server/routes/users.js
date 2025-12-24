@@ -1,9 +1,9 @@
 /**
- * 用户管理路由模块（重构版）
- * 
- * 提供用户的CRUD操作和权限管理
- * 只有管理员可以访问这些接口
- * 
+ * User Management Routes Module (Refactored)
+ *
+ * Provides CRUD operations and permission management for users
+ * Only administrators can access these endpoints
+ *
  * @author IDocker Registry Team
  * @version 2.0.0
  */
@@ -15,18 +15,19 @@ import { requireAdmin } from '../middleware/auth.js';
 import { logger } from '../utils/logger.js';
 import { UserModel } from '../models/UserModel.js';
 import { ProjectModel } from '../models/ProjectModel.js';
+import { success, error } from '../utils/apiResponse.js';
 
 const userModel = new UserModel();
 const projectModel = new ProjectModel();
 const router = express.Router();
 
-// 所有用户管理接口都需要管理员权限
+// All user management endpoints require admin permission
 router.use(requireAdmin);
 
 /**
  * GET /api/users
- * 获取用户列表
- * 支持分页和搜索
+ * Get user list
+ * Supports pagination and search
  */
 router.get('/', asyncHandler(async (req, res) => {
   const { page = 1, limit = 20, search = '', role = '' } = req.query;
@@ -34,22 +35,16 @@ router.get('/', asyncHandler(async (req, res) => {
   try {
     const result = await userModel.getUsersList({ page, limit, search, role });
 
-    res.status(200).json({
-      success: true,
-      data: result.data
-    });
+    res.status(200).json(success(result.data));
   } catch (error) {
-    logger.error('获取用户列表时出错:', error);
-    res.status(500).json({
-      success: false,
-      message: '获取用户列表失败'
-    });
+    logger.error('Error getting user list:', error);
+    res.status(500).json(error('Failed to get user list'));
   }
 }));
 
 /**
  * GET /api/users/:id
- * 获取特定用户详情
+ * Get specific user details
  */
 router.get('/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -58,87 +53,63 @@ router.get('/:id', asyncHandler(async (req, res) => {
     const user = await userModel.getUserDetails(id);
 
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: '用户不存在'
-      });
+      return res.status(404).json(error('用户不存在', 404));
     }
 
     // 获取用户所属项目和权限
     const projects = await userModel.getUserProjects(id);
 
-    res.status(200).json({
-      success: true,
-      data: {
-        ...user,
-        projects
-      }
-    });
+    res.status(200).json(success({
+      ...user,
+      projects
+    }));
   } catch (error) {
     logger.error('获取用户详情时出错:', error);
-    res.status(500).json({
-      success: false,
-      message: '获取用户详情失败'
-    });
+    res.status(500).json(error('获取用户详情失败'));
   }
 }));
 
 /**
  * POST /api/users
- * 创建新用户
+ * Create new user
  */
 router.post('/', asyncHandler(async (req, res) => {
   const { username, password, email, fullName, role = 'user' } = req.body;
 
-  // 验证必填字段
+  // Validate required fields
   if (!username || !password) {
-    return res.status(400).json({
-      success: false,
-      message: '用户名和密码不能为空'
-    });
+    return res.status(400).json(error('Username and password cannot be empty', 400));
   }
 
-  // 验证角色
+  // Validate role
   if (!['admin', 'user'].includes(role)) {
-    return res.status(400).json({
-      success: false,
-      message: '无效的用户角色'
-    });
+    return res.status(400).json(error('Invalid user role', 400));
   }
 
-  // 验证密码强度
+  // Validate password strength
   if (password.length < 6) {
-    return res.status(400).json({
-      success: false,
-      message: '密码长度不能少于6个字符'
-    });
+    return res.status(400).json(error('Password must be at least 6 characters', 400));
   }
 
   try {
-    // 检查用户名是否唯一
+    // Check if username is unique
     const isUsernameUnique = await userModel.isUsernameUnique(username);
     if (!isUsernameUnique) {
-      return res.status(409).json({
-        success: false,
-        message: '用户名已存在'
-      });
+      return res.status(409).json(error('Username already exists', 409, 'UNIQUE_VIOLATION'));
     }
 
-    // 检查邮箱是否唯一（如果提供了邮箱）
+    // Check if email is unique (if email provided)
     if (email) {
       const isEmailUnique = await userModel.isEmailUnique(email);
       if (!isEmailUnique) {
-        return res.status(409).json({
-          success: false,
-          message: '邮箱已存在'
-        });
+        return res.status(409).json(error('Email already exists', 409, 'UNIQUE_VIOLATION'));
       }
     }
 
-    // 哈希密码
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 创建用户
+    // Create user
     const userData = {
       username,
       password: hashedPassword,
@@ -150,72 +121,53 @@ router.post('/', asyncHandler(async (req, res) => {
 
     const newUser = await userModel.createUser(userData);
 
-    // 返回创建的用户信息（不包含密码）
+    // Return created user information (without password)
     const userDetails = await userModel.getUserDetails(newUser.id);
 
-    res.status(201).json({
-      success: true,
-      message: '用户创建成功',
-      data: userDetails
-    });
+    res.status(201).json(success(userDetails, 'User created successfully'));
   } catch (error) {
-    logger.error('创建用户时出错:', error);
-    res.status(500).json({
-      success: false,
-      message: '创建用户失败'
-    });
+    logger.error('Error creating user:', error);
+    res.status(500).json(error('Failed to create user'));
   }
 }));
 
 /**
  * PUT /api/users/:id
- * 更新用户信息
+ * Update user information
  */
 router.put('/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { email, fullName, role, isActive } = req.body;
 
-  // 验证角色
+  // Validate role
   if (role && !['admin', 'user'].includes(role)) {
-    return res.status(400).json({
-      success: false,
-      message: '无效的用户角色'
-    });
+    return res.status(400).json(error('Invalid user role', 400));
   }
 
   try {
-    // 检查用户是否存在
+    // Check if user exists
     const userExists = await userModel.userExists(id);
     if (!userExists) {
-      return res.status(404).json({
-        success: false,
-        message: '用户不存在'
-      });
+      return res.status(404).json(error('User not found', 404));
     }
 
-    // 获取用户当前信息
+    // Get current user information
     const currentUser = await userModel.findById(id);
 
-    // 防止管理员修改自己的角色为普通用户（导致没有管理员）
+    // Prevent admin from changing their own role to regular user (resulting in no admin)
     if (parseInt(id) === req.user.id && role === 'user') {
-      return res.status(400).json({
-        success: false,
-        message: '不能将自己的角色修改为普通用户'
-      });
+    return res.status(400).json(error('Cannot change your own role to regular user', 400));
     }
 
-    // 检查邮箱是否唯一（如果要更新邮箱）
+    // Check if email is unique (if updating email)
     if (email && email !== currentUser.email) {
       const isEmailUnique = await userModel.isEmailUnique(email, id);
       if (!isEmailUnique) {
-        return res.status(409).json({
-          success: false,
-          message: '邮箱已存在'
-        });
+        return res.status(409).json(error('Email already exists', 409, 'UNIQUE_VIOLATION'));
       }
     }
 
-    // 构建更新数据
+    // Build update data
     const updateData = {};
     if (email !== undefined) updateData.email = email;
     if (fullName !== undefined) updateData.full_name = fullName;
@@ -223,283 +175,203 @@ router.put('/:id', asyncHandler(async (req, res) => {
     if (isActive !== undefined) updateData.is_active = isActive ? 1 : 0;
 
     if (Object.keys(updateData).length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: '没有提供任何要更新的字段'
-      });
+      return res.status(400).json(error('No fields provided for update', 400));
     }
 
-    // 更新用户信息
+    // Update user information
     const result = await userModel.updateUser(id, updateData);
 
-    // 获取更新后的用户信息
+    // Get updated user information
     const updatedUser = await userModel.getUserDetails(id);
 
-    res.status(200).json({
-      success: true,
-      message: '用户信息更新成功',
-      data: updatedUser
-    });
+    res.status(200).json(success(updatedUser, 'User information updated successfully'));
   } catch (error) {
-    logger.error('更新用户信息时出错:', error);
-    res.status(500).json({
-      success: false,
-      message: '更新用户信息失败'
-    });
+    logger.error('Error updating user information:', error);
+    res.status(500).json(error('Failed to update user information'));
   }
+}
 }));
 
 /**
  * PUT /api/users/:id/password
- * 重置用户密码
+ * Reset user password
  */
 router.put('/:id/password', asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { password } = req.body;
 
   if (!password) {
-    return res.status(400).json({
-      success: false,
-      message: '密码不能为空'
-    });
+    return res.status(400).json(error('Password cannot be empty', 400));
   }
 
-  // 验证密码强度
+  // Validate password strength
   if (password.length < 6) {
-    return res.status(400).json({
-      success: false,
-      message: '密码长度不能少于6个字符'
-    });
+    return res.status(400).json(error('Password must be at least 6 characters', 400));
   }
 
   try {
-    // 检查用户是否存在
+    // Check if user exists
     const userExists = await userModel.userExists(id);
     if (!userExists) {
-      return res.status(404).json({
-        success: false,
-        message: '用户不存在'
-      });
+      return res.status(404).json(error('User not found', 404));
     }
 
-    // 哈希新密码
+    // Hash new password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 更新密码
+    // Update password
     await userModel.updatePassword(id, hashedPassword);
 
-    res.status(200).json({
-      success: true,
-      message: '密码重置成功'
-    });
+    res.status(200).json(success(null, 'Password reset successfully'));
   } catch (error) {
-    logger.error('重置密码时出错:', error);
-    res.status(500).json({
-      success: false,
-      message: '重置密码失败'
-    });
+    logger.error('Error resetting password:', error);
+    res.status(500).json(error('Failed to reset password'));
   }
+}
 }));
 
 /**
  * DELETE /api/users/:id
- * 删除用户（软删除）
+ * Delete user (soft delete)
  */
 router.delete('/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   try {
-    // 检查用户是否存在
+    // Check if user exists
     const userExists = await userModel.userExists(id);
     if (!userExists) {
-      return res.status(404).json({
-        success: false,
-        message: '用户不存在'
-      });
+      return res.status(404).json(error('User not found', 404));
     }
 
-    // 获取用户当前信息
+    // Get current user information
     const user = await userModel.findById(id);
 
-    // 防止管理员删除自己
+    // Prevent admin from deleting themselves
     if (parseInt(id) === req.user.id) {
-      return res.status(400).json({
-        success: false,
-        message: '不能删除自己的账户'
-      });
+      return res.status(400).json(error('Cannot delete your own account', 400));
     }
 
-    // 检查是否还有其他管理员（如果要删除的是管理员）
+    // Check if there are other admins (if deleting an admin)
     if (user.role === 'admin') {
       const adminCount = await userModel.getAdminCount();
       if (adminCount <= 1) {
-        return res.status(400).json({
-          success: false,
-          message: '不能删除最后一个管理员账户'
-        });
+        return res.status(400).json(error('Cannot delete the last admin account', 400));
       }
     }
 
-    // 软删除用户
+    // Soft delete user
     await userModel.deleteUser(id);
 
-    res.status(200).json({
-      success: true,
-      message: '用户删除成功'
-    });
+    res.status(200).json(success(null, 'User deleted successfully'));
   } catch (error) {
-    logger.error('删除用户时出错:', error);
-    res.status(500).json({
-      success: false,
-      message: '删除用户失败'
-    });
+    logger.error('Error deleting user:', error);
+    res.status(500).json(error('Failed to delete user'));
   }
 }));
 
 /**
  * GET /api/users/:id/projects
- * 获取用户所属的项目列表
+ * Get project list for a user
  */
 router.get('/:id/projects', asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   try {
-    // 检查用户是否存在
+    // Check if user exists
     const userExists = await userModel.userExists(id);
     if (!userExists) {
-      return res.status(404).json({
-        success: false,
-        message: '用户不存在'
-      });
+      return res.status(404).json(error('User not found', 404));
     }
 
-    // 获取用户项目
+    // Get user projects
     const projects = await userModel.getUserProjects(id);
 
-    res.status(200).json({
-      success: true,
-      data: {
-        user: { id },
-        projects
-      }
-    });
+    res.status(200).json(success({
+      user: { id },
+      projects
+    }));
   } catch (error) {
-    logger.error('获取用户项目列表时出错:', error);
-    res.status(500).json({
-      success: false,
-      message: '获取用户项目列表失败'
-    });
+    logger.error('Error getting user project list:', error);
+    res.status(500).json(error('Failed to get user project list'));
   }
 }));
 
 /**
  * POST /api/users/:id/projects/:projectId
- * 将用户添加到项目
+ * Add user to project
  */
 router.post('/:id/projects/:projectId', asyncHandler(async (req, res) => {
   const { id, projectId } = req.params;
   const { role = 'viewer' } = req.body;
 
-  // 验证角色
+  // Validate role
   if (!['owner', 'maintainer', 'viewer'].includes(role)) {
-    return res.status(400).json({
-      success: false,
-      message: '无效的项目角色'
-    });
+    return res.status(400).json(error('Invalid project role', 400));
   }
 
   try {
-    // 检查用户是否存在且活跃
+    // Check if user exists and is active
     const user = await userModel.findById(id);
     if (!user || user.is_active === 0) {
-      return res.status(404).json({
-        success: false,
-        message: '用户不存在或已被禁用'
-      });
+      return res.status(404).json(error('User not found or has been disabled', 404));
     }
 
-    // 检查项目是否存在
+    // Check if project exists
     const projectExists = await projectModel.projectExists(projectId);
     if (!projectExists) {
-      return res.status(404).json({
-        success: false,
-        message: '项目不存在'
-      });
+      return res.status(404).json(error('Project not found', 404));
     }
 
-    // 检查用户是否已经是项目成员
+    // Check if user is already a project member
     const memberExists = await projectModel.memberExists(projectId, id);
     if (memberExists) {
-      return res.status(409).json({
-        success: false,
-        message: '用户已经是项目成员'
-      });
+      return res.status(409).json(error('User is already a project member', 409, 'MEMBER_EXISTS'));
     }
 
-    // 添加用户到项目
+    // Add user to project
     await projectModel.addProjectMember(projectId, id, role);
 
-    res.status(201).json({
-      success: true,
-      message: '用户已添加到项目'
-    });
+    res.status(201).json(success(null, 'User added to project'));
   } catch (error) {
-    logger.error('添加用户到项目时出错:', error);
-    res.status(500).json({
-      success: false,
-      message: '添加用户到项目失败'
-    });
+    logger.error('Error adding user to project:', error);
+    res.status(500).json(error('Failed to add user to project'));
   }
 }));
 
 /**
  * DELETE /api/users/:id/projects/:projectId
- * 从项目中移除用户
+ * Remove user from project
  */
 router.delete('/:id/projects/:projectId', asyncHandler(async (req, res) => {
   const { id, projectId } = req.params;
 
   try {
-    // 检查用户是否存在
+    // Check if user exists
     const userExists = await userModel.userExists(id);
     if (!userExists) {
-      return res.status(404).json({
-        success: false,
-        message: '用户不存在'
-      });
+      return res.status(404).json(error('User not found', 404));
     }
 
-    // 检查项目是否存在
+    // Check if project exists
     const projectExists = await projectModel.projectExists(projectId);
     if (!projectExists) {
-      return res.status(404).json({
-        success: false,
-        message: '项目不存在'
-      });
+      return res.status(404).json(error('Project not found', 404));
     }
 
-    // 检查用户是否是项目成员
+    // Check if user is a project member
     const memberExists = await projectModel.memberExists(projectId, id);
     if (!memberExists) {
-      return res.status(404).json({
-        success: false,
-        message: '用户不是项目成员'
-      });
+      return res.status(404).json(error('User is not a project member', 404));
     }
 
-    // 从项目中移除用户
+    // Remove user from project
     await projectModel.removeProjectMember(projectId, id);
 
-    res.status(200).json({
-      success: true,
-      message: '用户已从项目中移除'
-    });
+    res.status(200).json(success(null, 'User removed from project'));
   } catch (error) {
-    logger.error('从项目移除用户时出错:', error);
-    res.status(500).json({
-      success: false,
-      message: '从项目移除用户失败'
-    });
+    logger.error('Error removing user from project:', error);
+    res.status(500).json(error('Failed to remove user from project'));
   }
 }));
 

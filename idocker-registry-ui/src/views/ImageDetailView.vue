@@ -4,7 +4,7 @@
 
     <v-card v-if="image">
       <v-card-title>
-        镜像详情
+        {{ $t('images.imageDetails') }}
         <v-spacer></v-spacer>
         <v-btn
           color="primary"
@@ -12,7 +12,7 @@
           variant="text"
           @click="goBack"
         >
-          返回
+          {{ $t('common.back') }}
         </v-btn>
       </v-card-title>
 
@@ -23,7 +23,7 @@
               <template v-slot:prepend>
                 <v-icon>mdi-image</v-icon>
               </template>
-              <v-list-item-subtitle>镜像名称</v-list-item-subtitle>
+              <v-list-item-subtitle>{{ $t('images.imageName') }}</v-list-item-subtitle>
               <v-list-item-title>{{ image.name }}</v-list-item-title>
             </v-list-item>
           </v-col>
@@ -32,7 +32,7 @@
               <template v-slot:prepend>
                 <v-icon>mdi-clock</v-icon>
               </template>
-              <v-list-item-subtitle>创建时间</v-list-item-subtitle>
+              <v-list-item-subtitle>{{ $t('images.createdAt') }}</v-list-item-subtitle>
               <v-list-item-title>{{ formatDate(image.createdAt) }}</v-list-item-title>
             </v-list-item>
           </v-col>
@@ -40,7 +40,7 @@
 
         <v-divider class="my-4"></v-divider>
 
-        <h3 class="text-h6 mb-3">镜像标签</h3>
+        <h3 class="text-h6 mb-3">{{ $t('images.imageTags') }}</h3>
         <v-list>
           <v-list-item
             v-for="tag in image.tags"
@@ -68,6 +68,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
 interface Tag {
   id: string
@@ -85,14 +86,15 @@ interface Image {
 
 const router = useRouter()
 const route = useRoute()
+const { t } = useI18n()
 
 const image = ref<Image | null>(null)
 const isLoading = ref(false)
 
 const breadcrumbs = computed(() => [
-  { title: '首页', href: '/' },
-  { title: '镜像列表', href: '/images' },
-  { title: '镜像详情', disabled: true }
+  { title: t('nav.home'), href: '/' },
+  { title: t('images.imageList'), href: '/images' },
+  { title: t('images.imageDetails'), disabled: true }
 ])
 
 onMounted(async () => {

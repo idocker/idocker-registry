@@ -4,23 +4,23 @@
       <div class="page-header">
         <button class="btn btn-primary" @click="showCreateModal = true">
           <span class="material-icons">add</span>
-          Create Project
+          {{ $t('projectList.createProject') }}
         </button>
       </div>
 
       <div class="projects-list">
         <div v-if="isLoading" class="loading">
           <span class="material-icons">refresh</span>
-          <p>Loading projects...</p>
+          <p>{{ $t('projectList.loadingProjects') }}</p>
         </div>
 
         <div v-else-if="projects.length === 0" class="empty-state">
           <span class="material-icons">folder_open</span>
-          <h3>No projects yet</h3>
-          <p>Create your first project to get started with managing Docker registries</p>
+          <h3>{{ $t('projectList.noProjectsYet') }}</h3>
+          <p>{{ $t('projectList.startManagingRegistries') }}</p>
           <button class="btn btn-primary" @click="showCreateModal = true">
             <span class="material-icons">add</span>
-            Create Your First Project
+            {{ $t('projectList.createFirstProject') }}
           </button>
         </div>
 
@@ -47,16 +47,16 @@
             <div class="project-stats">
               <div class="stat">
                 <span class="material-icons">storage</span>
-                <span>{{ project.repositoryCount || 0 }} Repositories</span>
+                <span>{{ project.repositoryCount || 0 }} {{ $t('projectList.repositories') }}</span>
               </div>
               <div class="stat">
                 <span class="material-icons">people</span>
-                <span>{{ project.members?.length || 0 }} Members</span>
+                <span>{{ project.members?.length || 0 }} {{ $t('projects.members') }}</span>
               </div>
             </div>
 
             <router-link :to="`/admin/projects/${project.id}`" class="project-link">
-              View Details
+              {{ $t('projectList.viewDetails') }}
               <span class="material-icons">arrow_forward</span>
             </router-link>
           </div>
@@ -67,7 +67,7 @@
       <div v-if="showCreateModal" class="modal-overlay" @click.self="showCreateModal = false">
         <div class="modal">
           <div class="modal-header">
-            <h2>{{ editingProject ? 'Edit Project' : 'Create New Project' }}</h2>
+            <h2>{{ editingProject ? $t('projectList.editProject') : $t('projectList.createNewProject') }}</h2>
             <button class="btn btn-ghost btn-icon" @click="showCreateModal = false">
               <span class="material-icons">close</span>
             </button>
@@ -75,28 +75,28 @@
 
           <form @submit.prevent="saveProject" class="modal-content">
             <div class="form-group">
-              <label for="name">Project Name *</label>
-              <input id="name" type="text" v-model="projectForm.name" placeholder="Enter project name" required />
+              <label for="name">{{ $t('projects.projectName') }} *</label>
+              <input id="name" type="text" v-model="projectForm.name" :placeholder="$t('projectList.projectName')" required />
             </div>
 
             <div class="form-group">
-              <label for="namespace">Namespace *</label>
-              <input id="namespace" type="text" v-model="projectForm.namespace" placeholder="Enter namespace (lowercase letters, numbers, hyphens)" required />
-              <small class="form-help">Namespace can only contain lowercase letters, numbers, and hyphens</small>
+              <label for="namespace">{{ $t('projects.namespace') }} *</label>
+              <input id="namespace" type="text" v-model="projectForm.namespace" :placeholder="$t('projectList.namespacePlaceholder')" required />
+              <small class="form-help">{{ $t('projectList.namespaceHelp') }}</small>
             </div>
 
             <div class="form-group">
-              <label for="description">Description</label>
-              <textarea id="description" v-model="projectForm.description" placeholder="Enter project description"
+              <label for="description">{{ $t('projects.description') }}</label>
+              <textarea id="description" v-model="projectForm.description" :placeholder="$t('projectList.descriptionPlaceholder')"
                 rows="3"></textarea>
             </div>
 
             <div class="modal-actions">
               <button type="button" class="btn btn-ghost" @click="showCreateModal = false">
-                Cancel
+                {{ $t('common.cancel') }}
               </button>
               <button type="submit" class="btn btn-primary" :disabled="isSubmitting">
-                {{ isSubmitting ? 'Saving...' : (editingProject ? 'Update Project' : 'Create Project') }}
+                {{ isSubmitting ? $t('projectList.saving') + '...' : (editingProject ? $t('projectList.updateProject') : $t('projectList.createProject')) }}
               </button>
             </div>
           </form>
@@ -108,9 +108,11 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
 
+const { t } = useI18n()
 const authStore = useAuthStore()
 
 const projects = ref([])
@@ -131,7 +133,7 @@ const fetchProjects = async () => {
 
     const response = await fetch('/api/projects', {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        'Authorization': `Bearer ${localStorage.getItem('idocker_token')}`
       }
     })
 
@@ -162,7 +164,7 @@ const saveProject = async () => {
       method,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        'Authorization': `Bearer ${localStorage.getItem('idocker_token')}`
       },
       body: JSON.stringify(projectForm)
     })
@@ -177,7 +179,7 @@ const saveProject = async () => {
     }
   } catch (error) {
     console.error('Error saving project:', error)
-    alert(`Error: ${error.message}`)
+    alert(`${t('error.loadFailed')}: ${error.message}`)
   } finally {
     isSubmitting.value = false
   }
@@ -192,13 +194,13 @@ const editProject = (project) => {
 }
 
 const deleteProject = async (project) => {
-  if (confirm(`Are you sure you want to delete the project "${project.name}"? This action cannot be undone.`)) {
+  if (confirm(t('projectList.confirmDeleteProject', { name: project.name }))) {
     try {
       const response = await fetch(`/api/projects/${project.id}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        }
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('idocker_token')}`
+      }
       })
 
       if (response.ok) {
@@ -209,7 +211,7 @@ const deleteProject = async (project) => {
       }
     } catch (error) {
       console.error('Error deleting project:', error)
-      alert(`Error: ${error.message}`)
+      alert(`${t('error.loadFailed')}: ${error.message}`)
     }
   }
 }
@@ -310,6 +312,7 @@ onMounted(() => {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   overflow: hidden;
   transition: box-shadow 0.2s;
+  min-width: 350px;
 
   &:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);

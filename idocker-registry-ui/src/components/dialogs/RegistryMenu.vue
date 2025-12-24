@@ -3,7 +3,7 @@
     <div class="modal-overlay" @click.self="$emit('close')">
       <div class="modal">
         <div class="modal-header">
-          <h3 class="modal-title">Registry Settings</h3>
+          <h3 class="modal-title">{{ $t('dialogs.registrySettings.title') }}</h3>
           <button class="btn btn-ghost btn-icon modal-close" @click="$emit('close')">
             <span class="material-icons">close</span>
           </button>
@@ -16,7 +16,7 @@
               :class="{ active: activeTab === 'current' }"
               @click="activeTab = 'current'"
             >
-              Current Registry
+              {{ $t('dialogs.registrySettings.currentRegistry') }}
             </button>
             
             <button
@@ -24,7 +24,7 @@
               :class="{ active: activeTab === 'add' }"
               @click="activeTab = 'add'"
             >
-              Add Registry
+              {{ $t('dialogs.registrySettings.addRegistry') }}
             </button>
             
             <button
@@ -32,65 +32,64 @@
               :class="{ active: activeTab === 'saved' }"
               @click="activeTab = 'saved'"
             >
-              Saved Registries
+              {{ $t('dialogs.registrySettings.savedRegistries') }}
             </button>
           </div>
           
           <!-- Current Registry Tab -->
           <div v-if="activeTab === 'current'" class="tab-content">
             <div class="form-group">
-              <label class="form-label">Registry URL</label>
+              <label class="form-label">{{ $t('dialogs.registrySettings.registryUrl') }}</label>
               <input
                 type="text"
                 class="form-input"
                 v-model="currentRegistryUrl"
-                placeholder="https://registry.example.com"
+                :placeholder="$t('dialogs.registrySettings.registryUrlPlaceholder')"
               />
             </div>
             
             <div class="form-group">
-              <label class="form-label">Registry Name</label>
+              <label class="form-label">{{ $t('dialogs.registrySettings.registryName') }}</label>
               <input
                 type="text"
                 class="form-input"
                 v-model="currentRegistryName"
-                placeholder="Display name for this registry"
+                :placeholder="$t('dialogs.registrySettings.registryNamePlaceholder')"
               />
             </div>
             
             <div class="form-group">
-              <label class="form-label">Pull URL</label>
+              <label class="form-label">{{ $t('dialogs.registrySettings.pullUrl') }}</label>
               <input
                 type="text"
                 class="form-input"
                 v-model="currentPullUrl"
-                placeholder="URL used for docker pull commands"
+                :placeholder="$t('dialogs.registrySettings.pullUrlPlaceholder')"
               />
               <div class="form-hint">
-                This is the URL that will be shown in the docker pull commands.
-                Leave empty to use the registry URL.
+                {{ $t('dialogs.registrySettings.pullUrlHint') }}
               </div>
             </div>
             
             <button class="btn btn-primary" @click="applyCurrentRegistry">
-              Apply Changes
+              {{ $t('dialogs.registrySettings.applyChanges') }}
             </button>
           </div>
           
           <!-- Add Registry Tab -->
           <div v-if="activeTab === 'add'" class="tab-content">
             <div class="form-group">
-              <label class="form-label">Registry URL</label>
+              <label class="form-label">{{ $t('dialogs.registrySettings.registryUrl') }}</label>
               <input
                 type="text"
                 class="form-input"
                 v-model="newRegistryUrl"
-                placeholder="https://registry.example.com"
+                :placeholder="$t('dialogs.registrySettings.registryUrlPlaceholder')"
               />
             </div>
             
             <button class="btn btn-primary" @click="addRegistry">
-              Add Registry
+              {{ $t('dialogs.registrySettings.add') }}
             </button>
           </div>
           
@@ -98,7 +97,7 @@
           <div v-if="activeTab === 'saved'" class="tab-content">
             <div v-if="registryServersList.length === 0" class="empty-state">
               <span class="material-icons">bookmark_border</span>
-              <p>No saved registries</p>
+              <p>{{ $t('dialogs.registrySettings.noSavedRegistries') }}</p>
             </div>
             
             <div v-else class="registry-list">
@@ -114,7 +113,7 @@
                   <button
                     class="btn btn-ghost btn-icon"
                     @click="switchToRegistry(registry)"
-                    title="Switch to this registry"
+                    :title="$t('dialogs.registrySettings.switchToRegistry')"
                   >
                     <span class="material-icons">login</span>
                   </button>
@@ -123,7 +122,7 @@
                     v-if="!isDefaultRegistry(registry)"
                     class="btn btn-ghost btn-icon delete-button"
                     @click="confirmDeleteRegistry(registry)"
-                    title="Remove this registry"
+                    :title="$t('dialogs.registrySettings.removeRegistry')"
                   >
                     <span class="material-icons">delete</span>
                   </button>
@@ -138,7 +137,7 @@
     <!-- Delete confirmation dialog -->
     <ConfirmationDialog
       v-if="showDeleteDialog"
-      title="Remove Registry"
+      :title="$t('dialogs.registrySettings.removeRegistry')"
       :message=registryDeleteMsg
       @confirm="deleteRegistry"
       @cancel="showDeleteDialog = false"
@@ -148,6 +147,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRegistryStore } from '@/stores/registry'
 import { stripHttps } from '@/utils/helpers'
 import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog.vue'
@@ -158,6 +158,7 @@ const emit = defineEmits<{
   notify: [message: string]
 }>()
 
+const { t } = useI18n()
 const registryStore = useRegistryStore()
 
 // Tab management
@@ -199,7 +200,7 @@ watch(
 watch(
   () => registryToDelete.value,
   () => {
-    registryDeleteMsg = `Are you sure you want to delete registry [${registryToDelete.value}]?`
+    registryDeleteMsg = t('dialogs.registrySettings.confirmRemoveRegistry', { name: registryToDelete.value })
   },
   { immediate: true }
 )
@@ -207,7 +208,7 @@ watch(
 // Methods
 const applyCurrentRegistry = () => {
   if (!currentRegistryUrl.value) {
-    emit('notify', 'Please enter a registry URL')
+    emit('notify', t('dialogs.registrySettings.messages.enterRegistryUrl'))
     return
   }
   
@@ -223,19 +224,19 @@ const applyCurrentRegistry = () => {
   
   emit('registryChanged', currentRegistryUrl.value)
   emit('close')
-  emit('notify', 'Registry settings applied')
+  emit('notify', t('dialogs.registrySettings.messages.settingsApplied'))
 }
 
 const addRegistry = () => {
   if (!newRegistryUrl.value) {
-    emit('notify', 'Please enter a registry URL')
+    emit('notify', t('dialogs.registrySettings.messages.enterRegistryUrl'))
     return
   }
   
   registryStore.addRegistryServer(newRegistryUrl.value)
   newRegistryUrl.value = ''
   activeTab.value = 'saved'
-  emit('notify', 'Registry added to your saved list')
+  emit('notify', t('dialogs.registrySettings.messages.registryAdded'))
 }
 
 const isDefaultRegistry = (url: string) => {
@@ -246,7 +247,7 @@ const switchToRegistry = (url: string) => {
   registryStore.setRegistryUrl(url)
   emit('registryChanged', url)
   emit('close')
-  emit('notify', `Switched to registry: ${stripHttps(url)}`)
+  emit('notify', t('dialogs.registrySettings.messages.switchedToRegistry', { name: stripHttps(url) }))
 }
 
 const confirmDeleteRegistry = (url: string) => {
@@ -258,7 +259,7 @@ const confirmDeleteRegistry = (url: string) => {
 const deleteRegistry = () => {
   showDeleteDialog.value = false
   registryStore.removeRegistryServer(registryToDelete.value)
-  emit('notify', `Registry removed: ${stripHttps(registryToDelete.value)}`)
+  emit('notify', t('dialogs.registrySettings.messages.registryRemoved', { name: stripHttps(registryToDelete.value) }))
 }
 </script>
 

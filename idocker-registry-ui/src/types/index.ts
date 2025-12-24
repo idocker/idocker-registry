@@ -146,6 +146,77 @@ export interface TagListOrder {
   secondaryDirection: 'asc' | 'desc'
 }
 
+// Project types
+export interface Project {
+  id: number
+  name: string
+  description?: string
+  namespace?: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+  createdByUsername?: string
+  createdByName?: string
+  memberRole?: 'owner' | 'maintainer' | 'viewer'
+  memberSince?: string
+  memberCount?: number
+  repositoryCount?: number
+}
+
+// 统一API响应类型
+export interface ApiResponse<T = any> {
+  success: boolean
+  message?: string
+  data?: T
+}
+
+export interface ApiError {
+  success: false
+  message: string
+  error?: string
+}
+
+// 分页数据类型
+export interface PaginationMeta {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+  hasNextPage: boolean
+  hasPrevPage: boolean
+}
+
+// 项目分页响应（保持向后兼容）
+export interface ProjectPaginatedResponse extends ApiResponse<{ projects: Project[]; pagination: PaginationMeta }> {}
+
+// 镜像分页响应
+export interface ImagePaginatedResponse extends ApiResponse<{ images: Image[]; pagination: PaginationMeta }> {}
+
+// Image types
+export interface ImageTag {
+  id: number | string
+  name: string
+  digest: string
+  size: number
+  architecture?: string
+  os?: string
+  createdAt?: string
+  pullCommand?: string
+  pushCommand?: string
+}
+
+export interface Image {
+  id: number | string
+  name: string
+  namespace?: string
+  project: string
+  description?: string
+  tags: ImageTag[]
+  size?: number
+  createdAt: string
+  updatedAt?: string
+}
+
 // Theme types
 export interface ThemeColors {
   primaryText: string

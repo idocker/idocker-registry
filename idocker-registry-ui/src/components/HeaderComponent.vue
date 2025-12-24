@@ -8,53 +8,41 @@
       </router-link>
       <VersionNotification />
     </div>
-    
+
     <div class="header-menu">
       <SearchBar @search="handleSearch" />
-      
+
       <!-- 如果已登录，显示用户头像菜单 -->
       <div v-if="isLoggedIn" class="user-menu-container">
-        <button 
-          class="btn btn-ghost user-avatar-btn" 
-          @click="showUserMenu = !showUserMenu" 
-          title="User Menu"
-        >
+        <button class="btn btn-ghost user-avatar-btn" @click="showUserMenu = !showUserMenu" title="User Menu">
           <!-- <img v-if="userAvatarUrl" :src="userAvatarUrl" alt="User Avatar" class="user-avatar" />
           <img v-else :src="idocker" alt="Default Avatar" class="user-avatar" /> -->
           <img :src="idocker" alt="User Avatar" class="user-avatar" />
         </button>
-        
-        <UserMenu
-          v-show="showUserMenu"
-          :user="authStore.user"
-          @close="showUserMenu = false"
-          @action="handleUserMenuAction"
-        />
+
+        <UserMenu v-show="showUserMenu" :user="authStore.user" :showMenu="showUserMenu" @close="showUserMenu = false"
+          @action="handleUserMenuAction" />
       </div>
-      
+
       <!-- 未登录时显示登录按钮 -->
       <router-link v-else to="/admin/login" class="btn btn-ghost btn-icon" title="Management Console">
         <span class="material-icons">admin_panel_settings</span>
       </router-link>
-      
+
       <template v-if="!registryStore.singleRegistry">
         <button class="btn btn-ghost btn-icon" @click="showRegistryMenu = !showRegistryMenu" title="Registry Settings">
           <span class="material-icons">settings</span>
         </button>
-        
-        <RegistryMenu
-          v-show="showRegistryMenu"
-          @close="showRegistryMenu = false"
-          @registry-changed="handleRegistryChanged"
-          @notify="handleNotification"
-        />
+
+        <RegistryMenu v-show="showRegistryMenu" @close="showRegistryMenu = false"
+          @registry-changed="handleRegistryChanged" @notify="handleNotification" />
       </template>
-      
-      <button
-        class="btn btn-ghost btn-icon"
-        @click="toggleTheme"
-        :title="getThemeButtonTitle()"
-      >
+
+      <div>
+        <LanguageSwitcher />
+      </div>
+
+      <button class="btn btn-ghost btn-icon" @click="toggleTheme" :title="getThemeButtonTitle()">
         <span class="material-icons">
           {{ getThemeButtonIcon() }}
         </span>
@@ -68,6 +56,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRegistryStore } from '@/stores/registry'
 import { useAuthStore } from '@/stores/auth'
+import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 import SearchBar from '@/components/SearchBar.vue'
 import VersionNotification from '@/components/VersionNotification.vue'
 import RegistryMenu from '@/components/dialogs/RegistryMenu.vue'
@@ -100,7 +89,7 @@ const isLoggedIn = computed(() => authStore.isAuthenticated)
 // 处理用户菜单项点击
 const handleUserMenuAction = (action: string) => {
   showUserMenu.value = false
-  
+
   switch (action) {
     case 'profile':
       router.push('/admin/profile')
@@ -187,15 +176,16 @@ const getThemeButtonIcon = () => {
 <style lang="scss" scoped>
 @use '@/styles/variables.scss' as *;
 @use '@/styles/mixins.scss' as *;
+
 .app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  
+
   .header-title {
     display: flex;
     align-items: center;
-    
+
     .logo {
       display: flex;
       align-items: center;
@@ -203,7 +193,7 @@ const getThemeButtonIcon = () => {
       font-weight: 500;
       font-size: 1.25rem;
       text-decoration: none;
-      
+
       .material-icons {
         margin-right: 8px;
         font-size: 28px;
@@ -214,34 +204,34 @@ const getThemeButtonIcon = () => {
         height: 56px;
         margin-right: 8px;
       }
-      
+
       &:hover {
         color: var(--header-accent-text);
       }
     }
   }
-  
+
   .header-menu {
     display: flex;
     align-items: center;
     gap: 16px;
     position: relative;
-    
+
     .user-menu-container {
       position: relative;
-      
+
       .user-avatar-btn {
         padding: 8px;
         border-radius: 50%;
         overflow: hidden;
-        
+
         .user-avatar {
           width: 32px;
           height: 32px;
           border-radius: 50%;
           object-fit: cover;
         }
-        
+
         .user-avatar-placeholder {
           font-size: 24px;
         }
@@ -258,13 +248,13 @@ const getThemeButtonIcon = () => {
         span:not(.material-icons) {
           display: none;
         }
-        
+
         .material-icons {
           margin-right: 0;
         }
       }
     }
-    
+
     .header-menu {
       gap: 8px;
     }

@@ -7,9 +7,9 @@
                 <div v-show="showFilters" class="filters-content">
                     <div class="filter-row">
                         <div class="filter-group">
-                            <label for="user-filter">用户</label>
+                            <label for="user-filter">{{ $t('audit.filterUser') }}</label>
                             <select id="user-filter" v-model="filters.userId">
-                                <option value="">所有用户</option>
+                                <option value="">{{ $t('audit.allUsers') }}</option>
                                 <option v-for="user in users" :key="user.id" :value="user.id">
                                     {{ user.username }}
                                 </option>
@@ -17,53 +17,53 @@
                         </div>
 
                         <div class="filter-group">
-                            <label for="action-filter">操作</label>
+                            <label for="action-filter">{{ $t('audit.filterAction') }}</label>
                             <select id="action-filter" v-model="filters.action">
-                                <option value="">所有操作</option>
-                                <option value="login">登录</option>
-                                <option value="create_user">创建用户</option>
-                                <option value="update_user">更新用户</option>
-                                <option value="delete_user">删除用户</option>
-                                <option value="create_project">创建项目</option>
-                                <option value="update_project">更新项目</option>
-                                <option value="delete_project">删除项目</option>
-                                <option value="create">创建资源</option>
-                                <option value="update">更新资源</option>
-                                <option value="delete">删除资源</option>
+                                <option value="">{{ $t('audit.allActions') }}</option>
+                                <option value="login">{{ $t('audit.actionLogin') }}</option>
+                                <option value="create_user">{{ $t('audit.actionCreateUser') }}</option>
+                                <option value="update_user">{{ $t('audit.actionUpdateUser') }}</option>
+                                <option value="delete_user">{{ $t('audit.actionDeleteUser') }}</option>
+                                <option value="create_project">{{ $t('audit.actionCreateProject') }}</option>
+                                <option value="update_project">{{ $t('audit.actionUpdateProject') }}</option>
+                                <option value="delete_project">{{ $t('audit.actionDeleteProject') }}</option>
+                                <option value="create">{{ $t('audit.actionCreate') }}</option>
+                                <option value="update">{{ $t('audit.actionUpdate') }}</option>
+                                <option value="delete">{{ $t('audit.actionDelete') }}</option>
                             </select>
                         </div>
                     </div>
 
                     <div class="filter-row">
                         <div class="filter-group">
-                            <label for="resource-type-filter">资源类型</label>
+                            <label for="resource-type-filter">{{ $t('audit.filterResourceType') }}</label>
                             <select id="resource-type-filter" v-model="filters.resourceType">
-                                <option value="">所有类型</option>
-                                <option value="user">用户</option>
-                                <option value="project">项目</option>
-                                <option value="registry">注册表</option>
-                                <option value="replication_policy">复制策略</option>
-                                <option value="system">系统</option>
+                                <option value="">{{ $t('audit.allTypes') }}</option>
+                                <option value="user">{{ $t('audit.resourceTypeUser') }}</option>
+                                <option value="project">{{ $t('audit.resourceTypeProject') }}</option>
+                                <option value="registry">{{ $t('audit.resourceTypeRegistry') }}</option>
+                                <option value="replication_policy">{{ $t('audit.resourceTypeReplicationPolicy') }}</option>
+                                <option value="system">{{ $t('audit.resourceTypeSystem') }}</option>
                             </select>
                         </div>
 
                         <div class="filter-group">
-                            <label for="date-range-filter">日期范围</label>
+                            <label for="date-range-filter">{{ $t('audit.dateRange') }}</label>
                             <div class="date-range">
                                 <input type="date" id="date-range-filter" v-model="filters.startDate"
-                                    placeholder="开始日期" />
-                                <span>至</span>
-                                <input type="date" v-model="filters.endDate" placeholder="结束日期" />
+                                    :placeholder="$t('audit.startDate')" />
+                                <span>{{ $t('audit.to') }}</span>
+                                <input type="date" v-model="filters.endDate" :placeholder="$t('audit.endDate')" />
                             </div>
                         </div>
                     </div>
 
                     <div class="filter-actions">
                         <button class="btn btn-primary" @click="applyFilters">
-                            应用过滤
+                            {{ $t('audit.applyFilter') }}
                         </button>
                         <button class="btn btn-ghost" @click="resetFilters">
-                            重置
+                            {{ $t('audit.reset') }}
                         </button>
                     </div>
                 </div>
@@ -72,19 +72,19 @@
             <div class="logs-table-container">
                 <div class="table-controls">
                     <div class="table-info">
-                        共 {{ totalLogs }} 条记录
+                        {{ $t('audit.totalRecords', { count: totalLogs }) }}
                     </div>
                     <div class="table-actions">
                         <button class="btn btn-ghost" @click="refreshLogs">
                             <span class="material-icons">refresh</span>
-                            刷新
+                            {{ $t('common.refresh') }}
                         </button>
                         <button class="btn btn-danger" @click="showDeleteDialog = true">
                             <span class="material-icons">delete_sweep</span>
-                            清理日志
+                            {{ $t('audit.cleanupLogs') }}
                         </button>
                         <button class="btn btn-ghost" @click="toggleFilters">
-                            {{ showFilters ? '收起' : '过滤' }}
+                            {{ showFilters ? $t('common.cancel') : $t('audit.filter') }}
                             <span class="material-icons">
                                 {{ showFilters ? 'expand_less' : 'expand_more' }}
                             </span>
@@ -96,13 +96,13 @@
                     <table class="logs-table">
                         <thead>
                             <tr>
-                                <th>时间</th>
-                                <th>用户</th>
-                                <th>操作</th>
-                                <th>资源类型</th>
-                                <th>资源ID</th>
-                                <th>详情</th>
-                                <th>IP地址</th>
+                                <th>{{ $t('audit.time') }}</th>
+                                <th>{{ $t('audit.user') }}</th>
+                                <th>{{ $t('audit.action') }}</th>
+                                <th>{{ $t('audit.resourceType') }}</th>
+                                <th>{{ $t('audit.resourceId') }}</th>
+                                <th>{{ $t('audit.details') }}</th>
+                                <th>{{ $t('audit.ipAddress') }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -110,12 +110,12 @@
                                 <td colspan="7" class="loading-cell">
                                     <div class="loading-indicator">
                                         <span class="material-icons">refresh</span>
-                                        加载中...
+                                        {{ $t('audit.loading') }}
                                     </div>
                                 </td>
                             </tr>
                             <tr v-else-if="logs.length === 0">
-                                <td colspan="7" class="empty-cell">没有找到日志记录</td>
+                                <td colspan="7" class="empty-cell">{{ $t('audit.noLogsFound') }}</td>
                             </tr>
                             <tr v-for="log in logs" :key="log.id">
                                 <td>{{ formatDateTime(log.created_at) }}</td>
@@ -130,7 +130,7 @@
                                 <td>
                                     <button class="btn-link" @click="selectedLog = log; showDetailsDialog = true"
                                         v-if="log.details && Object.keys(log.details).length > 0">
-                                        查看详情
+                                        {{ $t('audit.viewDetails') }}
                                     </button>
                                     <span v-else>-</span>
                                 </td>
@@ -143,14 +143,14 @@
                 <div class="pagination">
                     <button class="btn btn-ghost" @click="currentPage = Math.max(1, currentPage - 1)"
                         :disabled="currentPage === 1">
-                        上一页
+                        {{ $t('audit.previousPage') }}
                     </button>
                     <span class="page-info">
                         {{ currentPage }} / {{ totalPages }}
                     </span>
                     <button class="btn btn-ghost" @click="currentPage = Math.min(totalPages, currentPage + 1)"
                         :disabled="currentPage === totalPages">
-                        下一页
+                        {{ $t('audit.nextPage') }}
                     </button>
                 </div>
             </div>
@@ -159,7 +159,7 @@
             <div v-if="showDetailsDialog" class="dialog-overlay" @click="showDetailsDialog = false">
                 <div class="dialog" @click.stop>
                     <div class="dialog-header">
-                        <h3>日志详情</h3>
+                        <h3>{{ $t('audit.logDetails') }}</h3>
                         <button class="dialog-close" @click="showDetailsDialog = false">
                             <span class="material-icons">close</span>
                         </button>
@@ -168,37 +168,37 @@
                     <div class="dialog-content">
                         <div class="log-details">
                             <div class="detail-item">
-                                <label>时间:</label>
+                                <label>{{ $t('audit.time') }}:</label>
                                 <span>{{ formatDateTime(selectedLog.created_at) }}</span>
                             </div>
                             <div class="detail-item">
-                                <label>用户:</label>
+                                <label>{{ $t('audit.user') }}:</label>
                                 <span>{{ selectedLog.username || '-' }}</span>
                             </div>
                             <div class="detail-item">
-                                <label>操作:</label>
+                                <label>{{ $t('audit.action') }}:</label>
                                 <span>{{ getActionDisplay(selectedLog.action) }}</span>
                             </div>
                             <div class="detail-item">
-                                <label>资源类型:</label>
+                                <label>{{ $t('audit.resourceType') }}:</label>
                                 <span>{{ getResourceTypeDisplay(selectedLog.resource_type) }}</span>
                             </div>
                             <div class="detail-item">
-                                <label>资源ID:</label>
+                                <label>{{ $t('audit.resourceId') }}:</label>
                                 <span>{{ selectedLog.resource_id || '-' }}</span>
                             </div>
                             <div class="detail-item">
-                                <label>IP地址:</label>
+                                <label>{{ $t('audit.ipAddress') }}:</label>
                                 <span>{{ selectedLog.ip_address || '-' }}</span>
                             </div>
                             <div v-if="selectedLog.details" class="detail-item full-width">
-                                <label>详情:</label>
+                                <label>{{ $t('audit.details') }}:</label>
                                 <pre>{{ JSON.stringify(selectedLog.details, null, 2) }}</pre>
                             </div>
                         </div>
 
                         <div class="dialog-actions">
-                            <button class="btn btn-primary" @click="showDetailsDialog = false">关闭</button>
+                            <button class="btn btn-primary" @click="showDetailsDialog = false">{{ $t('common.close') }}</button>
                         </div>
                     </div>
                 </div>
@@ -208,7 +208,7 @@
             <div v-if="showDeleteDialog" class="dialog-overlay" @click="showDeleteDialog = false">
                 <div class="dialog" @click.stop>
                     <div class="dialog-header">
-                        <h3>清理日志</h3>
+                        <h3>{{ $t('audit.cleanupLogs') }}</h3>
                         <button class="dialog-close" @click="showDeleteDialog = false">
                             <span class="material-icons">close</span>
                         </button>
@@ -216,15 +216,15 @@
 
                     <div class="dialog-content">
                         <div class="cleanup-options">
-                            <h4>清理选项</h4>
+                            <h4>{{ $t('audit.cleanupOptions') }}</h4>
 
                             <div class="option">
                                 <label>
                                     <input type="radio" value="by-date" v-model="deleteOption" />
-                                    按日期清理
+                                    {{ $t('audit.cleanupByDate') }}
                                 </label>
                                 <div v-if="deleteOption === 'by-date'" class="option-config">
-                                    <label for="days-old">删除多少天前的日志:</label>
+                                    <label for="days-old">{{ $t('audit.deleteDaysAgo') }}</label>
                                     <input id="days-old" type="number" v-model.number="daysOld" min="1" max="365" />
                                 </div>
                             </div>
@@ -232,16 +232,16 @@
                             <div class="option">
                                 <label>
                                     <input type="radio" value="all" v-model="deleteOption" />
-                                    删除所有日志
+                                    {{ $t('audit.deleteAllLogs') }}
                                 </label>
                             </div>
                         </div>
 
                         <div class="dialog-actions">
-                            <button class="btn btn-ghost" @click="showDeleteDialog = false">取消</button>
+                            <button class="btn btn-ghost" @click="showDeleteDialog = false">{{ $t('common.cancel') }}</button>
                             <button class="btn btn-danger" @click="confirmDelete" :disabled="isDeleting">
-                                <span v-if="isDeleting">删除中...</span>
-                                <span v-else>确认删除</span>
+                                <span v-if="isDeleting">{{ $t('common.deleting') }}...</span>
+                                <span v-else>{{ $t('common.confirm') }} {{ $t('common.delete') }}</span>
                             </button>
                         </div>
                     </div>
@@ -260,9 +260,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
+
+const { t, locale } = useI18n()
 
 // 状态
 const isLoading = ref(false)
@@ -316,33 +319,33 @@ const getActionClass = (action: string) => {
 const getActionDisplay = (action: string) => {
     switch (action) {
         case 'login':
-            return '登录'
+            return t('audit.actionLogin')
         case 'logout':
-            return '退出'
+            return t('audit.actionLogout')
         case 'create_user':
-            return '创建用户'
+            return t('audit.actionCreateUser')
         case 'update_user':
-            return '更新用户'
+            return t('audit.actionUpdateUser')
         case 'delete_user':
-            return '删除用户'
+            return t('audit.actionDeleteUser')
         case 'create_project':
-            return '创建项目'
+            return t('audit.actionCreateProject')
         case 'update_project':
-            return '更新项目'
+            return t('audit.actionUpdateProject')
         case 'delete_project':
-            return '删除项目'
+            return t('audit.actionDeleteProject')
         case 'create':
-            return '创建资源'
+            return t('audit.actionCreate')
         case 'update':
-            return '更新资源'
+            return t('audit.actionUpdate')
         case 'delete':
-            return '删除资源'
+            return t('audit.actionDelete')
         case 'change_password':
-            return '修改密码'
+            return t('audit.actionChangePassword')
         case 'delete_audit_logs':
-            return '删除审计日志'
+            return t('audit.actionDeleteAuditLogs')
         case 'delete_old_logs':
-            return '清理旧日志'
+            return t('audit.actionDeleteOldLogs')
         default:
             return action
     }
@@ -352,15 +355,15 @@ const getActionDisplay = (action: string) => {
 const getResourceTypeDisplay = (resourceType: string) => {
     switch (resourceType) {
         case 'user':
-            return '用户'
+            return t('audit.resourceTypeUser')
         case 'project':
-            return '项目'
+            return t('audit.resourceTypeProject')
         case 'registry':
-            return '注册表'
+            return t('audit.resourceTypeRegistry')
         case 'replication_policy':
-            return '复制策略'
+            return t('audit.resourceTypeReplicationPolicy')
         case 'system':
-            return '系统'
+            return t('audit.resourceTypeSystem')
         default:
             return resourceType || '-'
     }
@@ -369,7 +372,7 @@ const getResourceTypeDisplay = (resourceType: string) => {
 // 格式化日期时间
 const formatDateTime = (dateString: string) => {
     const date = new Date(dateString)
-    return date.toLocaleString('zh-CN', {
+    return date.toLocaleString(locale.value, {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
@@ -403,7 +406,7 @@ const loadLogs = async () => {
         totalPages.value = Math.ceil(totalLogs.value / pageSize.value)
     } catch (error) {
         console.error('Failed to load audit logs:', error)
-        showMessage('加载审计日志失败', 'error')
+        showMessage(t('audit.loadAuditLogsFailed'), 'error')
     } finally {
         isLoading.value = false
     }
@@ -421,6 +424,7 @@ const loadUsers = async () => {
 
 // 刷新日志
 const refreshLogs = () => {
+    showMessage(t('audit.logsRefreshed'), 'info')
     loadLogs()
 }
 
@@ -458,13 +462,13 @@ const confirmDelete = async () => {
             await axios.delete('/api/audit/old', {
                 data: { daysOld: daysOld.value }
             })
-            showMessage(`已删除 ${daysOld.value} 天前的日志`, 'success')
+            showMessage(t('audit.deleteLogsSuccess', { days: daysOld.value }), 'success')
         } else {
             // 删除所有日志
             await axios.delete('/api/audit', {
                 data: filters
             })
-            showMessage('已删除符合条件的日志', 'success')
+            showMessage(t('audit.deleteLogsFilteredSuccess'), 'success')
         }
 
         showDeleteDialog.value = false
@@ -473,7 +477,7 @@ const confirmDelete = async () => {
         loadLogs()
     } catch (error) {
         console.error('Failed to delete audit logs:', error)
-        showMessage('删除日志失败', 'error')
+        showMessage(t('audit.deleteLogsFailed'), 'error')
     } finally {
         isDeleting.value = false
     }

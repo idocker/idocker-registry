@@ -10,7 +10,7 @@
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ stats.projectsCount }}</div>
-              <div class="stat-label">Projects</div>
+              <div class="stat-label">{{ $t('dashboard.projects') }}</div>
             </div>
           </div>
 
@@ -20,7 +20,7 @@
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ stats.repositoriesCount }}</div>
-              <div class="stat-label">Repositories</div>
+              <div class="stat-label">{{ $t('dashboard.repositories') }}</div>
             </div>
           </div>
         </div>
@@ -32,7 +32,7 @@
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ stats.replicationPoliciesCount }}</div>
-              <div class="stat-label">Replication Policies</div>
+              <div class="stat-label">{{ $t('dashboard.replicationPolicies') }}</div>
             </div>
           </div>
 
@@ -42,18 +42,18 @@
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ stats.usersCount }}</div>
-              <div class="stat-label">Users</div>
+              <div class="stat-label">{{ $t('dashboard.users') }}</div>
             </div>
           </div>
         </div>
       </div>
       <div class="dashboard-content">
         <div class="dashboard-section">
-          <h2>Recent Projects</h2>
+          <h2>{{ $t('dashboard.recentProjects') }}</h2>
           <div class="dashboard-list">
             <div v-if="recentProjects.length === 0" class="empty-state">
               <span class="material-icons">folder_open</span>
-              <p>No projects yet</p>
+              <p>{{ $t('dashboard.noProjectsYet') }}</p>
             </div>
             <div v-for="project in recentProjects" :key="project.id" class="list-item">
               <router-link :to="`/admin/projects/${project.id}`" class="list-link">
@@ -70,11 +70,11 @@
         </div>
 
         <div class="dashboard-section">
-          <h2>Recent Repositories</h2>
+          <h2>{{ $t('dashboard.recentRepositories') }}</h2>
           <div class="dashboard-list">
             <div v-if="recentRepositories.length === 0" class="empty-state">
               <span class="material-icons">storage</span>
-              <p>No repositories yet</p>
+              <p>{{ $t('dashboard.noRepositoriesYet') }}</p>
             </div>
             <div v-for="repository in recentRepositories" :key="repository.id" class="list-item">
               <router-link :to="`/admin/repositories/${repository.id}`" class="list-link">
@@ -96,9 +96,11 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
 
+const { t } = useI18n()
 const authStore = useAuthStore()
 
 const stats = ref({

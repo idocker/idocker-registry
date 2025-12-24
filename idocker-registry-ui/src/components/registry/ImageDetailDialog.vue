@@ -2,7 +2,7 @@
   <v-dialog v-model="internalValue" max-width="800px" @click:outside="close">
     <v-card>
       <v-card-title class="text-h6">
-        镜像详情
+        {{ $t('dialogs.imageDetails.title') }}
         <v-spacer></v-spacer>
         <v-btn icon="mdi-close" variant="text" @click="close"></v-btn>
       </v-card-title>
@@ -14,7 +14,7 @@
               <template v-slot:prepend>
                 <v-icon>mdi-image</v-icon>
               </template>
-              <v-list-item-subtitle>镜像名称</v-list-item-subtitle>
+              <v-list-item-subtitle>{{ $t('dialogs.imageDetails.imageName') }}</v-list-item-subtitle>
               <v-list-item-title>{{ imageDetails.name }}</v-list-item-title>
             </v-list-item>
           </v-col>
@@ -23,7 +23,7 @@
               <template v-slot:prepend>
                 <v-icon>mdi-tag</v-icon>
               </template>
-              <v-list-item-subtitle>标签数量</v-list-item-subtitle>
+              <v-list-item-subtitle>{{ $t('dialogs.imageDetails.tagCount') }}</v-list-item-subtitle>
               <v-list-item-title>{{ imageDetails.tagCount }}</v-list-item-title>
             </v-list-item>
           </v-col>
@@ -32,7 +32,7 @@
         <v-divider class="my-2"></v-divider>
 
         <v-list>
-          <v-list-subheader>镜像标签</v-list-subheader>
+          <v-list-subheader>{{ $t('dialogs.imageDetails.imageTags') }}</v-list-subheader>
           <v-list-item
             v-for="tag in imageDetails.tags"
             :key="tag.id"
@@ -45,7 +45,7 @@
               {{ tag.name }}
             </v-list-item-title>
             <v-list-item-subtitle>
-              大小: {{ formatSize(tag.size) }} | {{ tag.digest }}
+              {{ $t('dialogs.imageDetails.tagSize') }}: {{ formatSize(tag.size) }} | {{ tag.digest }}
             </v-list-item-subtitle>
           </v-list-item>
         </v-list>
@@ -53,7 +53,7 @@
 
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn variant="text" @click="close">关闭</v-btn>
+        <v-btn variant="text" @click="close">{{ $t('dialogs.imageDetails.close') }}</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -61,7 +61,10 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import registryService from '@/services/registry.service'
+import { useI18n } from 'vue-i18n'
+import repositoryService from '@/services/repository.service'
+
+const { t } = useI18n()
 
 interface Props {
   modelValue: boolean
@@ -113,7 +116,7 @@ const loadImageDetails = async () => {
   isLoading.value = true
   try {
     // 使用真实API获取镜像详情
-    const response = await registryService.getImageDetails(props.imageId)
+    const response = await repositoryService.getImageDetails(props.imageId)
     if (response.success) {
       const { repository, tags } = response.data
       
@@ -129,13 +132,13 @@ const loadImageDetails = async () => {
         }))
       }
     } else {
-      throw new Error(response.message || '获取镜像详情失败')
+      throw new Error(response.message || t('error.loadFailed'))
     }
   } catch (error) {
     console.error('加载镜像详情失败:', error)
     // 如果API失败，显示错误信息
     imageDetails.value = {
-      name: '加载失败',
+      name: t('dialogs.imageDetails.loadingFailed'),
       tagCount: 0,
       tags: []
     }

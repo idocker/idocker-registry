@@ -10,6 +10,7 @@ import type {
   DockerConfig
 } from '@/types'
 import { useRegistryStore } from '@/stores/registry'
+import { useAuthStore } from '@/stores/auth'
 
 // Cache for API responses
 const responseCache = new Map<string, { response: AxiosResponse; timestamp: number }>()
@@ -55,6 +56,12 @@ class RegistryHttpService {
           config.headers.Authorization = `Bearer ${token}`
         }
         
+        // Add application authentication token for backend API calls
+        const authStore = useAuthStore()
+        if (authStore.token && config.url?.startsWith('/api/')) {
+          config.headers.Authorization = `Bearer ${authStore.token}`
+        }
+        
         return config
       },
       (error) => Promise.reject(error)
@@ -63,6 +70,7 @@ class RegistryHttpService {
     // Response interceptor
     this.axiosInstance.interceptors.response.use(
       (response) => {
+        console.log('response interceptor:', response)
         // Cache successful responses
         const key = this.getCacheKey(response.config)
         responseCache.set(key, {
@@ -73,6 +81,31 @@ class RegistryHttpService {
         return response
       },
       async (error) => {
+        const authStore = useAuthStore()
+        console.log('error interceptor:', error)
+        // Handle application authentication errors (401 for backend API)
+        if (error.response?.status === 401 && error.config?.url?.startsWith('/api/')) {
+          // Clear authentication state
+          authStore.token = ''
+          authStore.user = null
+          localStorage.removeItem('idocker_token')
+          localStorage.removeItem('user_data')
+          delete axios.defaults.headers.common['Authorization']
+          
+          // Show login prompt and redirect to login page
+          authStore.showLoginPrompt = true
+          authStore.loginRedirectPath = window.location.pathname + window.location.search
+          
+          // Redirect to login page
+          if (window.location.pathname !== '/admin/login') {
+            window.location.href = '/admin/login?redirect=' + encodeURIComponent(window.location.pathname + window.location.search)
+          }
+          
+          // Don't retry the request
+          return Promise.reject(this.formatError(error))
+        }
+        
+        // Handle Docker Registry authentication errors
         if (error.response?.status === 401) {
           // Try to handle authentication
           const authHeader = error.response.headers['www-authenticate']
@@ -219,121 +252,6 @@ class RegistryHttpService {
     }
     
     return null
-  }
-
-  // Public methods for API calls
-  async getCatalog(): Promise<CatalogResponse> {
-    // Call backend API instead of direct registry API
-    try {
-      const url = '/api/catalog'
-      const cached = this.getCachedResponse({ method: 'GET', url })
-      
-      if (cached) {
-        return cached.data
-      }
-      
-      const response = await this.axiosInstance.get<CatalogResponse>(url)
-      console.log('Backend catalog response:', response.data)
-      return response.data
-    } catch (error) {
-      console.error('Error fetching catalog from backend:', error)
-      throw this.formatError(error)
-    }
-  }
-
-  async getTags(imageName: string): Promise<TagListResponse> {
-    // Call backend API instead of direct registry API
-    console.log(`Fetching tags for image: ${imageName}`)
-    
-    try {
-      const url = `/api/tags/${encodeURIComponent(imageName)}`
-      
-      // Check cache first
-      const cacheKey = this.getCacheKey({ method: 'GET', url })
-      const cached = responseCache.get(cacheKey)
-      if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) {
-        console.log(`Using cached tags for ${imageName}`)
-        return cached.response.data
-      }
-      
-      const response = await this.axiosInstance.get<TagListResponse>(url)
-      console.log(`Successfully fetched tags for ${imageName}:`, response.data.tags?.length || 0)
-      return response.data
-    } catch (error) {
-      console.error(`Error fetching tags for ${imageName}:`, error.response?.status || error.message)
-      throw this.formatError(error)
-    }
-  }
-
-  async getManifest(imageName: string, tag: string): Promise<DockerManifest> {
-    // Call backend API instead of direct registry API
-    const url = `/api/manifest/${encodeURIComponent(imageName)}/${encodeURIComponent(tag)}`
-    
-    // Check cache first
-    const cached = this.getCachedResponse({ method: 'GET', url })
-    if (cached) {
-      return cached.data
-    }
-    
-    try {
-      const response = await this.axiosInstance.get<DockerManifest>(url, {
-        headers: {
-          'Accept': 'application/vnd.docker.distribution.manifest.v2+json,application/vnd.docker.distribution.manifest.list.v2+json'
-        }
-      })
-      return response.data
-    } catch (error) {
-      throw this.formatError(error)
-    }
-  }
-
-  async getBlob(imageName: string, digest: string): Promise<any> {
-    // Call backend API instead of direct registry API
-    const url = `/api/blobs/${encodeURIComponent(imageName)}/${encodeURIComponent(digest)}`
-    
-    // Check cache first
-    const cached = this.getCachedResponse({ method: 'GET', url })
-    if (cached) {
-      return cached.data
-    }
-    
-    try {
-      const response = await this.axiosInstance.get(url)
-      return response.data
-    } catch (error) {
-      throw this.formatError(error)
-    }
-  }
-
-  async deleteTag(imageName: string, tag: string): Promise<void> {
-    // Call backend API instead of direct registry API
-    const url = `/api/tags/${encodeURIComponent(imageName)}/${encodeURIComponent(tag)}`
-    
-    try {
-      await this.axiosInstance.delete(url)
-      
-      // Remove from cache
-      const key = this.getCacheKey({ method: 'DELETE', url })
-      responseCache.delete(key)
-      
-      // Also invalidate related caches
-      const tagsUrl = `/api/tags/${encodeURIComponent(imageName)}`
-      responseCache.delete(this.getCacheKey({ method: 'GET', url: tagsUrl }))
-      
-      const catalogUrl = '/api/catalog'
-      responseCache.delete(this.getCacheKey({ method: 'GET', url: catalogUrl }))
-    } catch (error) {
-      throw this.formatError(error)
-    }
-  }
-
-  async pingRegistry(): Promise<boolean> {
-    try {
-      await this.axiosInstance.head(`/api/catalog`)
-      return true
-    } catch (error) {
-      return false
-    }
   }
 
   // Generic HTTP methods for backend API calls

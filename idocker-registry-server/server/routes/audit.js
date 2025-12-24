@@ -1,9 +1,9 @@
 /**
- * 审计日志路由模块
- * 
- * 提供审计日志的查询和管理功能
- * 记录系统中的所有重要操作
- * 
+ * Audit Log Routes Module
+ *
+ * Provides audit log query and management functionality
+ * Records all important operations in the system
+ *
  * @author IDocker Registry Team
  * @version 2.0.0
  */
@@ -13,17 +13,18 @@ import { asyncHandler } from '../middleware/errorHandler.js';
 import { requireAdmin } from '../middleware/auth.js';
 import { logger } from '../utils/logger.js';
 import { AuditModel } from '../models/AuditModel.js';
+import { success, error } from '../utils/apiResponse.js';
 
 const router = express.Router();
 const auditModel = new AuditModel();
 
-// 所有审计日志接口都需要管理员权限
+// All audit log endpoints require admin permission
 router.use(requireAdmin);
 
 /**
  * GET /api/audit/logs
- * 获取审计日志列表
- * 支持分页、搜索和过滤
+ * Get audit log list
+ * Supports pagination, search, and filtering
  */
 router.get('/logs', asyncHandler(async (req, res) => {
   const { 
@@ -49,22 +50,16 @@ router.get('/logs', asyncHandler(async (req, res) => {
       endDate
     });
     
-    res.status(200).json({
-      success: true,
-      data: result.data
-    });
+    res.status(200).json(success(result.data));
   } catch (error) {
-    logger.error('获取审计日志时出错:', error);
-    res.status(500).json({
-      success: false,
-      message: '获取审计日志失败'
-    });
+    logger.error('Error getting audit logs:', error);
+    res.status(500).json(error('Failed to get audit logs'));
   }
 }));
 
 /**
  * GET /api/audit/logs/:id
- * 获取特定审计日志的详细信息
+ * Get specific audit log details
  */
 router.get('/logs/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -73,28 +68,19 @@ router.get('/logs/:id', asyncHandler(async (req, res) => {
     const log = await auditModel.getAuditLogById(id);
     
     if (!log) {
-      return res.status(404).json({
-        success: false,
-        message: '审计日志不存在'
-      });
+      return res.status(404).json(error('Audit log not found', 404));
     }
     
-    res.status(200).json({
-      success: true,
-      data: log
-    });
+    res.status(200).json(success(log));
   } catch (error) {
-    logger.error('获取审计日志详情时出错:', error);
-    res.status(500).json({
-      success: false,
-      message: '获取审计日志详情失败'
-    });
+    logger.error('Error getting audit log details:', error);
+    res.status(500).json(error('Failed to get audit log details'));
   }
 }));
 
 /**
  * GET /api/audit/statistics
- * 获取审计日志统计信息
+ * Get audit log statistics
  */
 router.get('/statistics', asyncHandler(async (req, res) => {
   const { days = 30 } = req.query;
@@ -102,38 +88,29 @@ router.get('/statistics', asyncHandler(async (req, res) => {
   try {
     const statistics = await auditModel.getAuditStatistics(parseInt(days));
     
-    res.status(200).json({
-      success: true,
-      data: statistics
-    });
+    res.status(200).json(success(statistics));
   } catch (error) {
-    logger.error('获取审计统计信息时出错:', error);
-    res.status(500).json({
-      success: false,
-      message: '获取审计统计信息失败'
-    });
+    logger.error('Error getting audit statistics:', error);
+    res.status(500).json(error('Failed to get audit statistics'));
   }
+}
 }));
 
 /**
  * DELETE /api/audit/logs/cleanup
- * 清理旧的审计日志
+ * Clean up old audit logs
  */
 router.delete('/logs/cleanup', asyncHandler(async (req, res) => {
-  const { days = 90 } = req.query; // 默认清理90天前的日志
+  const { days = 90 } = req.query; // Default to cleaning logs from 90 days ago
   
   try {
     const result = await auditModel.cleanupOldLogs(parseInt(days));
     
     if (result.deletedCount === 0) {
-      return res.status(200).json({
-        success: true,
-        message: '没有需要清理的日志',
-        data: result
-      });
+      return res.status(200).json(success({ ...result, message: 'No logs need to be cleaned' }, 'No logs need to be cleaned'));
     }
     
-    // 记录清理操作
+    // Log cleanup operation
     await auditModel.createAuditLog({
       user_id: req.user.id,
       action: 'CLEANUP_LOGS',
@@ -148,59 +125,41 @@ router.delete('/logs/cleanup', asyncHandler(async (req, res) => {
       user_agent: req.headers['user-agent']
     });
     
-    res.status(200).json({
-      success: true,
-      message: '审计日志清理完成',
-      data: result
-    });
+    res.status(200).json(success(result, 'Audit log cleanup completed'));
   } catch (error) {
-    logger.error('清理审计日志时出错:', error);
-    res.status(500).json({
-      success: false,
-      message: '清理审计日志失败'
-    });
+    logger.error('Error cleaning up audit logs:', error);
+    res.status(500).json(error('Failed to clean up audit logs'));
   }
+}
 }));
 
 /**
  * GET /api/audit/actions
- * 获取所有可用的操作类型
+ * Get all available action types
  */
 router.get('/actions', asyncHandler(async (req, res) => {
   try {
     const actions = await auditModel.getAvailableActions();
     
-    res.status(200).json({
-      success: true,
-      data: actions
-    });
+    res.status(200).json(success(actions));
   } catch (error) {
-    logger.error('获取操作类型列表时出错:', error);
-    res.status(500).json({
-      success: false,
-      message: '获取操作类型列表失败'
-    });
+    logger.error('Error getting action type list:', error);
+    res.status(500).json(error('Failed to get action type list'));
   }
 }));
 
 /**
  * GET /api/audit/resource-types
- * 获取所有可用的资源类型
+ * Get all available resource types
  */
 router.get('/resource-types', asyncHandler(async (req, res) => {
   try {
     const resourceTypes = await auditModel.getAvailableResourceTypes();
     
-    res.status(200).json({
-      success: true,
-      data: resourceTypes
-    });
+    res.status(200).json(success(resourceTypes));
   } catch (error) {
-    logger.error('获取资源类型列表时出错:', error);
-    res.status(500).json({
-      success: false,
-      message: '获取资源类型列表失败'
-    });
+    logger.error('Error getting resource type list:', error);
+    res.status(500).json(error('Failed to get resource type list'));
   }
 }));
 
@@ -227,7 +186,7 @@ router.post('/export', asyncHandler(async (req, res) => {
       endDate
     });
     
-    // 记录导出操作
+    // Log export operation
     await auditModel.createAuditLog({
       user_id: req.user.id,
       action: 'EXPORT_LOGS',
@@ -242,50 +201,46 @@ router.post('/export', asyncHandler(async (req, res) => {
       user_agent: req.headers['user-agent']
     });
     
-    // 设置响应头
+    // Set response headers
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     res.setHeader('Content-Disposition', `attachment; filename=audit-logs-${timestamp}.${format}`);
     
-    // 根据请求的格式返回数据
+    // Return data in requested format
     if (format === 'csv') {
-      // 转换为CSV格式
+      // Convert to CSV format
       const csv = convertToCSV(logs);
       res.setHeader('Content-Type', 'text/csv');
       res.status(200).send(csv);
     } else {
-      // 默认返回JSON格式
+      // Default to JSON format
       res.setHeader('Content-Type', 'application/json');
-      res.status(200).json({
-        success: true,
-        data: logs,
+      res.status(200).json(success({
+        logs,
         meta: {
           count: logs.length,
           filters: { action, resourceType, userId, startDate, endDate },
           exportTime: new Date().toISOString()
         }
-      });
+      }));
     }
   } catch (error) {
-    logger.error('导出审计日志时出错:', error);
-    res.status(500).json({
-      success: false,
-      message: '导出审计日志失败'
-    });
+    logger.error('Error exporting audit logs:', error);
+    res.status(500).json(error('Failed to export audit logs'));
   }
 }));
 
 /**
- * 将日志数组转换为CSV格式
+ * Convert log array to CSV format
  */
 function convertToCSV(logs) {
   if (logs.length === 0) return '';
   
-  // 定义CSV列名
+  // Define CSV column names
   const headers = [
-    'ID', '时间', '用户', '邮箱', '操作', '资源类型', '资源ID', 'IP地址', '用户代理', '详情'
+    'ID', 'Time', 'User', 'Email', 'Action', 'Resource Type', 'Resource ID', 'IP Address', 'User Agent', 'Details'
   ];
   
-  // 将每条日志转换为CSV行
+  // Convert each log to CSV row
   const rows = logs.map(log => [
     log.id,
     log.created_at,
@@ -299,7 +254,7 @@ function convertToCSV(logs) {
     log.details ? `"${JSON.stringify(log.details).replace(/"/g, '""')}"` : ''
   ]);
   
-  // 合并头部和数据行
+  // Merge headers and data rows
   return [headers, ...rows].map(row => row.join(',')).join('\n');
 }
 

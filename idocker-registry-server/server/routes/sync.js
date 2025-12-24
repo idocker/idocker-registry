@@ -1,10 +1,10 @@
 /**
- * Docker Registry 同步路由模块
- * 
- * 提供Docker Registry数据同步的API接口
- * 只有管理员可以执行同步操作
- * 
- * @author IDocker Registry Team
+ * Docker Repository Sync Routes Module
+ *
+ * Provides API interfaces for Docker Repository data synchronization
+ * Only administrators can perform sync operations
+ *
+ * @author IDocker Repository Team
  * @version 2.0.0
  */
 
@@ -12,58 +12,53 @@ import express from 'express';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { requireAdmin } from '../middleware/auth.js';
 import { logger } from '../utils/logger.js';
-import { dbPaginate } from '../utils/dbHelper.js';
-import { getDb } from '../config/database.js';
-import registrySyncService from '../services/registrySyncService.js';
+import repositorySyncService from '../services/repositorySyncService.js';
+import { AuthModel } from '../models/AuthModel.js';
+import { success, error } from '../utils/apiResponse.js';
 
 const router = express.Router();
+const authModel = new AuthModel();
 
-// 所有同步接口都需要管理员权限
+// All sync endpoints require admin permission
 router.use(requireAdmin);
 
 /**
  * GET /api/sync/status
- * 获取同步状态信息
+ * Get sync status information
  */
 router.get('/status', asyncHandler(async (req, res) => {
   try {
-    const status = await registrySyncService.getSyncStatus();
+    const status = await repositorySyncService.getSyncStatus();
     
-    res.status(200).json({
-      success: true,
-      data: status
-    });
+    res.status(200).json(success(status));
   } catch (error) {
-    logger.error('获取同步状态失败:', error);
-    res.status(500).json({
-      success: false,
-      message: '获取同步状态失败'
-    });
+    logger.error('Failed to get sync status:', error);
+    res.status(500).json(error('Failed to get sync status'));
   }
 }));
 
 /**
  * POST /api/sync/all
- * 同步所有仓库数据
+ * Sync all repository data
  */
 router.post('/all', asyncHandler(async (req, res) => {
   try {
     const { stopOnError = false } = req.body;
     
-    logger.info(`管理员 ${req.user.username} 开始执行全量同步...`);
+    logger.info(`Admin ${req.user.username} starting full sync...`);
     
-    // 记录同步开始
-    await registrySyncService.logSync({
+    // Log sync start
+    await repositorySyncService.logSync({
       type: 'full',
       status: 'started',
       userId: req.user.id,
       details: { stopOnError }
     });
     
-    const result = await registrySyncService.syncAllRepositories({ stopOnError });
+    const result = await repositorySyncService.syncAllRepositories({ stopOnError });
     
     // 记录同步完成
-    await registrySyncService.logSync({
+    await repositorySyncService.logSync({
       type: 'full',
       status: result.success ? 'completed' : 'failed',
       userId: req.user.id,
@@ -73,18 +68,14 @@ router.post('/all', asyncHandler(async (req, res) => {
       details: result
     });
     
-    logger.info(`全量同步完成: ${JSON.stringify(result)}`);
+    logger.info(`Full sync completed: ${JSON.stringify(result)}`);
     
-    res.status(200).json({
-      success: true,
-      message: '同步完成',
-      data: result
-    });
+    res.status(200).json(success(result, 'Sync completed'));
   } catch (error) {
-    logger.error('全量同步失败:', error);
+    logger.error('Full sync failed:', error);
     
-    // 记录同步失败
-    await registrySyncService.logSync({
+    // Log sync failure
+    await repositorySyncService.logSync({
       type: 'full',
       status: 'failed',
       userId: req.user.id,
@@ -92,26 +83,23 @@ router.post('/all', asyncHandler(async (req, res) => {
       details: { error: error.message }
     });
     
-    res.status(500).json({
-      success: false,
-      message: `同步失败: ${error.message}`
-    });
+    res.status(500).json(error(`Sync failed: ${error.message}`));
   }
 }));
 
 /**
  * POST /api/sync/project/:projectId
- * 同步指定项目的仓库数据
+ * Sync repository data for a specific project
  */
 router.post('/project/:projectId', asyncHandler(async (req, res) => {
   try {
     const { projectId } = req.params;
     const { stopOnError = false } = req.body;
     
-    logger.info(`管理员 ${req.user.username} 开始同步项目 ${projectId} 的仓库数据...`);
+    logger.info(`Admin ${req.user.username} starting sync for project ${projectId}...`);
     
-    // 记录同步开始
-    await registrySyncService.logSync({
+    // Log sync start
+    await repositorySyncService.logSync({
       type: 'project',
       projectId: parseInt(projectId),
       status: 'started',
@@ -119,10 +107,10 @@ router.post('/project/:projectId', asyncHandler(async (req, res) => {
       details: { stopOnError }
     });
     
-    const result = await registrySyncService.syncProjectRepositories(parseInt(projectId), { stopOnError });
+    const result = await repositorySyncService.syncProjectRepositories(parseInt(projectId), { stopOnError });
     
-    // 记录同步完成
-    await registrySyncService.logSync({
+    // Log sync completion
+    await repositorySyncService.logSync({
       type: 'project',
       projectId: parseInt(projectId),
       status: result.success ? 'completed' : 'failed',
@@ -133,18 +121,14 @@ router.post('/project/:projectId', asyncHandler(async (req, res) => {
       details: result
     });
     
-    logger.info(`项目同步完成: ${JSON.stringify(result)}`);
+    logger.info(`Project sync completed: ${JSON.stringify(result)}`);
     
-    res.status(200).json({
-      success: true,
-      message: '项目同步完成',
-      data: result
-    });
+    res.status(200).json(success(result, 'Project sync completed'));
   } catch (error) {
-    logger.error('项目同步失败:', error);
+    logger.error('Project sync failed:', error);
     
-    // 记录同步失败
-    await registrySyncService.logSync({
+    // Log sync failure
+    await repositorySyncService.logSync({
       type: 'project',
       projectId: parseInt(req.params.projectId),
       status: 'failed',
@@ -153,25 +137,21 @@ router.post('/project/:projectId', asyncHandler(async (req, res) => {
       details: { error: error.message }
     });
     
-    res.status(500).json({
-      success: false,
-      message: `项目同步失败: ${error.message}`
-    });
+    res.status(500).json(error(`Project sync failed: ${error.message}`));
   }
 }));
 
 /**
  * GET /api/sync/logs
- * 获取同步日志列表
+ * Get sync log list
  */
 router.get('/logs', asyncHandler(async (req, res) => {
   try {
     const { page = 1, limit = 20, type = '' } = req.query;
-    
-    const db = await getDb();
-    
+
+    // 使用authModel的all方法获取同步日志
     let query = `
-      SELECT 
+      SELECT
         sl.*,
         p.name as project_name,
         u.username as user_name
@@ -181,29 +161,23 @@ router.get('/logs', asyncHandler(async (req, res) => {
       WHERE 1=1
     `;
     const params = [];
-    
+
     if (type) {
       query += ' AND sl.sync_type = ?';
       params.push(type);
     }
-    
+
     query += ' ORDER BY sl.created_at DESC';
-    
-    const result = await dbPaginate(query, params, parseInt(page), parseInt(limit));
-    
-    res.status(200).json({
-      success: true,
-      data: {
-        logs: result.items,
-        pagination: result.pagination
-      }
-    });
+
+    const result = await authModel.paginate(query, params, parseInt(page), parseInt(limit));
+
+    res.status(200).json(success({
+      logs: result.data,
+      pagination: result.pagination
+    }));
   } catch (error) {
-    logger.error('获取同步日志失败:', error);
-    res.status(500).json({
-      success: false,
-      message: '获取同步日志失败'
-    });
+    logger.error('Failed to get sync logs:', error);
+    res.status(500).json(error('Failed to get sync logs'));
   }
 }));
 

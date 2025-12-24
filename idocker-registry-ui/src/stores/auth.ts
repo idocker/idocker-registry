@@ -3,7 +3,7 @@ import axios from 'axios'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    token: localStorage.getItem('auth_token') || '',
+    token: localStorage.getItem('idocker_token') || '',
     user: JSON.parse(localStorage.getItem('user_data') || 'null'),
     isLoading: false,
     error: null as string | null,
@@ -34,7 +34,7 @@ export const useAuthStore = defineStore('auth', {
         this.token = token
         this.user = user
         
-        localStorage.setItem('auth_token', token)
+        localStorage.setItem('idocker_token', token)
         localStorage.setItem('user_data', JSON.stringify(user))
         
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
@@ -59,7 +59,7 @@ export const useAuthStore = defineStore('auth', {
         this.token = ''
         this.user = null
         
-        localStorage.removeItem('auth_token')
+        localStorage.removeItem('idocker_token')
         localStorage.removeItem('user_data')
         
         delete axios.defaults.headers.common['Authorization']

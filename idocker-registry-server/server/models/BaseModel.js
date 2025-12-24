@@ -139,9 +139,15 @@ export class BaseModel {
     const placeholders = keys.map(() => '?').join(', ');
     
     const sql = `INSERT INTO ${this.tableName} (${keys.join(', ')}) VALUES (${placeholders})`;
-    const result = await this.run(sql, values);
-    
-    return { ...data, id: result.lastID };
+    logger.info(`create:${sql} ::: ${JSON.stringify(values)}`);
+    try {
+      const result = await this.run(sql, values);
+      logger.info(`create:${JSON.stringify(result)}`);
+      return { ...data, id: result.lastID };
+    } catch (error) {
+      logger.error(`创建记录错误 [${this.tableName}.create]:`, error);
+      throw error;
+    }
   }
 
   /**

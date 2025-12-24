@@ -5,7 +5,7 @@
       type="text"
       class="search-input"
       v-model="searchQuery"
-      placeholder="Search repositories..."
+      :placeholder="$t('searchBar.placeholder')"
       @keyup.enter="handleSearch"
     />
   </div>
@@ -13,11 +13,13 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const emit = defineEmits<{
   search: [query: string]
 }>()
 
+const { t } = useI18n()
 const searchQuery = ref('')
 
 // Debounce search input

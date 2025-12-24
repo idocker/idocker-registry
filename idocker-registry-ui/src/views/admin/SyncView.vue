@@ -2,15 +2,15 @@
   <ManagementLayout>
     <div class="sync-container">
       <div class="page-header">
-        <h1>Docker Registry 同步</h1>
+        <h1>Docker Registry {{ $t('sync.title') }}</h1>
         <div class="header-actions">
           <button class="btn btn-ghost" @click="refreshStatus">
             <span class="material-icons">refresh</span>
-            刷新状态
+            {{ $t('sync.refreshStatus') }}
           </button>
           <button class="btn btn-primary" @click="startFullSync" :disabled="isSyncing">
             <span class="material-icons">sync</span>
-            开始全量同步
+            {{ $t('sync.startFullSync') }}
           </button>
         </div>
       </div>
@@ -23,8 +23,8 @@
               <span class="material-icons">{{ statusIcon === 'connected' ? 'check_circle' : 'error' }}</span>
             </div>
             <div class="status-info">
-              <div class="status-label">Registry 连接状态</div>
-              <div class="status-value">{{ syncStatus.registryStatus === 'connected' ? '已连接' : '未连接' }}</div>
+              <div class="status-label">{{ $t('sync.registryConnectionStatus') }}</div>
+              <div class="status-value">{{ syncStatus.registryStatus === 'connected' ? $t('sync.connected') : $t('sync.disconnected') }}</div>
               <div class="status-detail">{{ syncStatus.registryUrl }}</div>
             </div>
           </div>
@@ -32,24 +32,24 @@
           <div class="stats-grid">
             <div class="stat-item">
               <div class="stat-number">{{ syncStatus.projectCount }}</div>
-              <div class="stat-label">项目数量</div>
+              <div class="stat-label">{{ $t('sync.projectCount') }}</div>
             </div>
             <div class="stat-item">
               <div class="stat-number">{{ syncStatus.repositoryCount }}</div>
-              <div class="stat-label">仓库数量</div>
+              <div class="stat-label">{{ $t('sync.repositoryCount') }}</div>
             </div>
             <div class="stat-item">
               <div class="stat-number">{{ syncStatus.tagCount }}</div>
-              <div class="stat-label">镜像标签</div>
+              <div class="stat-label">{{ $t('sync.imageTagCount') }}</div>
             </div>
           </div>
 
           <div class="last-sync" v-if="syncStatus.lastSync">
-            <div class="sync-label">最后同步</div>
+            <div class="sync-label">{{ $t('sync.lastSync') }}</div>
             <div class="sync-info">
               <span>{{ formatSyncType(syncStatus.lastSync.type) }}</span>
               <span class="sync-status" :class="syncStatus.lastSync.status">
-                {{ syncStatus.lastSync.status === 'completed' ? '成功' : '失败' }}
+                {{ syncStatus.lastSync.status === 'completed' ? $t('sync.success') : $t('sync.failed') }}
               </span>
               <span>{{ formatDate(syncStatus.lastSync.createdAt) }}</span>
             </div>
@@ -60,7 +60,7 @@
       <!-- 同步控制 -->
       <div class="sync-controls">
         <div class="control-section">
-          <h3>同步操作</h3>
+          <h3>{{ $t('sync.syncOperations') }}</h3>
           <div class="control-buttons">
             <button 
               class="btn btn-primary" 
@@ -68,23 +68,23 @@
               :disabled="isSyncing || syncStatus.registryStatus !== 'connected'"
             >
               <span class="material-icons">sync</span>
-              {{ isSyncing ? '同步中...' : '全量同步' }}
+              {{ isSyncing ? $t('sync.syncInProgress') : $t('sync.fullSync') }}
             </button>
             
             <div class="sync-options">
               <label class="checkbox-label">
                 <input type="checkbox" v-model="syncOptions.stopOnError" />
-                遇到错误时停止
+                {{ $t('sync.stopOnErrorOption') }}
               </label>
             </div>
           </div>
         </div>
 
         <div class="control-section">
-          <h3>项目同步</h3>
+          <h3>{{ $t('sync.projectSyncOption') }}</h3>
           <div class="project-selector">
             <select v-model="selectedProjectId" class="project-select">
-              <option value="">选择项目...</option>
+              <option value="">{{ $t('sync.selectProject') }}</option>
               <option v-for="project in projects" :key="project.id" :value="project.id">
                 {{ project.name }}
               </option>
@@ -94,7 +94,7 @@
               @click="startProjectSync" 
               :disabled="!selectedProjectId || isSyncing || syncStatus.registryStatus !== 'connected'"
             >
-              同步该项目
+              {{ $t('sync.syncThisProject') }}
             </button>
           </div>
         </div>
@@ -103,7 +103,7 @@
       <!-- 同步日志 -->
       <div class="sync-logs">
         <div class="logs-header">
-          <h3>同步日志</h3>
+          <h3>{{ $t('sync.syncLogs') }}</h3>
           <button class="btn btn-ghost" @click="refreshLogs">
             <span class="material-icons">refresh</span>
           </button>
@@ -113,14 +113,14 @@
           <table>
             <thead>
               <tr>
-                <th>时间</th>
-                <th>类型</th>
-                <th>项目</th>
-                <th>状态</th>
-                <th>处理数量</th>
-                <th>错误数量</th>
-                <th>耗时</th>
-                <th>操作人</th>
+                <th>{{ $t('sync.time') }}</th>
+                <th>{{ $t('sync.type') }}</th>
+                <th>{{ $t('sync.project') }}</th>
+                <th>{{ $t('sync.status') }}</th>
+                <th>{{ $t('sync.processedCountHeader') }}</th>
+                <th>{{ $t('sync.errorCountHeader') }}</th>
+                <th>{{ $t('sync.duration') }}</th>
+                <th>{{ $t('sync.operator') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -128,12 +128,12 @@
                 <td colspan="8" class="loading-cell">
                   <div class="loading-indicator">
                     <span class="material-icons">refresh</span>
-                    加载中...
+                    {{ $t('sync.loading') }}
                   </div>
                 </td>
               </tr>
               <tr v-else-if="syncLogs.length === 0">
-                <td colspan="8" class="empty-cell">暂无同步日志</td>
+                <td colspan="8" class="empty-cell">{{ $t('sync.noSyncLogs') }}</td>
               </tr>
               <tr v-for="log in syncLogs" :key="log.id" class="log-row">
                 <td>{{ formatDate(log.created_at) }}</td>
@@ -142,16 +142,16 @@
                     {{ formatSyncType(log.sync_type) }}
                   </span>
                 </td>
-                <td>{{ log.project_name || '全部' }}</td>
+                <td>{{ log.project_name || $t('sync.fullSync') }}</td>
                 <td>
                   <span class="status-badge" :class="log.status">
-                    {{ log.status === 'completed' ? '成功' : log.status === 'failed' ? '失败' : '进行中' }}
+                    {{ log.status === 'completed' ? $t('sync.success') : log.status === 'failed' ? $t('sync.failed') : $t('sync.inProgress') }}
                   </span>
                 </td>
                 <td>{{ log.processed_count || 0 }}</td>
                 <td>{{ log.error_count || 0 }}</td>
                 <td>{{ log.duration ? `${log.duration}ms` : '-' }}</td>
-                <td>{{ log.user_name || '系统' }}</td>
+                <td>{{ log.user_name || $t('sync.system') }}</td>
               </tr>
             </tbody>
           </table>
@@ -163,7 +163,7 @@
             @click="changeLogPage(logsPagination.page - 1)"
             :disabled="logsPagination.page === 1"
           >
-            上一页
+            {{ $t('sync.previousPage') }}
           </button>
           <span class="page-info">
             {{ logsPagination.page }} / {{ logsPagination.totalPages }}
@@ -173,7 +173,7 @@
             @click="changeLogPage(logsPagination.page + 1)"
             :disabled="logsPagination.page === logsPagination.totalPages"
           >
-            下一页
+            {{ $t('sync.nextPage') }}
           </button>
         </div>
       </div>
@@ -191,9 +191,11 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
 
+const { t } = useI18n()
 const authStore = useAuthStore()
 
 // 状态
@@ -242,11 +244,11 @@ const fetchSyncStatus = async () => {
       const data = await response.json()
       syncStatus.value = data.data
     } else {
-      throw new Error('获取同步状态失败')
+      throw new Error(t('sync.fetchSyncStatusFailed'))
     }
   } catch (error) {
     console.error('获取同步状态失败:', error)
-    showMessage('获取同步状态失败', 'error')
+    showMessage(t('sync.fetchSyncStatusFailed'), 'error')
   }
 }
 
@@ -281,11 +283,11 @@ const fetchSyncLogs = async (page = 1) => {
       syncLogs.value = data.data.logs || []
       logsPagination.value = data.data.pagination
     } else {
-      throw new Error('获取同步日志失败')
+      throw new Error(t('sync.fetchSyncLogsFailed'))
     }
   } catch (error) {
     console.error('获取同步日志失败:', error)
-    showMessage('获取同步日志失败', 'error')
+    showMessage(t('sync.fetchSyncLogsFailed'), 'error')
   } finally {
     logsLoading.value = false
   }
@@ -294,7 +296,7 @@ const fetchSyncLogs = async (page = 1) => {
 const startFullSync = async () => {
   try {
     isSyncing.value = true
-    showMessage('开始全量同步...', 'info')
+    showMessage(t('sync.fullSyncStarting'), 'info')
     
     const response = await fetch('/api/sync/all', {
       method: 'POST',
@@ -307,16 +309,16 @@ const startFullSync = async () => {
     
     if (response.ok) {
       const data = await response.json()
-      showMessage(`同步完成: ${data.message}`, 'success')
+      showMessage(t('sync.fullSync') + t('sync.syncCompletedSuffix') + ` ${data.message}`, 'success')
       await fetchSyncStatus()
       await fetchSyncLogs()
     } else {
       const errorData = await response.json()
-      throw new Error(errorData.message || '同步失败')
+      throw new Error(errorData.message || t('sync.syncFailed'))
     }
   } catch (error) {
     console.error('全量同步失败:', error)
-    showMessage(`同步失败: ${error.message}`, 'error')
+    showMessage(`${t('sync.fullSync')}: ${error.message}`, 'error')
   } finally {
     isSyncing.value = false
   }
@@ -324,13 +326,13 @@ const startFullSync = async () => {
 
 const startProjectSync = async () => {
   if (!selectedProjectId.value) {
-    showMessage('请选择项目', 'error')
+    showMessage(t('sync.pleaseSelectProject'), 'error')
     return
   }
 
   try {
     isSyncing.value = true
-    showMessage(`开始同步项目 ${selectedProjectId.value}...`, 'info')
+    showMessage(`${t('sync.syncThisProjectPrefix')} ${selectedProjectId.value}...`, 'info')
     
     const response = await fetch(`/api/sync/project/${selectedProjectId.value}`, {
       method: 'POST',
@@ -343,16 +345,16 @@ const startProjectSync = async () => {
     
     if (response.ok) {
       const data = await response.json()
-      showMessage(`项目同步完成: ${data.message}`, 'success')
+      showMessage(t('sync.projectSyncCompleted') + ` ${data.message}`, 'success')
       await fetchSyncStatus()
       await fetchSyncLogs()
     } else {
       const errorData = await response.json()
-      throw new Error(errorData.message || '项目同步失败')
+      throw new Error(errorData.message || t('sync.projectSyncFailed'))
     }
   } catch (error) {
     console.error('项目同步失败:', error)
-    showMessage(`项目同步失败: ${error.message}`, 'error')
+    showMessage(`${t('sync.projectSync')}: ${error.message}`, 'error')
   } finally {
     isSyncing.value = false
   }
@@ -360,12 +362,12 @@ const startProjectSync = async () => {
 
 const refreshStatus = () => {
   fetchSyncStatus()
-  showMessage('状态已刷新', 'info')
+  showMessage(t('sync.syncStatusRefreshed'), 'info')
 }
 
 const refreshLogs = () => {
   fetchSyncLogs(logsPagination.value.page)
-  showMessage('日志已刷新', 'info')
+  showMessage(t('sync.syncLogsRefreshed'), 'info')
 }
 
 const changeLogPage = (page) => {
@@ -375,8 +377,8 @@ const changeLogPage = (page) => {
 
 const formatSyncType = (type) => {
   const types = {
-    'full': '全量同步',
-    'project': '项目同步'
+    'full': t('sync.fullSync'),
+    'project': t('sync.projectSync')
   }
   return types[type] || type
 }

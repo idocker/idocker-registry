@@ -1,43 +1,43 @@
 <template>
   <div class="nav-sidebar">
     <div class="nav-header">
-      <h3>管理中心</h3>
+      <h3>{{ $t('managementLayout.managementCenter') }}</h3>
     </div>
     
     <div class="nav-menu">
       <div class="nav-section">
-        <div class="nav-section-title">个人设置</div>
+        <div class="nav-section-title">{{ $t('managementLayout.personalSettings') }}</div>
         <router-link to="/admin/profile" class="nav-item" :class="{ active: isActive('/admin/profile') }">
           <span class="material-icons">person</span>
-          <span>基本信息</span>
+          <span>{{ $t('managementLayout.basicInfo') }}</span>
         </router-link>
         <router-link to="/admin/password" class="nav-item" :class="{ active: isActive('/admin/password') }">
           <span class="material-icons">lock</span>
-          <span>修改密码</span>
+          <span>{{ $t('managementLayout.changePassword') }}</span>
         </router-link>
       </div>
       
       <div class="nav-section">
-        <div class="nav-section-title">系统管理</div>
+        <div class="nav-section-title">{{ $t('managementLayout.systemManagement') }}</div>
         <router-link to="/admin/dashboard" class="nav-item" :class="{ active: isActive('/admin/dashboard') }">
           <span class="material-icons">dashboard</span>
-          <span>仪表盘</span>
+          <span>{{ $t('nav.dashboard') }}</span>
         </router-link>
         <router-link to="/admin/projects" class="nav-item" :class="{ active: isActive('/admin/projects') }">
           <span class="material-icons">folder</span>
-          <span>项目管理</span>
+          <span>{{ $t('managementLayout.projectManagement') }}</span>
         </router-link>
         <router-link v-if="user && user.role === 'admin'" to="/admin/users" class="nav-item" :class="{ active: isActive('/admin/users') }">
           <span class="material-icons">people</span>
-          <span>用户管理</span>
+          <span>{{ $t('managementLayout.userManagement') }}</span>
         </router-link>
         <router-link v-if="user && user.role === 'admin'" to="/admin/audit" class="nav-item" :class="{ active: isActive('/admin/audit') }">
           <span class="material-icons">history</span>
-          <span>审计日志</span>
+          <span>{{ $t('nav.audit') }}</span>
         </router-link>
         <router-link v-if="user && user.role === 'admin'" to="/admin/sync" class="nav-item" :class="{ active: isActive('/admin/sync') }">
           <span class="material-icons">sync</span>
-          <span>仓库同步</span>
+          <span>{{ $t('managementLayout.warehouseSync') }}</span>
         </router-link>
       </div>
     </div>
@@ -48,9 +48,11 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useI18n } from 'vue-i18n'
 
 const route = useRoute()
 const authStore = useAuthStore()
+const { t } = useI18n()
 
 const user = computed(() => authStore.user)
 

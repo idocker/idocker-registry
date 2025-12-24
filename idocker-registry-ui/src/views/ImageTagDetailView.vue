@@ -4,7 +4,7 @@
 
     <v-card v-if="tagDetails">
       <v-card-title>
-        标签详情
+        {{ $t('images.tagDetails') }}
         <v-spacer></v-spacer>
         <v-btn
           color="primary"
@@ -12,7 +12,7 @@
           variant="text"
           @click="goBack"
         >
-          返回
+          {{ $t('common.back') }}
         </v-btn>
       </v-card-title>
 
@@ -23,7 +23,7 @@
               <template v-slot:prepend>
                 <v-icon>mdi-tag</v-icon>
               </template>
-              <v-list-item-subtitle>标签名称</v-list-item-subtitle>
+              <v-list-item-subtitle>{{ $t('images.tag') }}</v-list-item-subtitle>
               <v-list-item-title>{{ tagDetails.name }}</v-list-item-title>
             </v-list-item>
           </v-col>
@@ -32,7 +32,7 @@
               <template v-slot:prepend>
                 <v-icon>mdi-fingerprint</v-icon>
               </template>
-              <v-list-item-subtitle>Digest</v-list-item-subtitle>
+              <v-list-item-subtitle>{{ $t('images.digest') }}</v-list-item-subtitle>
               <v-list-item-title>{{ tagDetails.digest }}</v-list-item-title>
             </v-list-item>
           </v-col>
@@ -44,7 +44,7 @@
               <template v-slot:prepend>
                 <v-icon>mdi-harddisk</v-icon>
               </template>
-              <v-list-item-subtitle>镜像大小</v-list-item-subtitle>
+              <v-list-item-subtitle>{{ $t('images.size') }}</v-list-item-subtitle>
               <v-list-item-title>{{ formatSize(tagDetails.size) }}</v-list-item-title>
             </v-list-item>
           </v-col>
@@ -53,7 +53,7 @@
               <template v-slot:prepend>
                 <v-icon>mdi-clock</v-icon>
               </template>
-              <v-list-item-subtitle>创建时间</v-list-item-subtitle>
+              <v-list-item-subtitle>{{ $t('images.createdAt') }}</v-list-item-subtitle>
               <v-list-item-title>{{ formatDate(tagDetails.createdAt) }}</v-list-item-title>
             </v-list-item>
           </v-col>
@@ -67,7 +67,7 @@
               <template v-slot:prepend>
                 <v-icon>mdi-chip</v-icon>
               </template>
-              <v-list-item-subtitle>架构</v-list-item-subtitle>
+              <v-list-item-subtitle>{{ $t('images.architecture') }}</v-list-item-subtitle>
               <v-list-item-title>{{ tagDetails.architecture || 'N/A' }}</v-list-item-title>
             </v-list-item>
           </v-col>
@@ -76,7 +76,7 @@
               <template v-slot:prepend>
                 <v-icon>mdi-laptop</v-icon>
               </template>
-              <v-list-item-subtitle>操作系统</v-list-item-subtitle>
+              <v-list-item-subtitle>{{ $t('images.os') }}</v-list-item-subtitle>
               <v-list-item-title>{{ tagDetails.os || 'N/A' }}</v-list-item-title>
             </v-list-item>
           </v-col>
@@ -84,14 +84,14 @@
 
         <v-divider class="my-4"></v-divider>
 
-        <h3 class="text-h6 mb-3">命令示例</h3>
+        <h3 class="text-h6 mb-3">{{ $t('images.commandExample') }}</h3>
         <v-card variant="outlined" class="pa-4">
           <code class="text-subtitle-2">
             docker pull {{ tagDetails.repository }}:{{ tagDetails.name }}
           </code>
         </v-card>
 
-        <h3 class="text-h6 mt-4 mb-3">镜像ID</h3>
+        <h3 class="text-h6 mt-4 mb-3">{{ $t('images.imageId') }}</h3>
         <v-card variant="outlined" class="pa-4">
           <code class="text-subtitle-2 text-wrap">
             {{ tagDetails.digest }}
@@ -105,6 +105,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
 interface TagDetail {
   id: string
@@ -119,15 +120,16 @@ interface TagDetail {
 
 const router = useRouter()
 const route = useRoute()
+const { t } = useI18n()
 
 const tagDetails = ref<TagDetail | null>(null)
 const isLoading = ref(false)
 
 const breadcrumbs = computed(() => [
-  { title: '首页', href: '/' },
-  { title: '镜像列表', href: '/images' },
-  { title: '镜像详情', href: `/images/${route.params.imageId}` },
-  { title: '标签详情', disabled: true }
+  { title: t('nav.home'), href: '/' },
+  { title: t('images.imageList'), href: '/images' },
+  { title: t('images.imageDetails'), href: `/images/${route.params.imageId}` },
+  { title: t('images.tagDetails'), disabled: true }
 ])
 
 onMounted(async () => {

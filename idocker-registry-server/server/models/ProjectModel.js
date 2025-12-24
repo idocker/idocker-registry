@@ -11,6 +11,18 @@ export class ProjectModel extends BaseModel {
   }
 
   /**
+   * 根据项目名称搜索
+   * @param {*} projectName 
+   * @returns 
+   */
+  async findByName(projectName){
+    return await this.get(
+      'SELECT * FROM projects WHERE name = ?',
+      [projectName]
+    );
+  }
+
+  /**
    * 获取项目列表（支持分页和搜索）
    */
   async getProjectsList(userId, userRole, { page = 1, limit = 20, search = '' } = {}) {
@@ -50,7 +62,7 @@ export class ProjectModel extends BaseModel {
         }
       }
 
-      query += ' ORDER BY p.name';
+      query += ' ORDER BY p.created_at DESC';
 
       const result = await this.paginate(query, params, page, limit);
 
@@ -321,6 +333,103 @@ export class ProjectModel extends BaseModel {
       return result.count || 0;
     } catch (error) {
       logger.error('获取项目所有者数量失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 根据ID获取项目基本信息（用于权限检查）
+   */
+  async getProjectBasicInfo(projectId) {
+    try {
+      if (!projectId) {
+        return null;
+      }
+      const project = await this.get(
+        'SELECT id, name FROM projects WHERE id = ? AND is_active = 1',
+        [projectId]
+      );
+      return project;
+    } catch (error) {
+      logger.error('获取项目基本信息失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取项目成员角色信息
+   */
+  async getMemberRole(projectId, userId) {
+    try {
+      if (!projectId || !userId) {
+        return null;
+      }
+      const membership = await this.get(
+        'SELECT id, role FROM project_members WHERE project_id = ? AND user_id = ?',
+        [projectId, userId]
+      );
+      return membership;
+    } catch (error) {
+      logger.error('获取项目成员角色失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 检查成员ID是否存在
+   */
+  async getMemberId(projectId, userId) {
+    try {
+      if (!projectId || !userId) {
+        return null;
+      }
+      const membership = await this.get(
+        'SELECT id FROM project_members WHERE project_id = ? AND user_id = ?',
+        [projectId, userId]
+      );
+      return membership ? membership.id : null;
+    } catch (error) {
+      logger.error('获取项目成员ID失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 根据名称查找项目（用于同步功能）
+   */
+  async findActiveProjectByName(projectName) {
+    try {
+      if (!projectName) {
+        return null;
+      }
+      const project = await this.get(
+        'SELECT id FROM projects WHERE name = ? AND is_active = 1',
+        [projectName]
+      );
+      return project;
+    } catch (error) {
+      logger.error('根据名称查找项目失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 简单创建项目（用于同步功能）
+   */
+  async createSimpleProject(projectName, description, namespace, createdBy) {
+    try {
+      if (!projectName) {
+        throw new Error('项目名称不能为空');
+      }
+
+      const result = await this.run(
+        'INSERT INTO projects (name, description, namespace, created_by, is_active) VALUES (?, ?, ?, ?, 1)',
+        [projectName, description || '', namespace || '', createdBy]
+      );
+
+      return { id: result.lastID };
+    } catch (error) {
+      logger.error('创建项目失败:', error);
       throw error;
     }
   }

@@ -14,10 +14,10 @@
       
       <div class="modal-footer">
         <button class="btn btn-secondary" @click="$emit('cancel')">
-          Cancel
+          {{ $t('dialogs.confirm.cancel') }}
         </button>
         <button class="btn btn-danger" @click="$emit('confirm')">
-          Confirm
+          {{ $t('dialogs.confirm.confirm') }}
         </button>
       </div>
     </div>
@@ -25,12 +25,15 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+
 interface Props {
   title: string
   message: string
 }
 
 defineProps<Props>()
+const { t } = useI18n()
 
 defineEmits<{
   confirm: []

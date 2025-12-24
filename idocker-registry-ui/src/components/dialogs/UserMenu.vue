@@ -1,8 +1,8 @@
 <template>
-  <div class="user-menu" @click.self="$emit('close')">
+  <div class="user-menu" @click.self="$emit('close')" ref="menuRef">
     <div class="user-menu-content">
       <div class="user-info">
-        <img v-if="user.avatar" :src="user.avatar" alt="User Avatar" class="user-avatar" />
+        <img v-if="user.avatar" :src="user.avatar" :alt="$t('users.username')" class="user-avatar" />
         <div v-else class="user-avatar-placeholder">
           <span class="material-icons">account_circle</span>
         </div>
@@ -19,34 +19,34 @@
       <div class="menu-items">
         <button class="menu-item" @click="$emit('action', 'profile')">
           <span class="material-icons">person</span>
-          <span>基本信息</span>
+          <span>{{ $t('nav.profile') }}</span>
         </button>
         
         <button class="menu-item" @click="navigateToPassword">
           <span class="material-icons">lock</span>
-          <span>修改密码</span>
+          <span>{{ $t('nav.password') }}</span>
         </button>
         
         <button class="menu-item" @click="$emit('action', 'projects')">
           <span class="material-icons">folder</span>
-          <span>项目管理</span>
+          <span>{{ $t('projects.title') }}</span>
         </button>
         
         <button v-if="user.role === 'admin'" class="menu-item" @click="navigateToUsers">
           <span class="material-icons">people</span>
-          <span>用户管理</span>
+          <span>{{ $t('users.title') }}</span>
         </button>
         
         <button v-if="user.role === 'admin'" class="menu-item" @click="navigateToLogs">
           <span class="material-icons">history</span>
-          <span>审计日志</span>
+          <span>{{ $t('audit.title') }}</span>
         </button>
         
         <div class="menu-divider"></div>
         
         <button class="menu-item logout" @click="$emit('action', 'logout')">
           <span class="material-icons">logout</span>
-          <span>退出登录</span>
+          <span>{{ $t('nav.logout') }}</span>
         </button>
       </div>
     </div>
@@ -54,19 +54,69 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps, defineEmits } from 'vue'
+import { defineProps, defineEmits, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
+const { t } = useI18n()
+const menuRef = ref<HTMLElement | null>(null)
 
 const props = defineProps({
   user: {
     type: Object,
     required: true
+  },
+  showMenu: {
+    type: Boolean,
+    default: false
   }
 })
 
 const emit = defineEmits(['close', 'action'])
+
+// 点击外部关闭菜单
+const handleClickOutside = (event: MouseEvent) => {
+  if (menuRef.value && !menuRef.value.contains(event.target as Node)) {
+    emit('close')
+  }
+}
+
+// 添加延迟的事件监听器，避免立即触发关闭
+const addClickOutsideListener = () => {
+  // 使用 setTimeout 延迟添加监听器，避免在菜单弹出时立即触发
+  setTimeout(() => {
+    document.addEventListener('click', handleClickOutside)
+  }, 0)
+}
+
+// 移除事件监听器
+const removeClickOutsideListener = () => {
+  document.removeEventListener('click', handleClickOutside)
+}
+
+// 监听菜单显示状态变化
+watch(() => props.showMenu, (newVal) => {
+  if (newVal) {
+    // 菜单显示时添加监听器
+    addClickOutsideListener()
+  } else {
+    // 菜单隐藏时移除监听器
+    removeClickOutsideListener()
+  }
+})
+
+onMounted(() => {
+  // 如果初始状态是显示，则添加监听器
+  if (props.showMenu) {
+    addClickOutsideListener()
+  }
+})
+
+onUnmounted(() => {
+  // 移除事件监听器
+  removeClickOutsideListener()
+})
 
 // 导航到用户管理页面
 const navigateToUsers = () => {
@@ -89,13 +139,13 @@ const navigateToLogs = () => {
 const getRoleDisplay = (role: string) => {
   switch (role) {
     case 'admin':
-      return '管理员'
+      return t('users.roleAdmin')
     case 'maintainer':
-      return '维护者'
+      return t('projects.roleMaintainer')
     case 'member':
-      return '成员'
+      return t('projects.roleViewer')
     default:
-      return '用户'
+      return t('users.roleUser')
   }
 }
 </script>
@@ -135,21 +185,21 @@ const getRoleDisplay = (role: string) => {
     height: 48px;
     border-radius: 50%;
     object-fit: cover;
-    border: 2px solid var(--primary-color);
+    border: 1px solid var(--primary-color);
   }
   
   .user-avatar-placeholder {
     width: 48px;
     height: 48px;
     border-radius: 50%;
-    //background-color: var(--primary-color-light);
+    background-color: var(--primary-color);
     display: flex;
     align-items: center;
     justify-content: center;
     
     .material-icons {
-      color: var(--primary-color);
-      font-size: 28px;
+      color: var(--bg-color);
+      font-size: 48px;
     }
   }
   

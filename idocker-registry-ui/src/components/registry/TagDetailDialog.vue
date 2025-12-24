@@ -2,7 +2,7 @@
   <v-dialog v-model="internalValue" max-width="800px" @click:outside="close">
     <v-card>
       <v-card-title class="text-h6">
-        标签详情
+        {{ $t('dialogs.tagDetails.title') }}
         <v-spacer></v-spacer>
         <v-btn icon="mdi-close" variant="text" @click="close"></v-btn>
       </v-card-title>
@@ -14,7 +14,7 @@
               <template v-slot:prepend>
                 <v-icon>mdi-tag</v-icon>
               </template>
-              <v-list-item-subtitle>标签名称</v-list-item-subtitle>
+              <v-list-item-subtitle>{{ $t('dialogs.tagDetails.tagName') }}</v-list-item-subtitle>
               <v-list-item-title>{{ tagDetails.name }}</v-list-item-title>
             </v-list-item>
           </v-col>
@@ -23,7 +23,7 @@
               <template v-slot:prepend>
                 <v-icon>mdi-fingerprint</v-icon>
               </template>
-              <v-list-item-subtitle>Digest</v-list-item-subtitle>
+              <v-list-item-subtitle>{{ $t('dialogs.tagDetails.tagDigest') }}</v-list-item-subtitle>
               <v-list-item-title>{{ tagDetails.digest }}</v-list-item-title>
             </v-list-item>
           </v-col>
@@ -35,7 +35,7 @@
               <template v-slot:prepend>
                 <v-icon>mdi-harddisk</v-icon>
               </template>
-              <v-list-item-subtitle>镜像大小</v-list-item-subtitle>
+              <v-list-item-subtitle>{{ $t('dialogs.tagDetails.imageSize') }}</v-list-item-subtitle>
               <v-list-item-title>{{ formatSize(tagDetails.size) }}</v-list-item-title>
             </v-list-item>
           </v-col>
@@ -44,7 +44,7 @@
               <template v-slot:prepend>
                 <v-icon>mdi-clock</v-icon>
               </template>
-              <v-list-item-subtitle>创建时间</v-list-item-subtitle>
+              <v-list-item-subtitle>{{ $t('dialogs.tagDetails.createdAt') }}</v-list-item-subtitle>
               <v-list-item-title>{{ formatDate(tagDetails.createdAt) }}</v-list-item-title>
             </v-list-item>
           </v-col>
@@ -58,7 +58,7 @@
               <template v-slot:prepend>
                 <v-icon>mdi-chip</v-icon>
               </template>
-              <v-list-item-subtitle>架构</v-list-item-subtitle>
+              <v-list-item-subtitle>{{ $t('dialogs.tagDetails.architecture') }}</v-list-item-subtitle>
               <v-list-item-title>{{ tagDetails.architecture || 'N/A' }}</v-list-item-title>
             </v-list-item>
           </v-col>
@@ -67,7 +67,7 @@
               <template v-slot:prepend>
                 <v-icon>mdi-laptop</v-icon>
               </template>
-              <v-list-item-subtitle>操作系统</v-list-item-subtitle>
+              <v-list-item-subtitle>{{ $t('dialogs.tagDetails.os') }}</v-list-item-subtitle>
               <v-list-item-title>{{ tagDetails.os || 'N/A' }}</v-list-item-title>
             </v-list-item>
           </v-col>
@@ -76,7 +76,7 @@
 
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn variant="text" @click="close">关闭</v-btn>
+        <v-btn variant="text" @click="close">{{ $t('dialogs.tagDetails.close') }}</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -84,7 +84,10 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import registryService from '@/services/registry.service'
+import { useI18n } from 'vue-i18n'
+import repositoryService from '@/services/repository.service'
+
+const { t, locale } = useI18n()
 
 interface Props {
   modelValue: boolean
@@ -133,7 +136,7 @@ const loadTagDetails = async () => {
   isLoading.value = true
   try {
     // 使用真实API获取标签详情
-    const response = await registryService.getImageTagDetails(props.imageId, props.tagId)
+    const response = await repositoryService.getImageTagDetails(props.imageId, props.tagId)
     if (response.success) {
       const { repository, tag } = response.data
       
@@ -148,14 +151,14 @@ const loadTagDetails = async () => {
         createdAt: tag.created_at || tag.createdAt
       }
     } else {
-      throw new Error(response.message || '获取标签详情失败')
+      throw new Error(response.message || t('error.loadFailed'))
     }
   } catch (error) {
     console.error('加载标签详情失败:', error)
     // 如果API失败，显示错误信息
     tagDetails.value = {
       id: props.tagId,
-      name: '加载失败',
+      name: t('dialogs.tagDetails.loadingFailed'),
       digest: 'N/A',
       size: 0,
       architecture: 'N/A',
@@ -177,7 +180,7 @@ const formatSize = (bytes: number) => {
 
 const formatDate = (dateString: string) => {
   if (!dateString) return 'N/A'
-  return new Date(dateString).toLocaleString('zh-CN')
+  return new Date(dateString).toLocaleString(locale.value)
 }
 
 const close = () => {

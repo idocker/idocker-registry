@@ -2,56 +2,56 @@
   <div class="login-container">
     <div class="login-card">
       <div class="login-header">
-        <h1>iDocker Registry Management</h1>
-        <p>Sign in to manage your Docker registries</p>
+        <h1>{{ $t('loginPage.title') }}</h1>
+        <p>{{ $t('loginPage.signInToManage') }}</p>
       </div>
-      
+
       <form @submit.prevent="handleLogin" class="login-form">
         <div class="form-group">
-          <label for="username">Username</label>
+          <label for="username">{{ $t('loginPage.username') }}</label>
           <input
             id="username"
             type="text"
             v-model="loginForm.username"
-            placeholder="Enter your username"
+            :placeholder="$t('loginPage.enterUsername')"
             required
           />
         </div>
-        
+
         <div class="form-group">
-          <label for="password">Password</label>
+          <label for="password">{{ $t('loginPage.password') }}</label>
           <input
             id="password"
             type="password"
             v-model="loginForm.password"
-            placeholder="Enter your password"
+            :placeholder="$t('loginPage.enterPassword')"
             required
           />
         </div>
-        
+
         <div class="form-group">
           <label class="checkbox-label">
             <input type="checkbox" v-model="loginForm.ldapAuth" />
-            Use LDAP Authentication
+            {{ $t('loginPage.useLdapAuth') }}
           </label>
         </div>
-        
+
         <div class="form-group">
           <button type="submit" class="btn btn-primary" :disabled="isLoading">
-            <span v-if="isLoading">Signing in...</span>
-            <span v-else>Sign In</span>
+            <span v-if="isLoading">{{ $t('loginPage.signInText') }}</span>
+            <span v-else>{{ $t('loginPage.signInButton') }}</span>
           </button>
         </div>
-        
+
         <div class="login-actions">
-          <router-link to="/register" class="link">Create an account</router-link>
+          <router-link to="/register" class="link">{{ $t('loginPage.createAccount') }}</router-link>
         </div>
       </form>
-      
+
       <div v-if="showLoginPrompt" class="login-prompt">
-        <p>This page requires you to be logged in. Please sign in to continue.</p>
+        <p>{{ $t('loginPage.loginPrompt') }}</p>
       </div>
-      
+
       <div v-if="error" class="error-message">
         {{ error }}
       </div>
@@ -61,9 +61,11 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
+const { t } = useI18n()
 const router = useRouter()
 const authStore = useAuthStore()
 
@@ -85,23 +87,23 @@ const handleLogin = async () => {
   try {
     isLoading.value = true
     error.value = ''
-    
+
     // 重置登录提示状态
     authStore.showLoginPrompt = false
-    
+
     await authStore.login(loginForm)
-    
+
     // 检查是否有重定向地址，优先使用存储的路径
-    const redirectPath = authStore.loginRedirectPath || 
-                     router.currentRoute.value.query.redirect as string || 
+    const redirectPath = authStore.loginRedirectPath ||
+                     router.currentRoute.value.query.redirect as string ||
                      '/admin/profile'
-    
+
     // 清除重定向路径
     authStore.loginRedirectPath = ''
-    
+
     router.push(redirectPath)
   } catch (err: any) {
-    error.value = err.message || 'Login failed'
+    error.value = err.message || t('loginPage.loginFailed')
   } finally {
     isLoading.value = false
   }

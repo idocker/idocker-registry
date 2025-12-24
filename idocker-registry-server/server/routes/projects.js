@@ -1,9 +1,9 @@
 /**
- * 项目管理路由模块（重构版）
- * 
- * 提供项目的CRUD操作和成员管理
- * 支持项目权限控制和分页查询
- * 
+ * Project Management Routes Module (Refactored)
+ *
+ * Provides CRUD operations and member management for projects
+ * Supports project permission control and pagination queries
+ *
  * @author IDocker Registry Team
  * @version 2.0.0
  */
@@ -14,6 +14,7 @@ import { authMiddleware, requireAdmin } from '../middleware/auth.js';
 import { logger } from '../utils/logger.js';
 import { ProjectModel } from '../models/ProjectModel.js';
 import { UserModel } from '../models/UserModel.js';
+import { paginated, success, error } from '../utils/apiResponse.js';
 
 const projectModel = new ProjectModel();
 const userModel = new UserModel();
@@ -21,8 +22,8 @@ const router = express.Router();
 
 /**
  * GET /api/projects
- * 获取项目列表
- * 支持分页和搜索，根据用户角色返回不同权限的项目
+ * Get project list
+ * Supports pagination and search, returns projects based on user role
  */
 router.get('/', authMiddleware, asyncHandler(async (req, res) => {
   const { page = 1, limit = 20, search = '' } = req.query;
@@ -30,128 +31,100 @@ router.get('/', authMiddleware, asyncHandler(async (req, res) => {
 
   try {
     const result = await projectModel.getProjectsList(userId, userRole, { page, limit, search });
-console.log(result)
-    res.status(200).json({
-      success: true,
-      data: result.data
-    });
+
+    // Use unified pagination response format
+    res.status(200).json(paginated(
+      result.data,
+      result.pagination,
+      'Project list retrieved successfully'
+    ));
   } catch (error) {
-    logger.error('获取项目列表时出错:', error);
-    res.status(500).json({
-      success: false,
-      message: '获取项目列表失败'
-    });
+    logger.error('Error getting project list:', error);
+    res.status(500).json(error('Failed to get project list'));
   }
 }));
 
 /**
  * GET /api/projects/:id
- * 获取特定项目详情
- * 检查用户是否有访问权限
+ * Get specific project details
+ * Check if user has access permission
  */
 router.get('/:id', authMiddleware, asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { id: userId, role: userRole } = req.user;
 
   try {
-    // 检查项目是否存在
+    // Check if project exists
     const projectExists = await projectModel.projectExists(id);
     if (!projectExists) {
-      return res.status(404).json({
-        success: false,
-        message: '项目不存在'
-      });
+      return res.status(404).json(error('Project not found', 404));
     }
 
-    // 检查用户是否有访问权限
+    // Check if user has access permission
     const hasPermission = await projectModel.checkProjectPermission(id, userId, userRole);
     if (!hasPermission) {
-      return res.status(403).json({
-        success: false,
-        message: '没有权限访问此项目'
-      });
+      return res.status(403).json(error('No permission to access this project', 403));
     }
 
-    // 获取项目详情
+    // Get project details
     const project = await projectModel.findById(id);
     if (!project) {
-      return res.status(404).json({
-        success: false,
-        message: '项目不存在'
-      });
+      return res.status(404).json(error('Project not found', 404));
     }
 
-    // 获取项目成员列表
+    // Get project member list
     const members = await projectModel.getProjectMembers(id);
     
-    // 获取项目仓库数量
+    // Get project repository count
     const repositoryCount = await projectModel.getProjectRepositoryCount(id);
 
-    res.status(200).json({
-      success: true,
-      data: {
-        ...project,
-        members: members || [],
-        repositoryCount: repositoryCount.count || 0
-      }
-    });
+    res.status(200).json(success({
+      ...project,
+      members: members || [],
+      repositoryCount: repositoryCount.count || 0
+    }));
   } catch (error) {
-    logger.error('获取项目详情时出错:', error);
-    res.status(500).json({
-      success: false,
-      message: '获取项目详情失败'
-    });
+    logger.error('Error getting project details:', error);
+    res.status(500).json(error('Failed to get project details'));
   }
 }));
 
 /**
  * POST /api/projects
- * 创建新项目
- * 只有管理员可以创建项目
+ * Create new project
+ * Only administrators can create projects
  */
 router.post('/', authMiddleware, requireAdmin, asyncHandler(async (req, res) => {
   const { name, description, namespace } = req.body;
   const { id: createdBy } = req.user;
 
-  // 验证必填字段
+  // Validate required fields
   if (!name || !namespace) {
-    return res.status(400).json({
-      success: false,
-      message: '项目名称和命名空间不能为空'
-    });
+    return res.status(400).json(error('Project name and namespace cannot be empty', 400));
   }
 
-  // 验证命名空间格式
+  // Validate namespace format
   if (!/^[a-z0-9-]+$/.test(namespace)) {
-    return res.status(400).json({
-      success: false,
-      message: '命名空间只能包含小写字母、数字和连字符'
-    });
+    return res.status(400).json(error('Namespace can only contain lowercase letters, numbers, and hyphens', 400));
   }
 
   try {
-    // 检查项目名称是否唯一
+    // Check if project name is unique
     const isNameUnique = await projectModel.isProjectNameUnique(name);
     if (!isNameUnique) {
-      return res.status(409).json({
-        success: false,
-        message: '项目名称已存在'
-      });
+      return res.status(409).json(error('Project name already exists', 409, 'UNIQUE_VIOLATION'));
     }
 
-    // 检查命名空间是否唯一
+    // Check if namespace is unique
     const existingNamespace = await projectModel.get(
       'SELECT id FROM projects WHERE namespace = ? AND is_active = 1',
       [namespace]
     );
     if (existingNamespace) {
-      return res.status(409).json({
-        success: false,
-        message: '命名空间已存在'
-      });
+      return res.status(409).json(error('Namespace already exists', 409, 'UNIQUE_VIOLATION'));
     }
 
-    // 创建项目数据
+    // Create project data
     const projectData = {
       name,
       description: description || '',
@@ -161,34 +134,27 @@ router.post('/', authMiddleware, requireAdmin, asyncHandler(async (req, res) => 
 
     const newProject = await projectModel.createProject(projectData, createdBy);
 
-    // 将创建者添加为项目所有者
+    // Add creator as project owner
     await projectModel.addProjectMember(newProject.id, createdBy, 'owner');
 
-    // 获取创建后的项目详情
+    // Get project details after creation
     const projectDetails = await projectModel.findById(newProject.id);
     const members = await projectModel.getProjectMembers(newProject.id);
 
-    res.status(201).json({
-      success: true,
-      message: '项目创建成功',
-      data: {
-        ...projectDetails,
-        members
-      }
-    });
+    res.status(201).json(success({
+      ...projectDetails,
+      members
+    }, 'Project created successfully'));
   } catch (error) {
-    logger.error('创建项目时出错:', error);
-    res.status(500).json({
-      success: false,
-      message: '创建项目失败'
-    });
+    logger.error('Error creating project:', error);
+    res.status(500).json(error('Failed to create project'));
   }
 }));
 
 /**
  * PUT /api/projects/:id
- * 更新项目信息
- * 需要项目所有者或管理员权限
+ * Update project information
+ * Requires project owner or admin permission
  */
 router.put('/:id', authMiddleware, asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -196,16 +162,13 @@ router.put('/:id', authMiddleware, asyncHandler(async (req, res) => {
   const { id: userId, role: userRole } = req.user;
 
   try {
-    // 检查项目是否存在
+    // Check if project exists
     const projectExists = await projectModel.projectExists(id);
     if (!projectExists) {
-      return res.status(404).json({
-        success: false,
-        message: '项目不存在'
-      });
+      return res.status(404).json(error('Project not found', 404));
     }
 
-    // 检查用户是否有修改权限（管理员或项目所有者）
+    // Check if user has modify permission (admin or project owner)
     let hasPermission = false;
     if (userRole === 'admin') {
       hasPermission = true;
@@ -214,174 +177,128 @@ router.put('/:id', authMiddleware, asyncHandler(async (req, res) => {
     }
 
     if (!hasPermission) {
-      return res.status(403).json({
-        success: false,
-        message: '没有权限修改此项目'
-      });
+      return res.status(403).json(error('No permission to modify this project', 403));
     }
 
-    // 检查项目名称是否唯一（如果要更新名称）
+    // Check if project name is unique (if updating name)
     if (name) {
       const isNameUnique = await projectModel.isProjectNameUnique(name, id);
       if (!isNameUnique) {
-        return res.status(409).json({
-          success: false,
-          message: '项目名称已存在'
-        });
+        return res.status(409).json(error('Project name already exists', 409, 'UNIQUE_VIOLATION'));
       }
     }
 
-    // 构建更新数据
+    // Build update data
     const updateData = {};
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
     if (isActive !== undefined) updateData.is_active = isActive ? 1 : 0;
 
     if (Object.keys(updateData).length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: '没有提供任何要更新的字段'
-      });
+      return res.status(400).json(error('No fields provided for update', 400));
     }
 
-    // 更新项目信息
+    // Update project information
     const result = await projectModel.updateProject(id, updateData);
 
-    // 获取更新后的项目信息
+    // Get updated project information
     const updatedProject = await projectModel.findById(id);
 
-    res.status(200).json({
-      success: true,
-      message: '项目信息更新成功',
-      data: updatedProject
-    });
+    res.status(200).json(success(updatedProject, 'Project information updated successfully'));
   } catch (error) {
-    logger.error('更新项目信息时出错:', error);
-    res.status(500).json({
-      success: false,
-      message: '更新项目信息失败'
-    });
+    logger.error('Error updating project information:', error);
+    res.status(500).json(error('Failed to update project information'));
   }
 }));
 
 /**
  * DELETE /api/projects/:id
- * 删除项目（软删除）
- * 需要管理员权限
+ * Delete project (soft delete)
+ * Requires admin permission
  */
 router.delete('/:id', authMiddleware, requireAdmin, asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   try {
-    // 检查项目是否存在
+    // Check if project exists
     const projectExists = await projectModel.projectExists(id);
     if (!projectExists) {
-      return res.status(404).json({
-        success: false,
-        message: '项目不存在'
-      });
+      return res.status(404).json(error('Project not found', 404));
     }
 
-    // 软删除项目
+    // Soft delete project
     await projectModel.deleteProject(id);
 
-    res.status(200).json({
-      success: true,
-      message: '项目删除成功'
-    });
+    res.status(200).json(success(null, 'Project deleted successfully'));
   } catch (error) {
-    logger.error('删除项目时出错:', error);
-    res.status(500).json({
-      success: false,
-      message: '删除项目失败'
-    });
+    logger.error('Error deleting project:', error);
+    res.status(500).json(error('Failed to delete project'));
   }
 }));
 
 /**
  * GET /api/projects/:id/members
- * 获取项目成员列表
- * 需要项目访问权限
+ * Get project member list
+ * Requires project access permission
  */
 router.get('/:id/members', authMiddleware, asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { id: userId, role: userRole } = req.user;
 
   try {
-    // 检查项目是否存在
+    // Check if project exists
     const projectExists = await projectModel.projectExists(id);
     if (!projectExists) {
-      return res.status(404).json({
-        success: false,
-        message: '项目不存在'
-      });
+      return res.status(404).json(error('Project not found', 404));
     }
 
-    // 检查用户是否有访问权限
+    // Check if user has access permission
     const hasPermission = await projectModel.checkProjectPermission(id, userId, userRole);
     if (!hasPermission) {
-      return res.status(403).json({
-        success: false,
-        message: '没有权限访问此项目'
-      });
+      return res.status(403).json(error('No permission to access this project', 403));
     }
 
-    // 获取项目成员列表
+    // Get project member list
     const members = await projectModel.getProjectMembers(id);
 
-    res.status(200).json({
-      success: true,
-      data: {
-        project: { id },
-        members: members || []
-      }
-    });
+    res.status(200).json(success({
+      project: { id },
+      members: members || []
+    }));
   } catch (error) {
-    logger.error('获取项目成员列表时出错:', error);
-    res.status(500).json({
-      success: false,
-      message: '获取项目成员列表失败'
-    });
+    logger.error('Error getting project member list:', error);
+    res.status(500).json(error('Failed to get project member list'));
   }
 }));
 
 /**
  * POST /api/projects/:id/members
- * 添加项目成员
- * 需要项目所有者或管理员权限
+ * Add project member
+ * Requires project owner or admin permission
  */
 router.post('/:id/members', authMiddleware, asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { userId, role = 'viewer' } = req.body;
   const { id: currentUserId, role: currentUserRole } = req.user;
 
-  // 验证必填字段
+  // Validate required fields
   if (!userId) {
-    return res.status(400).json({
-      success: false,
-      message: '用户ID不能为空'
-    });
+    return res.status(400).json(error('User ID cannot be empty', 400));
   }
 
-  // 验证角色
+  // Validate role
   if (!['owner', 'maintainer', 'viewer'].includes(role)) {
-    return res.status(400).json({
-      success: false,
-      message: '无效的项目角色'
-    });
+    return res.status(400).json(error('Invalid project role', 400));
   }
 
   try {
-    // 检查项目是否存在
+    // Check if project exists
     const projectExists = await projectModel.projectExists(id);
     if (!projectExists) {
-      return res.status(404).json({
-        success: false,
-        message: '项目不存在'
-      });
+      return res.status(404).json(error('Project not found', 404));
     }
 
-    // 检查用户是否有修改权限（管理员或项目所有者）
+    // Check if user has modify permission (admin or project owner)
     let hasPermission = false;
     if (currentUserRole === 'admin') {
       hasPermission = true;
@@ -390,75 +307,54 @@ router.post('/:id/members', authMiddleware, asyncHandler(async (req, res) => {
     }
 
     if (!hasPermission) {
-      return res.status(403).json({
-        success: false,
-        message: '没有权限修改此项目成员'
-      });
+      return res.status(403).json(error('No permission to modify project members', 403));
     }
 
-    // 检查要添加的用户是否存在且活跃
+    // Check if user to add exists and is active
     const user = await userModel.findById(userId);
     if (!user || user.is_active === 0) {
-      return res.status(404).json({
-        success: false,
-        message: '用户不存在或已被禁用'
-      });
+      return res.status(404).json(error('User not found or has been disabled', 404));
     }
 
-    // 检查用户是否已经是项目成员
+    // Check if user is already a project member
     const memberExists = await projectModel.memberExists(id, userId);
     if (memberExists) {
-      return res.status(409).json({
-        success: false,
-        message: '用户已经是项目成员'
-      });
+      return res.status(409).json(error('User is already a project member', 409, 'MEMBER_EXISTS'));
     }
 
-    // 添加用户到项目
+    // Add user to project
     await projectModel.addProjectMember(id, userId, role);
 
-    res.status(201).json({
-      success: true,
-      message: '用户已添加到项目'
-    });
+    res.status(201).json(success(null, 'User added to project'));
   } catch (error) {
-    logger.error('添加项目成员时出错:', error);
-    res.status(500).json({
-      success: false,
-      message: '添加项目成员失败'
-    });
+    logger.error('Error adding project member:', error);
+    res.status(500).json(error('Failed to add project member'));
   }
 }));
 
 /**
  * PUT /api/projects/:id/members/:userId
- * 更新项目成员角色
- * 需要项目所有者或管理员权限
+ * Update project member role
+ * Requires project owner or admin permission
  */
 router.put('/:id/members/:userId', authMiddleware, asyncHandler(async (req, res) => {
   const { id, userId } = req.params;
   const { role } = req.body;
   const { id: currentUserId, role: currentUserRole } = req.user;
 
-  // 验证角色
+  // Validate role
   if (!role || !['owner', 'maintainer', 'viewer'].includes(role)) {
-    return res.status(400).json({
-      success: false,
-      message: '无效的项目角色'
-    });
+    return res.status(400).json(error('Invalid project role', 400));
   }
 
   try {
-    // 检查项目是否存在
+    // Check if project exists
     const projectExists = await projectModel.projectExists(id);
     if (!projectExists) {
-      return res.status(404).json({
-        success: false,
-        message: '项目不存在'
-      });
+      return res.status(404).json(error('Project not found', 404));
     }
 
-    // 检查用户是否有修改权限（管理员或项目所有者）
+    // Check if user has modify permission (admin or project owner)
     let hasPermission = false;
     if (currentUserRole === 'admin') {
       hasPermission = true;
@@ -467,22 +363,16 @@ router.put('/:id/members/:userId', authMiddleware, asyncHandler(async (req, res)
     }
 
     if (!hasPermission) {
-      return res.status(403).json({
-        success: false,
-        message: '没有权限修改此项目成员'
-      });
+      return res.status(403).json(error('No permission to modify project members', 403));
     }
 
-    // 检查成员是否存在
+    // Check if member exists
     const memberExists = await projectModel.memberExists(id, userId);
     if (!memberExists) {
-      return res.status(404).json({
-        success: false,
-        message: '用户不是项目成员'
-      });
+      return res.status(404).json(error('User is not a project member', 404));
     }
 
-    // 检查是否要修改最后一个所有者的角色
+    // Check if trying to modify last owner's role
     if (role !== 'owner') {
       const ownerCount = await projectModel.getProjectOwnerCount(id);
       if (ownerCount <= 1) {
@@ -492,50 +382,38 @@ router.put('/:id/members/:userId', authMiddleware, asyncHandler(async (req, res)
         );
         
         if (currentMemberRole && currentMemberRole.role === 'owner') {
-          return res.status(400).json({
-            success: false,
-            message: '不能修改最后一个项目所有者的角色'
-          });
+          return res.status(400).json(error('Cannot modify the last project owner\'s role', 400));
         }
       }
     }
 
-    // 更新成员角色
+    // Update member role
     await projectModel.updateProjectMemberRole(id, userId, role);
 
-    res.status(200).json({
-      success: true,
-      message: '项目成员角色更新成功'
-    });
+    res.status(200).json(success(null, 'Project member role updated successfully'));
   } catch (error) {
-    logger.error('更新项目成员角色时出错:', error);
-    res.status(500).json({
-      success: false,
-      message: '更新项目成员角色失败'
-    });
+    logger.error('Error updating project member role:', error);
+    res.status(500).json(error('Failed to update project member role'));
   }
 }));
 
 /**
  * DELETE /api/projects/:id/members/:userId
- * 从项目中移除成员
- * 需要项目所有者或管理员权限
+ * Remove member from project
+ * Requires project owner or admin permission
  */
 router.delete('/:id/members/:userId', authMiddleware, asyncHandler(async (req, res) => {
   const { id, userId } = req.params;
   const { id: currentUserId, role: currentUserRole } = req.user;
 
   try {
-    // 检查项目是否存在
+    // Check if project exists
     const projectExists = await projectModel.projectExists(id);
     if (!projectExists) {
-      return res.status(404).json({
-        success: false,
-        message: '项目不存在'
-      });
+      return res.status(404).json(error('Project not found', 404));
     }
 
-    // 检查用户是否有修改权限（管理员或项目所有者）
+    // Check if user has modify permission (admin or project owner)
     let hasPermission = false;
     if (currentUserRole === 'admin') {
       hasPermission = true;
@@ -544,22 +422,16 @@ router.delete('/:id/members/:userId', authMiddleware, asyncHandler(async (req, r
     }
 
     if (!hasPermission) {
-      return res.status(403).json({
-        success: false,
-        message: '没有权限修改此项目成员'
-      });
+      return res.status(403).json(error('No permission to modify project members', 403));
     }
 
-    // 检查成员是否存在
+    // Check if member exists
     const memberExists = await projectModel.memberExists(id, userId);
     if (!memberExists) {
-      return res.status(404).json({
-        success: false,
-        message: '用户不是项目成员'
-      });
+      return res.status(404).json(error('User is not a project member', 404));
     }
 
-    // 检查是否要移除最后一个所有者
+    // Check if trying to remove last owner
     const currentMemberRole = await projectModel.get(
       'SELECT role FROM project_members WHERE project_id = ? AND user_id = ?',
       [id, userId]
@@ -568,26 +440,17 @@ router.delete('/:id/members/:userId', authMiddleware, asyncHandler(async (req, r
     if (currentMemberRole && currentMemberRole.role === 'owner') {
       const ownerCount = await projectModel.getProjectOwnerCount(id);
       if (ownerCount <= 1) {
-        return res.status(400).json({
-          success: false,
-          message: '不能移除最后一个项目所有者'
-        });
+        return res.status(400).json(error('Cannot remove the last project owner', 400));
       }
     }
 
-    // 从项目中移除用户
+    // Remove user from project
     await projectModel.removeProjectMember(id, userId);
 
-    res.status(200).json({
-      success: true,
-      message: '用户已从项目中移除'
-    });
+    res.status(200).json(success(null, 'User removed from project'));
   } catch (error) {
-    logger.error('从项目移除成员时出错:', error);
-    res.status(500).json({
-      success: false,
-      message: '从项目移除成员失败'
-    });
+    logger.error('Error removing member from project:', error);
+    res.status(500).json(error('Failed to remove member from project'));
   }
 }));
 

@@ -72,14 +72,11 @@ export interface PaginationParams {
   search?: string
 }
 
-export interface PaginatedResponse<T> {
-  projects: T[]
-  pagination: {
-    page: number
-    limit: number
-    total: number
-    totalPages: number
-  }
+// 使用统一的API响应类型
+export interface PaginatedResponse extends ApiResponse<{ projects: Project[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
+  // 保持向后兼容
+  projects?: Project[]
+  pagination?: { page: number; limit: number; total: number; totalPages: number }
 }
 
 class ProjectService {

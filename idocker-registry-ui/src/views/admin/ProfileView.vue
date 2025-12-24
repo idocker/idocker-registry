@@ -12,7 +12,7 @@
                             <div class="avatar-actions">
                                 <button class="btn btn-primary" @click="showAvatarUpload = true">
                                     <span class="material-icons">photo_camera</span>
-                                    更换头像
+                                    {{ $t('profile.changeAvatar') }}
                                 </button>
                             </div>
                         </div>
@@ -20,47 +20,47 @@
 
                     <form @submit.prevent="updateProfile" class="profile-form">
                         <div class="form-group">
-                            <label for="username">用户名</label>
+                            <label for="username">{{ $t('profile.username') }}</label>
                             <input id="username" type="text" v-model="profileForm.username"
                                 :disabled="isUpdatingProfile" required />
                         </div>
 
                         <div class="form-group">
-                            <label for="email">邮箱</label>
+                            <label for="email">{{ $t('profile.email') }}</label>
                             <input id="email" type="email" v-model="profileForm.email" :disabled="isUpdatingProfile"
                                 required />
                         </div>
 
                         <div class="form-group">
-                            <label>角色</label>
+                            <label>{{ $t('profile.role') }}</label>
                             <input type="text" :value="getRoleDisplay(profileForm.role)" disabled
                                 class="role-display" />
                         </div>
 
                         <div class="form-actions">
                             <button type="submit" class="btn btn-primary" :disabled="isUpdatingProfile">
-                                <span v-if="isUpdatingProfile">更新中...</span>
-                                <span v-else>保存更改</span>
+                                <span v-if="isUpdatingProfile">{{ $t('profile.updating') }}...</span>
+                                <span v-else>{{ $t('profile.saveChanges') }}</span>
                             </button>
                         </div>
                     </form>
                 </div>
 
                 <div v-if="userProjects.length > 0" class="profile-section">
-                    <h2>我的项目</h2>
+                    <h2>{{ $t('profile.myProjects') }}</h2>
                     <div class="projects-list">
                         <div v-for="project in userProjects" :key="project.id" class="project-card">
                             <div class="project-info">
                                 <h3>{{ project.name }}</h3>
                                 <p v-if="project.description">{{ project.description }}</p>
                                 <div class="project-meta">
-                                    <span class="project-role">角色: {{ getRoleDisplay(project.member_role) }}</span>
-                                    <span class="project-date">加入时间: {{ formatDate(project.created_at) }}</span>
+                                    <span class="project-role">{{ $t('profile.projectRole') }}: {{ getRoleDisplay(project.member_role) }}</span>
+                                    <span class="project-date">{{ $t('profile.joinTime') }}: {{ formatDate(project.created_at) }}</span>
                                 </div>
                             </div>
                             <div class="project-actions">
                                 <router-link :to="`/admin/projects/${project.id}`" class="btn btn-ghost">
-                                    查看详情
+                                    {{ $t('profile.viewDetails') }}
                                 </router-link>
                             </div>
                         </div>
@@ -72,7 +72,7 @@
             <div v-if="showAvatarUpload" class="dialog-overlay" @click="showAvatarUpload = false">
                 <div class="dialog" @click.stop>
                     <div class="dialog-header">
-                        <h3>上传头像</h3>
+                        <h3>{{ $t('profile.uploadAvatar') }}</h3>
                         <button class="dialog-close" @click="showAvatarUpload = false">
                             <span class="material-icons">close</span>
                         </button>
@@ -81,7 +81,7 @@
                     <div class="dialog-content">
                         <div class="avatar-upload-content">
                             <div class="current-avatar">
-                                <p>当前头像</p>
+                                <p>{{ $t('profile.currentAvatar') }}</p>
                                 <img v-if="profileForm.avatar" :src="profileForm.avatar" alt="Current Avatar"
                                     class="avatar-preview" />
                                 <div v-else class="avatar-preview-placeholder">
@@ -90,7 +90,7 @@
                             </div>
 
                             <div class="avatar-upload">
-                                <p>上传新头像</p>
+                                <p>{{ $t('profile.uploadNewAvatar') }}</p>
                                 <input type="file" ref="avatarInput" accept="image/*" @change="handleAvatarChange"
                                     class="avatar-input" />
                                 <div v-if="avatarPreview" class="avatar-preview-container">
@@ -101,11 +101,11 @@
                     </div>
 
                     <div class="dialog-actions">
-                        <button class="btn btn-ghost" @click="showAvatarUpload = false">取消</button>
+                        <button class="btn btn-ghost" @click="showAvatarUpload = false">{{ $t('common.cancel') }}</button>
                         <button class="btn btn-primary" @click="uploadAvatar"
                             :disabled="!avatarPreview || isUploadingAvatar">
-                            <span v-if="isUploadingAvatar">上传中...</span>
-                            <span v-else>确认上传</span>
+                            <span v-if="isUploadingAvatar">{{ $t('profile.uploading') }}...</span>
+                            <span v-else>{{ $t('profile.confirmUpload') }}</span>
                         </button>
                     </div>
                 </div>
@@ -124,11 +124,13 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import axios from 'axios'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
 import type { SnackbarMessage } from '@/types'
 
+const { t, locale } = useI18n()
 const authStore = useAuthStore()
 
 // 表单状态
@@ -154,20 +156,20 @@ const userProjects = ref([])
 const getRoleDisplay = (role: string) => {
     switch (role) {
         case 'admin':
-            return '管理员'
+            return t('users.roleAdmin')
         case 'maintainer':
-            return '维护者'
+            return t('users.roleMaintainer')
         case 'member':
-            return '成员'
+            return t('projects.roleViewer')
         default:
-            return '用户'
+            return t('users.roleUser')
     }
 }
 
 // 格式化日期
 const formatDate = (dateString: string) => {
     const date = new Date(dateString)
-    return date.toLocaleDateString('zh-CN', {
+    return date.toLocaleDateString(locale.value, {
         year: 'numeric',
         month: 'short',
         day: 'numeric'
@@ -188,7 +190,7 @@ const loadUserProfile = async () => {
         }
     } catch (error) {
         console.error('Failed to load user profile:', error)
-        showMessage('加载用户信息失败', 'error')
+        showMessage(t('profile.loadProfileFailed'), 'error')
     }
 }
 
@@ -199,7 +201,7 @@ const loadUserProjects = async () => {
         userProjects.value = response.data.projects || []
     } catch (error) {
         console.error('Failed to load user projects:', error)
-        showMessage('加载用户项目失败', 'error')
+        showMessage(t('profile.loadProjectsFailed'), 'error')
     }
 }
 
@@ -217,10 +219,10 @@ const updateProfile = async () => {
         authStore.user = response.data
         localStorage.setItem('user_data', JSON.stringify(response.data))
 
-        showMessage('个人信息更新成功', 'success')
+        showMessage(t('profile.profileUpdated'), 'success')
     } catch (error: any) {
         console.error('Failed to update profile:', error)
-        showMessage(error.response?.data?.error || '更新个人信息失败', 'error')
+        showMessage(error.response?.data?.error || t('profile.updateProfileFailed'), 'error')
     } finally {
         isUpdatingProfile.value = false
     }
@@ -272,12 +274,12 @@ const uploadAvatar = async () => {
         authStore.user = userResponse.data
         localStorage.setItem('user_data', JSON.stringify(userResponse.data))
 
-        showMessage('头像上传成功', 'success')
+        showMessage(t('profile.avatarUploaded'), 'success')
         showAvatarUpload.value = false
         avatarPreview.value = ''
     } catch (error: any) {
         console.error('Failed to upload avatar:', error)
-        showMessage(error.response?.data?.error || '头像上传失败', 'error')
+        showMessage(error.response?.data?.error || t('profile.uploadAvatarFailed'), 'error')
     } finally {
         isUploadingAvatar.value = false
     }

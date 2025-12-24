@@ -5,7 +5,7 @@
         iDocker Registry v{{ version }}.
       </li>
       <li class="foot-right">
-        Hyperlinked.cn All Rights Reserved © 2025-2026.
+        {{ $t('footer.copyright') }}
       </li>
     </ul>
   </footer>

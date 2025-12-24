@@ -29,13 +29,14 @@ export class RepositoryModel extends BaseModel {
    * 创建新仓库
    */
   async createRepository(repositoryData) {
+    //logger.info(`createRepository:${JSON.stringify(repositoryData)}`)
     try {
       const data = {
         ...repositoryData,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
-
+      logger.info(`createRepository:${JSON.stringify(data)}`)
       const result = await this.create(data);
       return result;
     } catch (error) {
@@ -117,7 +118,7 @@ export class RepositoryModel extends BaseModel {
   async getRepositoryStats(projectId = null) {
     try {
       let query = `
-        SELECT 
+        SELECT
           COUNT(*) as total_repositories,
           SUM((SELECT COUNT(*) FROM image_tags t WHERE t.repository_id = r.id)) as total_tags
         FROM repositories r
@@ -137,6 +138,118 @@ export class RepositoryModel extends BaseModel {
       };
     } catch (error) {
       logger.error('获取仓库统计信息失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 根据ID获取仓库详细信息（包含项目信息）
+   */
+  async getRepositoryWithProject(repositoryId) {
+    try {
+      if (!repositoryId) {
+        return null;
+      }
+
+      const repository = await this.get(
+        `SELECT r.id, r.name, r.description, r.is_public,
+                p.id as project_id, p.name as project_name, p.namespace
+         FROM repositories r
+         JOIN projects p ON r.project_id = p.id
+         WHERE r.id = ? AND r.is_active = 1 AND p.is_active = 1`,
+        [repositoryId]
+      );
+
+      return repository;
+    } catch (error) {
+      logger.error('获取仓库详细信息失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 根据ID获取仓库基本信息（包含项目信息）
+   */
+  async getRepositoryBasicInfo(repositoryId) {
+    try {
+      if (!repositoryId) {
+        return null;
+      }
+
+      const repository = await this.get(
+        `SELECT r.id, r.name, r.project_id, p.name as project_name
+         FROM repositories r
+         JOIN projects p ON r.project_id = p.id
+         WHERE r.id = ? AND r.is_active = 1 AND p.is_active = 1`,
+        [repositoryId]
+      );
+
+      return repository;
+    } catch (error) {
+      logger.error('获取仓库基本信息失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 根据项目ID和仓库名称查找仓库ID
+   */
+  async findRepositoryId(projectId, name) {
+    try {
+      if (!projectId || !name) {
+        return null;
+      }
+
+      const repository = await this.get(
+        'SELECT id FROM repositories WHERE project_id = ? AND name = ? AND is_active = 1',
+        [projectId, name]
+      );
+
+      return repository ? repository.id : null;
+    } catch (error) {
+      logger.error('查找仓库ID失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 简单创建仓库（用于同步功能）
+   */
+  async createSimpleRepository(projectId, name, description, isPublic = 0) {
+    try {
+      if (!projectId || !name) {
+        throw new Error('项目ID和仓库名称不能为空');
+      }
+
+      const result = await this.run(
+        'INSERT INTO repositories (name, project_id, description, is_public, is_active) VALUES (?, ?, ?, ?, 1)',
+        [name, projectId, description || '', isPublic]
+      );
+
+      return { id: result.lastID };
+    } catch (error) {
+      logger.error('创建仓库失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 根据仓库名称查找（用于权限检查）
+   */
+  async findByRepositoryName(repositoryName, projectId) {
+    try {
+      if (!repositoryName || !projectId) {
+        return null;
+      }
+
+      const repository = await this.get(
+        'SELECT id, is_public, project_id FROM repositories WHERE name = ? AND project_id = ? AND is_active = 1',
+        [repositoryName, projectId]
+      );
+
+      return repository;
+    } catch (error) {
+      logger.error('根据仓库名称查找失败:', error);
       throw error;
     }
   }

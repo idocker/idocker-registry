@@ -51,10 +51,12 @@ class DockerRegistryService {
   async checkConnection(registryConfig = null) {
     try {
       const registryUrl = registryConfig?.url || this.baseURL;
+      logger.info(`检查Registry连接: ${registryUrl}`);
       const response = await axios.get(`${registryUrl}/v2/`, {
         headers: this.getAuthHeaders(registryConfig),
         timeout: 5000
-      });
+      })
+
       return response.status === 200;
     } catch (error) {
       logger.error('Registry连接检查失败:', error.message);
@@ -88,19 +90,28 @@ class DockerRegistryService {
       });
 
       const result = {
-        repositories: response.data.repositories || [],
+        repositories: [],
         pagination: {
           nextUrl: response.headers.link ? this.extractNextUrl(response.headers.link) : null
         }
       };
+      //logger.info(`获取仓库列表======: ${JSON.stringify(result)}`);
 
       // 获取每个仓库的标签数量
-      for (const repo of result.repositories) {
+      for (const repo of response.data.repositories) {
         try {
-          const tagsResponse = await this.getTags(repo, registryConfig, 1);
-          repo.tagsCount = tagsResponse.tags ? tagsResponse.tags.length : 0;
+          const tagsResponse = await this.getTags(repo, registryConfig);
+          //logger.info(`获取仓库 ${repo} 标签数量: ${JSON.stringify(tagsResponse)}`);
+          result.repositories.push({
+            name: repo,
+            tags: tagsResponse.tags || []
+          })
         } catch (error) {
-          repo.tagsCount = 0;
+          result.repositories.push({
+            name: repo,
+            tags: [],
+            error: error.message
+          })
         }
       }
 
@@ -137,6 +148,9 @@ class DockerRegistryService {
         timeout: this.timeout
       });
 
+      //logger.info(`获取仓库 URL ======: ${url.toString()}`);
+      //logger.info(`获取仓库 ${repository} 标签======: ${JSON.stringify(response.data)}`);
+
       // 获取每个标签的详细信息
       const tagsWithDetails = [];
       if (response.data.tags) {
@@ -148,6 +162,7 @@ class DockerRegistryService {
               digest: manifest.digest,
               size: manifest.size,
               architecture: manifest.architecture,
+              manifest: manifest.manifest,
               os: manifest.os,
               created: manifest.created
             });
@@ -195,9 +210,24 @@ class DockerRegistryService {
       });
 
       const digest = response.headers['docker-content-digest'];
-      
+      //logger.info(`获取镜像manifests======: ${JSON.stringify(response.data)}`);
+
+      let imageInfo = {
+        digest: digest,
+        manifest: response.data,
+        size: 0,
+        created: null,
+        architecture: 'unknown',
+        os: 'unknown'
+      };
+
+
+      if(response.data.layers) {
+        imageInfo.size = response.data.layers.reduce((acc, layer) => acc + (layer.size || 0), 0);
+      }
+      //logger.info(`获取镜像size======: ${JSON.stringify(size)}`);
+
       // 获取配置信息以获取镜像大小和创建时间
-      let configInfo = {};
       if (response.data.config) {
         try {
           const configResponse = await axios.get(
@@ -207,26 +237,16 @@ class DockerRegistryService {
               timeout: this.timeout
             }
           );
-          
-          configInfo = {
-            size: configResponse.data.size || 0,
-            created: configResponse.data.created || null,
-            architecture: configResponse.data.architecture || 'unknown',
-            os: configResponse.data.os || 'unknown'
-          };
+          //logger.info(`获取镜像Blobs======: ${JSON.stringify(configResponse.data)}`);
+          imageInfo.created = configResponse.data.created || null;
+          imageInfo.architecture = configResponse.data.architecture || 'unknown';
+          imageInfo.os = configResponse.data.os || 'unknown';
         } catch (error) {
           logger.warn(`获取镜像配置失败: ${error.message}`);
         }
       }
 
-      return {
-        digest,
-        size: configInfo.size || 0,
-        created: configInfo.created,
-        architecture: configInfo.architecture,
-        os: configInfo.os,
-        manifest: response.data
-      };
+      return imageInfo;
     } catch (error) {
       logger.error(`获取镜像清单失败 ${repository}:${tag}:`, error.message);
       throw new AppError(`获取镜像清单失败: ${error.message}`, 500, 'REGISTRY_API_ERROR');
@@ -249,28 +269,30 @@ class DockerRegistryService {
       }
 
       // 提取构建历史信息
-      const history = manifest.manifest.history.map((item, index) => {
-        let created = null;
-        let createdBy = '';
-        let emptyLayer = false;
-        let comment = '';
+      const history = manifest.manifest.history && Array.isArray(manifest.manifest.history) 
+        ? manifest.manifest.history.map((item, index) => {
+            let created = null;
+            let createdBy = '';
+            let emptyLayer = false;
+            let comment = '';
 
-        if (typeof item === 'object') {
-          created = item.created;
-          createdBy = item.created_by || '';
-          emptyLayer = item.empty_layer || false;
-          comment = item.comment || '';
-        }
+            if (typeof item === 'object') {
+              created = item.created;
+              createdBy = item.created_by || '';
+              emptyLayer = item.empty_layer || false;
+              comment = item.comment || '';
+            }
 
-        return {
-          id: index + 1,
-          created,
-          createdBy,
-          emptyLayer,
-          comment,
-          size: emptyLayer ? 0 : manifest.manifest.layers?.[index]?.size || 0
-        };
-      }).reverse(); // 反转数组，使最新的构建在顶部
+            return {
+              id: index + 1,
+              created,
+              createdBy,
+              emptyLayer,
+              comment,
+              size: emptyLayer ? 0 : manifest.manifest.layers?.[index]?.size || 0
+            };
+          }).reverse() // 反转数组，使最新的构建在顶部
+        : [];
 
       return history;
     } catch (error) {

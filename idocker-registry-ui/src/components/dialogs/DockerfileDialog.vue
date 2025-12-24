@@ -2,7 +2,7 @@
   <div class="modal-overlay" @click.self="$emit('close')">
     <div class="modal dockerfile-modal">
       <div class="modal-header">
-        <h3 class="modal-title">Dockerfile</h3>
+        <h3 class="modal-title">{{ $t('dialogs.dockerfile.title') }}</h3>
         <button class="btn btn-ghost btn-icon modal-close" @click="$emit('close')">
           <span class="material-icons">close</span>
         </button>
@@ -17,14 +17,14 @@
           <CopyToClipboardButton
             :text="dockerfileContent"
             @notify="handleNotification"
-            text-label="Copy Dockerfile"
+            :text-label="$t('dialogs.dockerfile.copyDockerfile')"
           />
         </div>
       </div>
       
       <div class="modal-footer">
         <button class="btn btn-secondary" @click="$emit('close')">
-          Close
+          {{ $t('dialogs.dockerfile.close') }}
         </button>
       </div>
     </div>
@@ -33,6 +33,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { LayerInfo } from '@/types'
 import CopyToClipboardButton from '@/components/tag-list/CopyToClipboardButton.vue'
 
@@ -41,6 +42,7 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const { t } = useI18n()
 
 const emit = defineEmits<{
   close: []
@@ -50,11 +52,11 @@ const emit = defineEmits<{
 // Generate Dockerfile content from layers
 const dockerfileContent = computed(() => {
   if (!props.layers || props.layers.length === 0) {
-    return '# No Dockerfile information available'
+    return `# ${t('dialogs.dockerfile.noInfoAvailable')}`
   }
   
-  let dockerfile = '# Generated from image layers\n'
-  dockerfile += '# This is a reconstruction based on the layer information\n\n'
+  let dockerfile = `# ${t('dialogs.dockerfile.generatedFromLayers')}\n`
+  dockerfile += `# ${t('dialogs.dockerfile.reconstructionNote')}\n\n`
   
   // This is a simplified Dockerfile reconstruction
   // In a real implementation, you would need to decode the layers to get the actual commands

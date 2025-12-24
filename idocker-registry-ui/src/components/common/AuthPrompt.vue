@@ -6,16 +6,16 @@
           <span class="material-icons">lock</span>
         </div>
         
-        <h2>Authentication Required</h2>
+        <h2>{{ $t('loginPage.loginPrompt') }}</h2>
         
-        <p>This page requires you to be logged in. Please sign in to continue.</p>
+        <p>{{ $t('loginPage.loginPrompt') }}</p>
         
         <div class="auth-prompt-actions">
           <button class="btn btn-primary" @click="redirectToLogin">
-            Sign In
+            {{ $t('auth.loginNow') }}
           </button>
           <button class="btn btn-ghost" @click="cancel">
-            Cancel
+            {{ $t('common.cancel') }}
           </button>
         </div>
       </div>
@@ -26,7 +26,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
+
+const { t } = useI18n()
 
 interface Props {
   show?: boolean

@@ -10,18 +10,18 @@
         <p class="error-message">{{ errorMessage }}</p>
         
         <div v-if="errorDetails" class="error-details">
-          <h3>Details</h3>
+          <h3>{{ $t('error.errorPage.details') }}</h3>
           <pre>{{ errorDetails }}</pre>
         </div>
         
         <div class="error-actions">
           <button class="btn btn-primary" @click="retry">
             <span class="material-icons">refresh</span>
-            Retry
+            {{ $t('error.errorPage.retry') }}
           </button>
           <button class="btn btn-ghost" @click="goHome">
             <span class="material-icons">home</span>
-            Go Home
+            {{ $t('error.errorPage.goHome') }}
           </button>
         </div>
       </div>
@@ -32,6 +32,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import type { RegistryError } from '@/types'
 
 interface Props {
@@ -45,27 +46,28 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
+const { t } = useI18n()
 
 // Extract error information
 const errorTitle = computed(() => {
   switch (props.error.code) {
     case 'NETWORK_ERROR':
-      return 'Network Error'
+      return t('error.errorPage.networkError')
     case 'MIXED_CONTENT':
-      return 'Mixed Content Error'
+      return t('error.errorPage.mixedContent')
     case 'INCORRECT_URL':
-      return 'Invalid URL'
+      return t('error.errorPage.invalidUrl')
     case 'CATALOG_NOT_FOUND':
-      return 'Catalog Not Found'
+      return t('error.errorPage.catalogNotFound')
     case 'HTTP_ERROR':
-      return `HTTP Error ${props.error.status || 'Unknown'}`
+      return `${t('error.errorPage.httpError')} ${props.error.status || 'Unknown'}`
     default:
-      return 'Error'
+      return t('error.errorPage.unknownError')
   }
 })
 
 const errorMessage = computed(() => {
-  return props.error.message || 'An unknown error occurred'
+  return props.error.message || t('error.errorPage.unknownErrorOccurred')
 })
 
 const errorDetails = computed(() => {
