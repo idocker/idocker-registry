@@ -187,10 +187,12 @@ export interface PaginationMeta {
 }
 
 // 项目分页响应（保持向后兼容）
-export interface ProjectPaginatedResponse extends ApiResponse<{ projects: Project[]; pagination: PaginationMeta }> {}
+export interface ProjectPaginatedResponse extends ApiResponse<{
+  datas: Project[] ; pagination: PaginationMeta 
+}> {}
 
 // 镜像分页响应
-export interface ImagePaginatedResponse extends ApiResponse<{ images: Image[]; pagination: PaginationMeta }> {}
+export interface ImagePaginatedResponse extends ApiResponse<{ datas: Image[]; pagination: PaginationMeta }> {}
 
 // Image types
 export interface ImageTag {

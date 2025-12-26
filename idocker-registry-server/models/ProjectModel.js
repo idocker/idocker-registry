@@ -15,7 +15,7 @@ export class ProjectModel extends BaseModel {
    * @param {*} projectName 
    * @returns 
    */
-  async findByName(projectName){
+  async findByName(projectName) {
     return await this.get(
       'SELECT * FROM projects WHERE name = ?',
       [projectName]
@@ -23,13 +23,51 @@ export class ProjectModel extends BaseModel {
   }
 
   /**
-   * 获取项目列表（支持分页和搜索）
+   * 获取所有项目列表(管理员管理专用，不含权限过滤)
+   * @param {*} isActive 是否活跃 
+   * @returns 
    */
-  async getProjectsList(userId, userRole, { page = 1, limit = 20, search = '' } = {}) {
+  async getProjectsAllList(isActive , { page = 1, limit = 20, search = '' } = {}) {
     try {
       let query;
-      let params;
+      let params = [];
 
+      query = `
+        SELECT * FROM projects WHERE 1 = 1
+      `;
+
+      if (isActive && isActive !== 'all') {
+        query += ' AND is_active = ?';
+        params.push(isActive);
+      }
+
+      if (search) {
+        query += ' AND (name LIKE ? OR description LIKE ? OR namespace LIKE ?)';
+        params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+      }
+
+      const result = await this.paginate(
+        query,
+        params,
+        page,
+        limit
+      );
+      logger.info(`getProjectsAllList:${JSON.stringify(result)}`);
+      return result || [];
+    } catch (error) {
+      logger.error('获取项目(All)列表失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取项目列表（支持分页和搜索，含权限过滤）
+   */
+  async getProjectsList(userId, userRole, isActive, { page = 1, limit = 20, search = '' } = {}) {
+    try {
+      let query;
+      let params = [];
+      logger.info(`getProjectsList:${JSON.stringify(isActive)}`)
       if (userRole === 'admin') {
         query = `
           SELECT p.id, p.name, p.description, p.namespace, p.is_active, p.created_at, p.updated_at, 
@@ -38,7 +76,11 @@ export class ProjectModel extends BaseModel {
           LEFT JOIN users u ON p.created_by = u.id
           WHERE 1=1
         `;
-        params = [];
+        
+        if (isActive && isActive !== 'all') {
+          query += ' AND p.is_active = ?';
+          params.push(isActive);
+        }
 
         if (search) {
           query += ' AND (p.name LIKE ? OR p.description LIKE ? OR p.namespace LIKE ?)';
@@ -64,6 +106,8 @@ export class ProjectModel extends BaseModel {
 
       query += ' ORDER BY p.created_at DESC';
 
+      logger.info(`getProjectsList:${JSON.stringify(query)}`)
+
       const result = await this.paginate(query, params, page, limit);
 
       // 为每个项目添加成员数量和仓库数量
@@ -84,9 +128,12 @@ export class ProjectModel extends BaseModel {
         );
 
         result.data = enrichedProjects;
+        //result.name = "projects";
       }
 
-      return result;
+      //result = result || [];
+
+      return result || [];
     } catch (error) {
       logger.error('获取项目列表失败:', error);
       throw error;
@@ -156,9 +203,9 @@ export class ProjectModel extends BaseModel {
    */
   async deleteProject(projectId) {
     try {
-      const result = await this.update(projectId, { 
+      const result = await this.update(projectId, {
         is_active: 0,
-        updated_at: new Date().toISOString() 
+        updated_at: new Date().toISOString()
       });
       return result;
     } catch (error) {
@@ -219,7 +266,7 @@ export class ProjectModel extends BaseModel {
         VALUES (?, ?, ?, ?)
       `;
       const params = [projectId, userId, role, new Date().toISOString()];
-      
+
       const result = await this.run(sql, params);
       return { id: result.lastID, projectId, userId, role };
     } catch (error) {
@@ -240,7 +287,7 @@ export class ProjectModel extends BaseModel {
         WHERE pm.project_id = ?
         ORDER BY pm.created_at
       `;
-      
+
       return await this.all(sql, [projectId]);
     } catch (error) {
       logger.error('获取项目成员列表失败:', error);
@@ -430,6 +477,19 @@ export class ProjectModel extends BaseModel {
       return { id: result.lastID };
     } catch (error) {
       logger.error('创建项目失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取活跃项目数量
+   */
+  async getActiveProjectCount() {
+    try {
+      const result = await this.get('SELECT COUNT(*) as count FROM projects WHERE is_active = 1');
+      return result ? result.count : 0;
+    } catch (error) {
+      logger.error('获取活跃项目数量失败:', error);
       throw error;
     }
   }

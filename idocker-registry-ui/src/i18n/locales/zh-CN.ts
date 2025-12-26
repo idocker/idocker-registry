@@ -3,6 +3,7 @@
  * iDocker Registry 中文翻译
  */
 
+
 export default {
   // 通用
   common: {
@@ -45,6 +46,10 @@ export default {
     required: '必填',
     optional: '选填',
     language: '语言',
+    // 分页
+    totalRecords: '共 {count} 条记录',
+    previousPage: '上一页',
+    nextPage: '下一页',
     more: '更多'
   },
 
@@ -162,6 +167,10 @@ export default {
     projectName: '项目名称',
     namespace: '命名空间',
     description: '描述',
+    createdAt: '创建时间',
+    updatedAt: '更新时间',
+    createdBy: '创建者',
+    repositoryCount: '仓库数量',
     members: '成员',
     memberList: '成员列表',
     addMember: '添加成员',
@@ -367,10 +376,7 @@ export default {
     viewDetails: '查看详情',
     loading: '加载中...',
     noLogsFound: '没有找到日志记录',
-    // 分页
-    totalRecords: '共 {count} 条记录',
-    previousPage: '上一页',
-    nextPage: '下一页',
+
     // 日志详情
     logDetails: '日志详情',
     // 清理日志对话框
@@ -402,7 +408,7 @@ export default {
 
   // 登录页
   loginPage: {
-    title: 'iDocker Registry 管理',
+    title: 'iDocker Registry',
     signInToManage: '登录管理您的Docker仓库',
     signInButton: '登录',
     signInText: '登录中...',
@@ -471,6 +477,7 @@ export default {
 
   // 项目管理（ProjectsView）
   projectList: {
+    searchProjects: '搜索项目...',
     title: '项目列表',
     createProject: '创建项目',
     editProject: '编辑项目',

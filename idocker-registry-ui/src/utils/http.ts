@@ -70,7 +70,7 @@ class RegistryHttpService {
     // Response interceptor
     this.axiosInstance.interceptors.response.use(
       (response) => {
-        console.log('response interceptor:', response)
+        //console.log('response interceptor:', response)
         // Cache successful responses
         const key = this.getCacheKey(response.config)
         responseCache.set(key, {

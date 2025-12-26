@@ -194,6 +194,9 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
+import syncService from '@/services/sync.service'
+import projectService from '@/services/project.service'
+import type { SyncStatus, SyncLog, SyncResult } from '@/services/sync.service'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
@@ -234,15 +237,10 @@ const statusIcon = computed(() => {
 // 方法
 const fetchSyncStatus = async () => {
   try {
-    const response = await fetch('/api/sync/status', {
-      headers: {
-        'Authorization': `Bearer ${authStore.token}`
-      }
-    })
+    const response = await syncService.getSyncStatus()
     
-    if (response.ok) {
-      const data = await response.json()
-      syncStatus.value = data.data
+    if (response.success) {
+      syncStatus.value = response.data
     } else {
       throw new Error(t('sync.fetchSyncStatusFailed'))
     }
@@ -254,15 +252,10 @@ const fetchSyncStatus = async () => {
 
 const fetchProjects = async () => {
   try {
-    const response = await fetch('/api/projects', {
-      headers: {
-        'Authorization': `Bearer ${authStore.token}`
-      }
-    })
+    const response = await projectService.getProjects({})
     
-    if (response.ok) {
-      const data = await response.json()
-      projects.value = data.data || []
+    if (response.success && response.data) {
+      projects.value = response.data.projects || []
     }
   } catch (error) {
     console.error('获取项目列表失败:', error)
@@ -272,16 +265,13 @@ const fetchProjects = async () => {
 const fetchSyncLogs = async (page = 1) => {
   try {
     logsLoading.value = true
-    const response = await fetch(`/api/sync/logs?page=${page}&limit=${logsPagination.value.limit}`, {
-      headers: {
-        'Authorization': `Bearer ${authStore.token}`
-      }
-    })
+    const response = await syncService.getSyncLogs(page, logsPagination.value.limit)
     
-    if (response.ok) {
-      const data = await response.json()
-      syncLogs.value = data.data.logs || []
-      logsPagination.value = data.data.pagination
+    if (response.success) {
+      syncLogs.value = response.data || []
+      if (response.pagination) {
+        logsPagination.value = response.pagination
+      }
     } else {
       throw new Error(t('sync.fetchSyncLogsFailed'))
     }
@@ -298,23 +288,14 @@ const startFullSync = async () => {
     isSyncing.value = true
     showMessage(t('sync.fullSyncStarting'), 'info')
     
-    const response = await fetch('/api/sync/all', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authStore.token}`
-      },
-      body: JSON.stringify(syncOptions)
-    })
+    const result = await syncService.startFullSync()
     
-    if (response.ok) {
-      const data = await response.json()
-      showMessage(t('sync.fullSync') + t('sync.syncCompletedSuffix') + ` ${data.message}`, 'success')
+    if (result.success) {
+      showMessage(t('sync.fullSync') + t('sync.syncCompletedSuffix') + ` ${result.message || ''}`, 'success')
       await fetchSyncStatus()
       await fetchSyncLogs()
     } else {
-      const errorData = await response.json()
-      throw new Error(errorData.message || t('sync.syncFailed'))
+      throw new Error(result.message || t('sync.syncFailed'))
     }
   } catch (error) {
     console.error('全量同步失败:', error)
@@ -334,23 +315,14 @@ const startProjectSync = async () => {
     isSyncing.value = true
     showMessage(`${t('sync.syncThisProjectPrefix')} ${selectedProjectId.value}...`, 'info')
     
-    const response = await fetch(`/api/sync/project/${selectedProjectId.value}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authStore.token}`
-      },
-      body: JSON.stringify(syncOptions)
-    })
+    const result = await syncService.startProjectSync(selectedProjectId.value)
     
-    if (response.ok) {
-      const data = await response.json()
-      showMessage(t('sync.projectSyncCompleted') + ` ${data.message}`, 'success')
+    if (result.success) {
+      showMessage(t('sync.projectSyncCompleted') + ` ${result.message || ''}`, 'success')
       await fetchSyncStatus()
       await fetchSyncLogs()
     } else {
-      const errorData = await response.json()
-      throw new Error(errorData.message || t('sync.projectSyncFailed'))
+      throw new Error(result.message || t('sync.projectSyncFailed'))
     }
   } catch (error) {
     console.error('项目同步失败:', error)

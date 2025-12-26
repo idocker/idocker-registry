@@ -46,17 +46,17 @@
 
 // Dark theme colors
 body.dark-theme {
-  --primary-color: #5c88ff;
+  --primary-color: #3498db;
+  --primary-color-hover: #7ea1ff;
   --primary-text: #98a8bd;
   --neutral-text: #6d7fab;
   --background: #22272e;
   --hover-background: #343a4b;
-  --accent-text: #5c88ff;
+  --accent-text: #3498db;
   --header-accent-text: #7ea1ff;
   --header-background: #333a45;
   
   // Component colors
-  --card-background: #222;
   --card-bg: #1c1f28;
   --border-color: #2d2e2e;
   --border-radius: 0.4rem;

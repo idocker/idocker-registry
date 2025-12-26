@@ -17,6 +17,12 @@
       <div class="menu-divider"></div>
       
       <div class="menu-items">
+
+        <button class="menu-item" @click="navigateToDashboard">
+          <span class="material-icons">dashboard</span>
+          <span>{{ $t('nav.dashboard') }}</span>
+        </button>
+
         <button class="menu-item" @click="$emit('action', 'profile')">
           <span class="material-icons">person</span>
           <span>{{ $t('nav.profile') }}</span>
@@ -27,6 +33,8 @@
           <span>{{ $t('nav.password') }}</span>
         </button>
         
+        <div class="menu-divider"></div>
+
         <button class="menu-item" @click="$emit('action', 'projects')">
           <span class="material-icons">folder</span>
           <span>{{ $t('projects.title') }}</span>
@@ -40,6 +48,11 @@
         <button v-if="user.role === 'admin'" class="menu-item" @click="navigateToLogs">
           <span class="material-icons">history</span>
           <span>{{ $t('audit.title') }}</span>
+        </button>
+
+        <button v-if="user.role === 'admin'" class="menu-item" @click="navigateToSync">
+          <span class="material-icons">sync</span>
+          <span>{{ $t('managementLayout.warehouseSync') }}</span>
         </button>
         
         <div class="menu-divider"></div>
@@ -122,6 +135,18 @@ onUnmounted(() => {
 const navigateToUsers = () => {
   emit('close')
   router.push('/admin/users')
+}
+
+// 导航到项目管理页面
+const navigateToDashboard = () => {
+  emit('close')
+  router.push('/admin/dashboard')
+}
+
+// 导航到仓库同步页面
+const navigateToSync = () => {
+  emit('close')
+  router.push('/admin/sync')
 }
 
 // 导航到密码修改页面

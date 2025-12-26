@@ -7,6 +7,10 @@
     <div class="nav-menu">
       <div class="nav-section">
         <div class="nav-section-title">{{ $t('managementLayout.personalSettings') }}</div>
+        <router-link to="/admin/dashboard" class="nav-item" :class="{ active: isActive('/admin/dashboard') }">
+          <span class="material-icons">dashboard</span>
+          <span>{{ $t('nav.dashboard') }}</span>
+        </router-link>
         <router-link to="/admin/profile" class="nav-item" :class="{ active: isActive('/admin/profile') }">
           <span class="material-icons">person</span>
           <span>{{ $t('managementLayout.basicInfo') }}</span>
@@ -19,10 +23,6 @@
       
       <div class="nav-section">
         <div class="nav-section-title">{{ $t('managementLayout.systemManagement') }}</div>
-        <router-link to="/admin/dashboard" class="nav-item" :class="{ active: isActive('/admin/dashboard') }">
-          <span class="material-icons">dashboard</span>
-          <span>{{ $t('nav.dashboard') }}</span>
-        </router-link>
         <router-link to="/admin/projects" class="nav-item" :class="{ active: isActive('/admin/projects') }">
           <span class="material-icons">folder</span>
           <span>{{ $t('managementLayout.projectManagement') }}</span>

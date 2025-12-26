@@ -127,7 +127,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   padding: 16px 24px;
-  border-bottom: 1px solid var(--border-color);
+  //border-bottom: 1px solid var(--border-color);
   //background-color: var(--card-bg);
   
   .sidebar-toggle {
@@ -154,7 +154,7 @@ onUnmounted(() => {
       margin: 0 0 4px 0;
       font-size: 24px;
       font-weight: 600;
-      color: var(--text);
+      color: var(--primary-text);
     }
     
     .page-subtitle {

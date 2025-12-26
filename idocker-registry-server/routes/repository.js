@@ -26,6 +26,21 @@ const imageTagModel = new ImageTagModel();
 const registryConfigModel = new RegistryConfigModel();
 const authModel = new AuthModel();
 
+router.get('/', asyncHandler(async (req, res) => {
+  //获取用户的项目列表（不分页）
+  const { id: userId, role: userRole } = req.user;
+  const projects = await projectModel.getProjectsList(userId, userRole, { page: 1, limit: 1000, search: '' });  
+  //循环项目列表，获取每个项目的镜像仓库列表（不分页）
+  let allRepositories = [];
+  for (const project of projects.data) {
+    const repositories = await repositoryModel.getRepositoriesList(userId, userRole, { page: 1, limit: 1000, search: '' });
+    allRepositories = allRepositories.concat(repositories.data);
+  }
+
+  res.status(200).json(success(allRepositories));
+
+}));
+
 /**
  * GET /api/repository/images
  * 获取镜像列表
@@ -123,13 +138,6 @@ router.get('/projects/:projectId/images', asyncHandler(async (req, res) => {
       result.images,
       result.pagination
     ));
-  } catch (error) {
-    logger.error('获取项目镜像列表时出错:', error);
-    res.status(500).json({
-      success: false,
-      message: '获取项目镜像列表失败'
-    });
-  }
   } catch (error) {
     logger.error('获取项目镜像列表时出错:', error);
     res.status(500).json({

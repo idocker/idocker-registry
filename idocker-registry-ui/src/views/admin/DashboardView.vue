@@ -99,51 +99,28 @@ import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
+import dashboardService from '@/services/dashboard.service'
+import type { DashboardStats, RecentProject, RecentRepository } from '@/services/dashboard.service'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
 
-const stats = ref({
+const stats = ref<DashboardStats>({
   projectsCount: 0,
   repositoriesCount: 0,
   replicationPoliciesCount: 0,
   usersCount: 0
 })
 
-const recentProjects = ref([])
-const recentRepositories = ref([])
+const recentProjects = ref<RecentProject[]>([])
+const recentRepositories = ref<RecentRepository[]>([])
 
 const fetchDashboardData = async () => {
   try {
-    const token = localStorage.getItem('auth_token')
+    const dashboardData = await dashboardService.getDashboardData(5)
 
-    const [projectsResponse, repositoriesResponse] = await Promise.all([
-      fetch('/api/projects', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      }),
-      fetch('/api/repositories', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-    ])
-
-    if (projectsResponse.ok) {
-      const projectsData = await projectsResponse.json()
-      recentProjects.value = projectsData.data?.slice(0, 5) || []
-      stats.value.projectsCount = projectsData.data?.length || 0
-    }
-
-    if (repositoriesResponse.ok) {
-      const repositoriesData = await repositoriesResponse.json()
-      recentRepositories.value = repositoriesData.data?.slice(0, 5) || []
-      stats.value.repositoriesCount = repositoriesData.data?.length || 0
-    }
-
-    stats.value.usersCount = 1
-    stats.value.replicationPoliciesCount = 0
+    recentProjects.value = dashboardData.recentProjects
+    recentRepositories.value = dashboardData.recentRepositories
   } catch (error) {
     console.error('Failed to fetch dashboard data:', error)
   }

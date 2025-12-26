@@ -143,14 +143,14 @@
                 <div class="pagination">
                     <button class="btn btn-ghost" @click="currentPage = Math.max(1, currentPage - 1)"
                         :disabled="currentPage === 1">
-                        {{ $t('audit.previousPage') }}
+                        {{ $t('common.previousPage') }}
                     </button>
                     <span class="page-info">
                         {{ currentPage }} / {{ totalPages }}
                     </span>
                     <button class="btn btn-ghost" @click="currentPage = Math.min(totalPages, currentPage + 1)"
                         :disabled="currentPage === totalPages">
-                        {{ $t('audit.nextPage') }}
+                        {{ $t('common.nextPage') }}
                     </button>
                 </div>
             </div>
@@ -262,8 +262,10 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import axios from 'axios'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
+import auditService, { type AuditLog } from '@/services/audit.service'
+import userService from '@/services/user.service'
+import axios from 'axios'
 
 const { t, locale } = useI18n()
 
@@ -276,11 +278,11 @@ const showDetailsDialog = ref(false)
 const showDeleteDialog = ref(false)
 
 // 数据
-const logs = ref([])
+const logs = ref<AuditLog[]>([])
 const users = ref([])
 const selectedLog = ref(null)
 const currentPage = ref(1)
-const pageSize = ref(8)
+const pageSize = ref(4)
 const totalLogs = ref(0)
 
 // 过滤条件
@@ -387,23 +389,25 @@ const loadLogs = async () => {
     try {
         isLoading.value = true
 
-        const params: any = {
+        await auditService.getAuditLogs({
+            page: currentPage.value,
             limit: pageSize.value,
-            offset: (currentPage.value - 1) * pageSize.value
-        }
+            search: filters.search,
+            action: filters.action,
+            resourceType: filters.resourceType,
+            userId: filters.userId,
+            startDate: filters.startDate,
+            endDate: filters.endDate
+        }).then(response => {
+            console.log('response', response)
+            logs.value = response.data || []
 
-        // 添加过滤条件
-        if (filters.userId) params.userId = filters.userId
-        if (filters.action) params.action = filters.action
-        if (filters.resourceType) params.resourceType = filters.resourceType
-        if (filters.startDate) params.startDate = filters.startDate
-        if (filters.endDate) params.endDate = filters.endDate
+            totalLogs.value = response.pagination.total
 
-        const response = await axios.get('/api/audit/logs', { params })
-        console.log('response', response)
-        logs.value = response.data.data || []
-        totalLogs.value = response.data.data.length || 0
-        totalPages.value = Math.ceil(totalLogs.value / pageSize.value)
+            totalPages.value = response.pagination.totalPages
+
+        })
+        
     } catch (error) {
         console.error('Failed to load audit logs:', error)
         showMessage(t('audit.loadAuditLogsFailed'), 'error')
@@ -415,8 +419,8 @@ const loadLogs = async () => {
 // 加载用户列表
 const loadUsers = async () => {
     try {
-        const response = await axios.get('/api/users')
-        users.value = response.data || []
+        const response = await userService.getUsers({ limit: 1000 })
+        users.value = response.users || []
     } catch (error) {
         console.error('Failed to load users:', error)
     }
@@ -459,12 +463,14 @@ const confirmDelete = async () => {
 
         if (deleteOption.value === 'by-date') {
             // 按日期删除
-            await axios.delete('/api/audit/old', {
-                data: { daysOld: daysOld.value }
-            })
-            showMessage(t('audit.deleteLogsSuccess', { days: daysOld.value }), 'success')
+            const response = await auditService.cleanupAuditLogs(daysOld.value)
+            if (response.success) {
+                showMessage(t('audit.deleteLogsSuccess', { days: daysOld.value }), 'success')
+            } else {
+                showMessage(response.message || t('audit.deleteLogsFailed'), 'error')
+            }
         } else {
-            // 删除所有日志
+            // 删除所有日志 - 这里使用直接axios因为清理特定过滤的日志可能不在service中
             await axios.delete('/api/audit', {
                 data: filters
             })

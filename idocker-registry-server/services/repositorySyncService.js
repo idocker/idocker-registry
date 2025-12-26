@@ -13,12 +13,16 @@ import { AppError } from '../middleware/errorHandler.js';
 import dockerRegistryService from './dockerRegistryService.js';
 import { ProjectModel } from '../models/ProjectModel.js';
 import { RepositoryModel } from '../models/RepositoryModel.js';
+import { ImageTagModel } from '../models/ImageTagModel.js';
+import { SyncLogModel } from '../models/SyncLogModel.js';
 import { getDb } from '../config/database.js';
 
 class RepositorySyncService {
     constructor() {
         this.projectModel = new ProjectModel();
         this.repositoryModel = new RepositoryModel();
+        this.imageTagModel = new ImageTagModel();
+        this.syncLogModel = new SyncLogModel();
     }
 
     /**
@@ -26,6 +30,7 @@ class RepositorySyncService {
      */
     async getDefaultRegistryConfig() {
         try {
+            // TODO: 使用 RegistryConfigModel 获取配置
             const db = await getDb();
             const config = await db.get(
                 'SELECT * FROM registry_configs WHERE is_default = 1 AND is_active = 1'
@@ -109,8 +114,6 @@ class RepositorySyncService {
      * @param {Object} registryConfig - Registry配置
      */
     async processRepository(repo, registryConfig) {
-        const db = await getDb();
-
         try {
             // 容错检查：确保 repo 对象存在且 name 属性是字符串
             if (!repo || !repo.name || typeof repo.name !== 'string') {
@@ -139,7 +142,7 @@ class RepositorySyncService {
                     await this.projectModel.createProject({
                         name: projectName,
                         namespace: projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-'),
-                        description: `同步创建的项目 - ${projectName}`,
+                        description: `同步程序自动创建`,
                         is_active: 1
                     });
                     project = await this.projectModel.findByName(projectName);
@@ -158,7 +161,7 @@ class RepositorySyncService {
                 // 创建新仓库
                 await this.repositoryModel.createRepository({
                     name: imageName,
-                    description: `同步创建的仓库 - ${repo.name}`,
+                    description: `同步程序自动创建`,
                     project_id: project ? project.id : null,
                     //repository_url: registryConfig.url,
                     is_active: 1
@@ -172,15 +175,15 @@ class RepositorySyncService {
                     // 如果没有项目，尝试通过名称查找仓库
                     repository = await this.repositoryModel.findByName(imageName);
                 }
-                logger.info(`创建新仓库: ${repo.name}`);
+                logger.info(`不存在，创建仓库: ${repo.name}`);
             } else {
                 // 更新仓库信息
                 if (repository && repository.id) {
                     await this.repositoryModel.updateRepository(repository.id, {
-                        description: `同步更新的仓库 - ${repo.name}`,
                         updated_at: new Date().toISOString()
                     });
                 }
+                logger.info(`已存在，进行更新: ${repo.name}`);
             }
 
             // 同步仓库的标签信息
@@ -199,8 +202,6 @@ class RepositorySyncService {
      * @param {Object} repositoryConfig - Repository配置
      */
     async syncRepositoryTags(repository, repoName, repositoryConfig) {
-        const db = await getDb();
-
         try {
             // 容错检查：确保 repository 存在且有 id
             if (!repository || !repository.id) {
@@ -215,10 +216,7 @@ class RepositorySyncService {
             logger.info(`仓库 ${repoName} 发现 ${tags.length} 个标签`);
 
             // 获取当前数据库中的标签
-            const existingTags = await db.all(
-                'SELECT * FROM image_tags WHERE repository_id = ?',
-                [repository.id]
-            );
+            const existingTags = await this.imageTagModel.getTagsByRepositoryId(repository.id);
 
             // 容错检查：确保 existingTags 是数组
             const existingTagsArray = Array.isArray(existingTags) ? existingTags : [];
@@ -243,40 +241,28 @@ class RepositorySyncService {
                     const existingTag = existingTagsMap.get(tagInfo.name);
 
                     if (existingTag) {
-                        // 更新现有标签
-                        await db.run(`
-              UPDATE image_tags SET
-                digest = ?,
-                size = ?,
-                architecture = ?,
-                os = ?,
-                created_at = ?,
-                updated_at = ?
-              WHERE id = ?
-            `, [
-                            tagInfo.digest || '',
-                            tagInfo.size || 0,
-                            tagInfo.architecture || 'unknown',
-                            tagInfo.os || 'unknown',
-                            tagInfo.created || new Date().toISOString(),
-                            new Date().toISOString(),
-                            existingTag.id
-                        ]);
+                        // 更新现有标签 - 需要在 ImageTagModel 中添加 updateTag 方法
+                        // TODO: 在 ImageTagModel 中添加 updateTag 方法
+                        await this.updateTag(existingTag.id, {
+                            digest: tagInfo.digest || '',
+                            size: tagInfo.size || 0,
+                            architecture: tagInfo.architecture || 'unknown',
+                            os: tagInfo.os || 'unknown',
+                            created_at: tagInfo.created || new Date().toISOString(),
+                            updated_at: new Date().toISOString()
+                        });
                         updatedCount++;
                     } else {
                         // 创建新标签
-                        await db.run(`
-              INSERT INTO image_tags (repository_id, tag, digest, size, architecture, os, created_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?)
-            `, [
-                            repository.id,
-                            tagInfo.name,
-                            tagInfo.digest || '',
-                            tagInfo.size || 0,
-                            tagInfo.architecture || 'unknown',
-                            tagInfo.os || 'unknown',
-                            tagInfo.created || new Date().toISOString()
-                        ]);
+                        await this.imageTagModel.createTag({
+                            repository_id: repository.id,
+                            tag: tagInfo.name,
+                            digest: tagInfo.digest || '',
+                            size: tagInfo.size || 0,
+                            architecture: tagInfo.architecture || 'unknown',
+                            os: tagInfo.os || 'unknown',
+                            created_at: tagInfo.created || new Date().toISOString()
+                        });
                         addedCount++;
                     }
                 } catch (error) {
@@ -289,7 +275,7 @@ class RepositorySyncService {
             const tagsToDelete = existingTagsArray.filter(tag => tag && tag.tag && !currentTags.includes(tag.tag));
 
             for (const tagToDelete of tagsToDelete) {
-                await db.run('DELETE FROM image_tags WHERE id = ?', [tagToDelete.id]);
+                await this.imageTagModel.deleteTag(tagToDelete.id, repository.id);
             }
 
             logger.info(`仓库 ${repoName} 同步完成: 新增 ${addedCount} 个标签, 更新 ${updatedCount} 个标签, 删除 ${tagsToDelete.length} 个标签`);
@@ -298,6 +284,15 @@ class RepositorySyncService {
             logger.error(`同步仓库标签 ${repoName} 失败:`, error);
             throw error;
         }
+    }
+
+    /**
+     * 更新标签信息
+     * @param {number} tagId - 标签ID
+     * @param {Object} updateData - 更新数据
+     */
+    async updateTag(tagId, updateData) {
+        return await this.imageTagModel.updateTag(tagId, updateData);
     }
 
     /**
@@ -382,21 +377,13 @@ class RepositorySyncService {
      */
     async getSyncStatus() {
         try {
-            const db = await getDb();
-
-            // 获取项目数量
-            const projectCount = await db.get('SELECT COUNT(*) as count FROM projects WHERE is_active = 1');
-
-            // 获取仓库数量
-            const repositoryCount = await db.get('SELECT COUNT(*) as count FROM repositories WHERE is_active = 1');
-
-            // 获取镜像标签数量
-            const tagCount = await db.get('SELECT COUNT(*) as count FROM image_tags');
-
-            // 获取最后同步时间
-            const lastSync = await db.get(
-                'SELECT * FROM sync_logs ORDER BY created_at DESC LIMIT 1'
-            );
+            // 使用模型层方法获取项目数量、仓库数量和标签数量
+            const [projectCount, repositoryCount, tagCount, lastSync] = await Promise.all([
+                this.getProjectCount(),
+                this.getRepositoryCount(),
+                this.getTagCount(),
+                this.syncLogModel.getLastSync()
+            ]);
 
             // 检查Repository连接状态
             const repositoryConfig = await this.getDefaultRegistryConfig();
@@ -405,9 +392,9 @@ class RepositorySyncService {
             return {
                 repositoryStatus: isConnected ? 'connected' : 'disconnected',
                 repositoryUrl: repositoryConfig.url,
-                projectCount: projectCount.count || 0,
-                repositoryCount: repositoryCount.count || 0,
-                tagCount: tagCount.count || 0,
+                projectCount: projectCount || 0,
+                repositoryCount: repositoryCount || 0,
+                tagCount: tagCount || 0,
                 lastSync: lastSync ? {
                     id: lastSync.id,
                     type: lastSync.sync_type,
@@ -426,29 +413,33 @@ class RepositorySyncService {
     }
 
     /**
+     * 获取活跃项目数量
+     */
+    async getProjectCount() {
+        return await this.projectModel.getActiveProjectCount();
+    }
+
+    /**
+     * 获取活跃仓库数量
+     */
+    async getRepositoryCount() {
+        return await this.repositoryModel.getActiveRepositoryCount();
+    }
+
+    /**
+     * 获取标签总数
+     */
+    async getTagCount() {
+        return await this.imageTagModel.getTagCount();
+    }
+
+    /**
      * 记录同步日志
      * @param {Object} syncData - 同步数据
      */
     async logSync(syncData) {
         try {
-            const db = await getDb();
-
-            await db.run(`
-        INSERT INTO sync_logs (
-          sync_type, project_id, status, processed_count, 
-          error_count, duration, details, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `, [
-                syncData.type || 'full',
-                syncData.projectId || null,
-                syncData.status || 'completed',
-                syncData.processedCount || 0,
-                syncData.errorCount || 0,
-                syncData.duration || 0,
-                syncData.details ? JSON.stringify(syncData.details) : null,
-                new Date().toISOString()
-            ]);
-
+            await this.syncLogModel.createSyncLog(syncData);
         } catch (error) {
             logger.error('记录同步日志失败:', error);
         }

@@ -30,21 +30,10 @@
         </div>
 
         <div class="form-group">
-          <label class="checkbox-label">
-            <input type="checkbox" v-model="loginForm.ldapAuth" />
-            {{ $t('loginPage.useLdapAuth') }}
-          </label>
-        </div>
-
-        <div class="form-group">
           <button type="submit" class="btn btn-primary" :disabled="isLoading">
             <span v-if="isLoading">{{ $t('loginPage.signInText') }}</span>
             <span v-else>{{ $t('loginPage.signInButton') }}</span>
           </button>
-        </div>
-
-        <div class="login-actions">
-          <router-link to="/register" class="link">{{ $t('loginPage.createAccount') }}</router-link>
         </div>
       </form>
 
@@ -123,9 +112,9 @@ const handleLogin = async () => {
 .login-card {
   width: 100%;
   max-width: 400px;
-  background: white;
+  background: var(--card-bg);
   border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
   padding: 40px;
 }
 
@@ -136,7 +125,7 @@ const handleLogin = async () => {
   h1 {
     font-size: 24px;
     font-weight: 600;
-    color: #2c3e50;
+    color: var(--text-color);
     margin-bottom: 8px;
   }
   
@@ -154,7 +143,12 @@ const handleLogin = async () => {
       display: block;
       margin-bottom: 8px;
       font-weight: 500;
-      color: #34495e;
+      color: var(--text-color);
+    }
+    input[type="text"],
+    input[type="password"] {
+
+      background-color: var(--input-bg);
     }
     
     input {
@@ -163,6 +157,7 @@ const handleLogin = async () => {
       border: 1px solid #ddd;
       border-radius: 4px;
       font-size: 16px;
+      background-color: var(--input-bg);
       
       &:focus {
         outline: none;
@@ -186,6 +181,7 @@ const handleLogin = async () => {
   .btn {
     width: 100%;
     padding: 12px;
+    margin-top: 20px;
     border: none;
     border-radius: 4px;
     font-size: 16px;

@@ -45,6 +45,10 @@ export default {
     required: 'Required',
     optional: 'Optional',
     language: 'Language',
+    // Pagination
+    totalRecords: '{count} total records',
+    previousPage: 'Previous',
+    nextPage: 'Next',
     more: 'more'
   },
 
@@ -163,6 +167,10 @@ export default {
     projectName: 'Project Name',
     namespace: 'Namespace',
     description: 'Description',
+    createdAt: 'Created At',
+    updatedAt: 'Updated At',
+    createdBy: 'Created By',
+    repositoryCount: 'Repository Count',
     members: 'Members',
     memberList: 'Member List',
     addMember: 'Add Member',
@@ -368,10 +376,7 @@ export default {
     viewDetails: 'View Details',
     loading: 'Loading...',
     noLogsFound: 'No log records found',
-    // Pagination
-    totalRecords: '{count} total records',
-    previousPage: 'Previous',
-    nextPage: 'Next',
+
     // Log Details
     logDetails: 'Log Details',
     // Cleanup Dialog
@@ -403,7 +408,7 @@ export default {
 
   // Login Page
   loginPage: {
-    title: 'iDocker Registry Management',
+    title: 'iDocker Registry',
     signInToManage: 'Sign in to manage your Docker registries',
     signInButton: 'Sign In',
     signInText: 'Signing in...',
@@ -472,6 +477,7 @@ export default {
 
   // Project List (ProjectsView)
   projectList: {
+    searchProjects: 'Search Projects...',
     title: 'Project List',
     createProject: 'Create Project',
     editProject: 'Edit Project',

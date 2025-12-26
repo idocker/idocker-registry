@@ -53,7 +53,7 @@ export interface PaginationParams {
 }
 
 export interface PaginatedResponse<T> {
-  users: T[]
+  data: T[]
   pagination: {
     page: number
     limit: number
@@ -131,6 +131,45 @@ class UserService {
    */
   async removeUserFromProject(id: string, projectId: string): Promise<{ success: boolean; message: string }> {
     return http.delete(`/api/users/${id}/projects/${projectId}`)
+  }
+
+  /**
+   * 上传用户头像
+   */
+  async uploadAvatar(file: File): Promise<{ success: boolean; data: { avatarUrl: string } }> {
+    const formData = new FormData()
+    formData.append('avatar', file)
+    
+    // 直接使用 XMLHttpRequest 上传文件
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      
+      xhr.open('POST', '/api/users/avatar')
+      
+      // 设置请求头
+      if (localStorage.getItem('auth_token')) {
+        xhr.setRequestHeader('Authorization', `Bearer ${localStorage.getItem('auth_token')}`)
+      }
+      
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const response = JSON.parse(xhr.responseText)
+            resolve(response)
+          } catch (e) {
+            reject(new Error('Failed to parse response'))
+          }
+        } else {
+          reject(new Error(`Upload failed with status ${xhr.status}`))
+        }
+      }
+      
+      xhr.onerror = () => {
+        reject(new Error('Network error during upload'))
+      }
+      
+      xhr.send(formData)
+    })
   }
 }
 

@@ -6,10 +6,6 @@
                 <div class="table-controls">
                     <input type="text" :placeholder="$t('userList.searchUsers')" v-model="searchQuery" class="search-input" />
                     <div class="table-actions">
-                        <button class="btn btn-ghost" @click="refreshUsers">
-                            <span class="material-icons">refresh</span>
-                            {{ $t('userList.refresh') }}
-                        </button>
                         <button class="btn btn-primary" @click="showCreateDialog = true">
                             <span class="material-icons">add</span>
                             {{ $t('userList.addUser') }}
@@ -24,7 +20,6 @@
                                 <th>{{ $t('userList.username') }}</th>
                                 <th>{{ $t('userList.email') }}</th>
                                 <th>{{ $t('userList.role') }}</th>
-                                <th>{{ $t('userList.ldapUser') }}</th>
                                 <th>{{ $t('userList.createdAt') }}</th>
                                 <th>{{ $t('userList.lastLogin') }}</th>
                                 <th>{{ $t('userList.actions') }}</th>
@@ -50,10 +45,6 @@
                                         {{ getRoleDisplay(user.role) }}
                                     </span>
                                 </td>
-                                <td>
-                                    <span v-if="user.ldap_user" class="badge badge-success">{{ $t('userList.yes') }}</span>
-                                    <span v-else class="badge badge-muted">{{ $t('userList.no') }}</span>
-                                </td>
                                 <td>{{ formatDate(user.created_at) }}</td>
                                 <td>{{ user.last_login ? formatDate(user.last_login) : $t('userList.neverLoggedIn') }}</td>
                                 <td class="action-buttons">
@@ -69,7 +60,7 @@
                     </table>
                 </div>
 
-                <div class="pagination">
+                <div class="pagination" v-if="totalPages > 1">
                     <button class="btn btn-ghost" @click="currentPage = Math.max(1, currentPage - 1)"
                         :disabled="currentPage === 1">
                         {{ $t('common.previousPage') }}
@@ -123,11 +114,13 @@
                                 </select>
                             </div>
 
+
                             <div class="form-group">
-                                <label>
-                                    <input type="checkbox" v-model="userForm.ldapUser" />
-                                    {{ $t('userList.ldapUser') }}
-                                </label>
+                                <label for="isActive">{{ $t('users.active') }}</label>
+                                <select id="isActive" v-model="userForm.isActive" required>
+                                    <option value="true">{{ $t('common.yes') }}</option>
+                                    <option value="false">{{ $t('common.no') }}</option>
+                                </select>
                             </div>
 
                             <div class="dialog-actions">
@@ -180,9 +173,10 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import axios from 'axios'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
 import { useAuthStore } from '@/stores/auth'
+import userService from '@/services/user.service'
+import type { User } from '@/services/user.service'
 
 const { t, locale } = useI18n()
 
@@ -204,15 +198,15 @@ const showEditDialog = ref(false)
 const showDeleteDialog = ref(false)
 
 // 用户数据
-const users = ref([])
-const userToDelete = ref(null)
+const users = ref<User[]>([])
+const userToDelete = ref<User>({} as User)
 const userForm = reactive({
     id: null,
     username: '',
     email: '',
     password: '',
     role: 'user',
-    ldapUser: false
+    isActive: true
 })
 
 // 计算属性
@@ -220,7 +214,7 @@ const filteredUsers = computed(() => {
     if (!searchQuery.value) return users.value
 
     const query = searchQuery.value.toLowerCase()
-    return users.value.filter(user =>
+    return users.value.filter((user: User) =>
         user.username.toLowerCase().includes(query) ||
         user.email.toLowerCase().includes(query)
     )
@@ -229,7 +223,7 @@ const filteredUsers = computed(() => {
 const paginatedUsers = computed(() => {
     const start = (currentPage.value - 1) * pageSize.value
     const end = start + pageSize.value
-    console.log('filteredUsers', filteredUsers.value)
+    //console.log('filteredUsers', filteredUsers.value)
     return filteredUsers.value.slice(start, end)
 })
 
@@ -265,12 +259,16 @@ const formatDate = (dateString: string) => {
 const loadUsers = async () => {
     try {
         isLoading.value = true
-        const response = await axios.get('/api/users', {
-            headers: {
-                'Authorization': `Bearer ${authStore.token}`
-            }
+        //const response = 
+        await userService.getUsers({
+            page: currentPage.value,
+            limit: pageSize.value
+        }).then(response => {
+            console.log('response====', response)
+            users.value = response.data || []
+            //totalPages.value = response.pagination.totalPages
         })
-        users.value = response.data.data || []
+        
     } catch (error) {
         console.error('Failed to load users:', error)
         showMessage(t('userList.loadUsersFailed'), 'error')
@@ -285,20 +283,19 @@ const refreshUsers = () => {
 }
 
 // 编辑用户
-const editUser = (user) => {
+const editUser = (user: User) => {
     Object.assign(userForm, {
         id: user.id,
         username: user.username,
         email: user.email,
         password: '',
-        role: user.role,
-        ldapUser: user.ldap_user
+        role: user.role
     })
     showEditDialog.value = true
 }
 
 // 删除用户
-const deleteUser = (user) => {
+const deleteUser = (user: User) => {
     userToDelete.value = user
     showDeleteDialog.value = true
 }
@@ -307,19 +304,19 @@ const deleteUser = (user) => {
 const confirmDelete = async () => {
     try {
         isDeleting.value = true
-        await axios.delete(`/api/users/${userToDelete.value.id}`, {
-            headers: {
-                'Authorization': `Bearer ${authStore.token}`
+        const response = await userService.deleteUser(userToDelete.value.id)
+        
+        if (response.success) {
+            // 从列表中移除用户
+            const index = users.value.findIndex(u => u.id === userToDelete.value.id)
+            if (index !== -1) {
+                users.value.splice(index, 1)
             }
-        })
-
-        // 从列表中移除用户
-        const index = users.value.findIndex(u => u.id === userToDelete.value.id)
-        if (index !== -1) {
-            users.value.splice(index, 1)
+            showMessage(t('userList.userDeleted'), 'success')
+        } else {
+            showMessage(response.message || t('userList.deleteUserFailed'), 'error')
         }
-
-        showMessage(t('userList.userDeleted'), 'success')
+        
         showDeleteDialog.value = false
         userToDelete.value = null
     } catch (error) {
@@ -334,41 +331,42 @@ const confirmDelete = async () => {
 const saveUser = async () => {
     try {
         isSaving.value = true
-
-        const authHeaders = {
-            'Authorization': `Bearer ${authStore.token}`
-        }
-
+        
         if (showEditDialog.value) {
             // 编辑用户
-            await axios.put(`/api/users/${userForm.id}`, {
+            const response = await userService.updateUser(userForm.id, {
                 username: userForm.username,
                 email: userForm.email,
                 role: userForm.role,
-                ldapUser: userForm.ldapUser
-            }, { headers: authHeaders })
-
-            // 更新列表中的用户
-            const index = users.value.findIndex(u => u.id === userForm.id)
-            if (index !== -1) {
-                Object.assign(users.value[index], userForm)
+                isActive: userForm.isActive
+            })
+            
+            if (response.success) {
+                // 更新列表中的用户
+                const index = users.value.findIndex(u => u.id === userForm.id)
+                if (index !== -1) {
+                    Object.assign(users.value[index], response.data)
+                }
+                showMessage(t('userList.userUpdated'), 'success')
+            } else {
+                showMessage(response.message || t('userList.saveUserFailed'), 'error')
             }
-
-            showMessage(t('userList.userUpdated'), 'success')
         } else {
             // 创建用户
-            const response = await axios.post('/api/users', {
+            const response = await userService.createUser({
                 username: userForm.username,
                 email: userForm.email,
                 password: userForm.password,
-                role: userForm.role,
-                ldapUser: userForm.ldapUser
-            }, { headers: authHeaders })
-
-            // 添加到列表
-            users.value.unshift(response.data)
-
-            showMessage(t('userList.userCreated'), 'success')
+                role: userForm.role
+            })
+            
+            if (response.success) {
+                // 添加到列表
+                users.value.unshift(response.data)
+                showMessage(t('userList.userCreated'), 'success')
+            } else {
+                showMessage(response.message || t('userList.saveUserFailed'), 'error')
+            }
         }
 
         closeDialogs()
@@ -460,7 +458,7 @@ onMounted(async () => {
         border: 1px solid var(--border-color);
         border-radius: 4px;
         font-size: 14px;
-        background-color: var(--bg-color);
+        //background-color: var(--bg-color);
 
         &:focus {
             outline: none;
@@ -592,7 +590,7 @@ onMounted(async () => {
 
 .dialog {
     //background-color: var(--card-bg);
-    background-color: var(--card-background);
+    background-color: var(--card-bg);
     border-radius: 12px;
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
     width: 90%;

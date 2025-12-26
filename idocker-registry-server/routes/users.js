@@ -189,7 +189,6 @@ router.put('/:id', asyncHandler(async (req, res) => {
     logger.error('Error updating user information:', error);
     res.status(500).json(error('Failed to update user information'));
   }
-}
 }));
 
 /**
@@ -227,7 +226,6 @@ router.put('/:id/password', asyncHandler(async (req, res) => {
     logger.error('Error resetting password:', error);
     res.status(500).json(error('Failed to reset password'));
   }
-}
 }));
 
 /**

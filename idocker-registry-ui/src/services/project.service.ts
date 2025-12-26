@@ -83,15 +83,26 @@ class ProjectService {
   /**
    * 获取项目列表
    */
-  async getProjects(params: PaginationParams): Promise<PaginatedResponse<Project>> {
+  async getProjects(isActive:string ,params: PaginationParams): Promise<PaginatedResponse<Project>> {
     const queryParams = new URLSearchParams()
-    
+    //console.log('isActive', isActive)
+    if (isActive) queryParams.append('isActive', isActive.toString())
     if (params.page) queryParams.append('page', params.page.toString())
     if (params.limit) queryParams.append('limit', params.limit.toString())
     if (params.search) queryParams.append('search', params.search)
     
     return http.get(`/api/projects?${queryParams.toString()}`)
   }
+
+  /**
+   * 获取所有项目列表（包括未激活，管理员专用）
+   */
+  async getAllProjects(isActive: string): Promise<PaginatedResponse<Project>> {
+    const queryParams = new URLSearchParams()
+    if (isActive !== undefined) queryParams.append('isActive', isActive.toString())
+    return http.get(`/api/projects/all?${queryParams.toString()}`)
+  }
+
 
   /**
    * 获取项目详情

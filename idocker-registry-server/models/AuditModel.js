@@ -73,6 +73,7 @@ export class AuditModel extends BaseModel {
       query += ' ORDER BY al.created_at DESC';
 
       const result = await this.paginate(query, params, page, limit);
+      //logger.info(`result:${JSON.stringify(result)}`)
       
       // 格式化日志详情（如果是JSON字符串）
       if (result.data && Array.isArray(result.data)) {

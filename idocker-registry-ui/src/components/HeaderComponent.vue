@@ -10,9 +10,19 @@
     </div>
 
     <div class="header-menu">
-      <SearchBar @search="handleSearch" />
+      <!-- <SearchBar @search="handleSearch" /> -->
 
-      <!-- 如果已登录，显示用户头像菜单 -->
+      <div>
+        <LanguageSwitcher />
+      </div>
+
+      <button class="btn btn-ghost btn-icon" @click="toggleTheme" :title="getThemeButtonTitle()">
+        <span class="material-icons">
+          {{ getThemeButtonIcon() }}
+        </span>
+      </button>
+
+            <!-- 如果已登录，显示用户头像菜单 -->
       <div v-if="isLoggedIn" class="user-menu-container">
         <button class="btn btn-ghost user-avatar-btn" @click="showUserMenu = !showUserMenu" title="User Menu">
           <!-- <img v-if="userAvatarUrl" :src="userAvatarUrl" alt="User Avatar" class="user-avatar" />
@@ -37,16 +47,6 @@
         <RegistryMenu v-show="showRegistryMenu" @close="showRegistryMenu = false"
           @registry-changed="handleRegistryChanged" @notify="handleNotification" />
       </template>
-
-      <div>
-        <LanguageSwitcher />
-      </div>
-
-      <button class="btn btn-ghost btn-icon" @click="toggleTheme" :title="getThemeButtonTitle()">
-        <span class="material-icons">
-          {{ getThemeButtonIcon() }}
-        </span>
-      </button>
     </div>
   </header>
 </template>

@@ -173,4 +173,40 @@ export class ImageTagModel extends BaseModel {
       throw error;
     }
   }
+
+  /**
+   * 更新标签信息
+   */
+  async updateTag(tagId, updateData) {
+    try {
+      if (!tagId || !updateData) {
+        throw new Error('标签ID和更新数据不能为空');
+      }
+
+      const keys = Object.keys(updateData);
+      const values = Object.values(updateData);
+      const setClause = keys.map(key => `${key} = ?`).join(', ');
+      
+      const sql = `UPDATE image_tags SET ${setClause} WHERE id = ?`;
+      const result = await this.run(sql, [...values, tagId]);
+      
+      return { ...updateData, id: tagId, changes: result.changes };
+    } catch (error) {
+      logger.error('更新标签失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取标签总数
+   */
+  async getTagCount() {
+    try {
+      const result = await this.get('SELECT COUNT(*) as count FROM image_tags');
+      return result ? result.count : 0;
+    } catch (error) {
+      logger.error('获取标签总数失败:', error);
+      throw error;
+    }
+  }
 }

@@ -64,7 +64,7 @@ export class RepositoryModel extends BaseModel {
   }
 
   /**
-   * 获取项目下的仓库列表
+   * 获取项目下的镜像列表
    */
   async getProjectRepositories(projectId, { page = 1, limit = 20, search = '' } = {}) {
     try {
@@ -250,6 +250,19 @@ export class RepositoryModel extends BaseModel {
       return repository;
     } catch (error) {
       logger.error('根据仓库名称查找失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取活跃仓库数量
+   */
+  async getActiveRepositoryCount() {
+    try {
+      const result = await this.get('SELECT COUNT(*) as count FROM repositories WHERE is_active = 1');
+      return result ? result.count : 0;
+    } catch (error) {
+      logger.error('获取活跃仓库数量失败:', error);
       throw error;
     }
   }

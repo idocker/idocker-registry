@@ -16,7 +16,7 @@ import bcrypt from 'bcryptjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const projectRoot = path.resolve(__dirname, '../..');
+const projectRoot = path.resolve(__dirname, '../');
 const DB_PATH = process.env.DB_PATH || path.join(projectRoot, 'data', 'registry.db');
 
 let db = null;

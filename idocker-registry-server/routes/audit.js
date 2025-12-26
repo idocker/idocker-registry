@@ -13,7 +13,7 @@ import { asyncHandler } from '../middleware/errorHandler.js';
 import { requireAdmin } from '../middleware/auth.js';
 import { logger } from '../utils/logger.js';
 import { AuditModel } from '../models/AuditModel.js';
-import { success, error } from '../utils/apiResponse.js';
+import { success, error, paginated } from '../utils/apiResponse.js';
 
 const router = express.Router();
 const auditModel = new AuditModel();
@@ -27,17 +27,17 @@ router.use(requireAdmin);
  * Supports pagination, search, and filtering
  */
 router.get('/logs', asyncHandler(async (req, res) => {
-  const { 
-    page = 1, 
-    limit = 50, 
-    search = '', 
-    action = '', 
-    resourceType = '', 
+  const {
+    page = 1,
+    limit = 50,
+    search = '',
+    action = '',
+    resourceType = '',
     userId = '',
     startDate = '',
     endDate = ''
   } = req.query;
-  
+
   try {
     const result = await auditModel.getAuditLogs({
       page: parseInt(page),
@@ -49,8 +49,8 @@ router.get('/logs', asyncHandler(async (req, res) => {
       startDate,
       endDate
     });
-    
-    res.status(200).json(success(result.data));
+
+    res.status(200).json(paginated(result.data,result.pagination));
   } catch (error) {
     logger.error('Error getting audit logs:', error);
     res.status(500).json(error('Failed to get audit logs'));
@@ -63,14 +63,14 @@ router.get('/logs', asyncHandler(async (req, res) => {
  */
 router.get('/logs/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
-  
+
   try {
     const log = await auditModel.getAuditLogById(id);
-    
+
     if (!log) {
       return res.status(404).json(error('Audit log not found', 404));
     }
-    
+
     res.status(200).json(success(log));
   } catch (error) {
     logger.error('Error getting audit log details:', error);
@@ -84,16 +84,15 @@ router.get('/logs/:id', asyncHandler(async (req, res) => {
  */
 router.get('/statistics', asyncHandler(async (req, res) => {
   const { days = 30 } = req.query;
-  
+
   try {
     const statistics = await auditModel.getAuditStatistics(parseInt(days));
-    
+
     res.status(200).json(success(statistics));
   } catch (error) {
     logger.error('Error getting audit statistics:', error);
     res.status(500).json(error('Failed to get audit statistics'));
   }
-}
 }));
 
 /**
@@ -102,35 +101,34 @@ router.get('/statistics', asyncHandler(async (req, res) => {
  */
 router.delete('/logs/cleanup', asyncHandler(async (req, res) => {
   const { days = 90 } = req.query; // Default to cleaning logs from 90 days ago
-  
+
   try {
     const result = await auditModel.cleanupOldLogs(parseInt(days));
-    
+
     if (result.deletedCount === 0) {
       return res.status(200).json(success({ ...result, message: 'No logs need to be cleaned' }, 'No logs need to be cleaned'));
     }
-    
+
     // Log cleanup operation
     await auditModel.createAuditLog({
       user_id: req.user.id,
       action: 'CLEANUP_LOGS',
       resource_type: 'audit_logs',
       resource_id: '',
-      details: JSON.stringify({ 
-        deletedCount: result.deletedCount, 
+      details: JSON.stringify({
+        deletedCount: result.deletedCount,
         cutoffDate: result.cutoffDate,
-        days 
+        days
       }),
       ip_address: req.ip,
       user_agent: req.headers['user-agent']
     });
-    
+
     res.status(200).json(success(result, 'Audit log cleanup completed'));
   } catch (error) {
     logger.error('Error cleaning up audit logs:', error);
     res.status(500).json(error('Failed to clean up audit logs'));
   }
-}
 }));
 
 /**
@@ -140,7 +138,7 @@ router.delete('/logs/cleanup', asyncHandler(async (req, res) => {
 router.get('/actions', asyncHandler(async (req, res) => {
   try {
     const actions = await auditModel.getAvailableActions();
-    
+
     res.status(200).json(success(actions));
   } catch (error) {
     logger.error('Error getting action type list:', error);
@@ -155,7 +153,7 @@ router.get('/actions', asyncHandler(async (req, res) => {
 router.get('/resource-types', asyncHandler(async (req, res) => {
   try {
     const resourceTypes = await auditModel.getAvailableResourceTypes();
-    
+
     res.status(200).json(success(resourceTypes));
   } catch (error) {
     logger.error('Error getting resource type list:', error);
@@ -168,31 +166,31 @@ router.get('/resource-types', asyncHandler(async (req, res) => {
  * 导出审计日志
  */
 router.post('/export', asyncHandler(async (req, res) => {
-  const { 
-    action = '', 
-    resourceType = '', 
+  const {
+    action = '',
+    resourceType = '',
     userId = '',
     startDate = '',
     endDate = '',
     format = 'json'
   } = req.body;
-  
+
   try {
     const logs = await auditModel.exportAuditLogs({
       action,
-      resourceType, 
+      resourceType,
       userId,
       startDate,
       endDate
     });
-    
+
     // Log export operation
     await auditModel.createAuditLog({
       user_id: req.user.id,
       action: 'EXPORT_LOGS',
       resource_type: 'audit_logs',
       resource_id: '',
-      details: JSON.stringify({ 
+      details: JSON.stringify({
         filters: { action, resourceType, userId, startDate, endDate },
         format,
         count: logs.length
@@ -200,11 +198,11 @@ router.post('/export', asyncHandler(async (req, res) => {
       ip_address: req.ip,
       user_agent: req.headers['user-agent']
     });
-    
+
     // Set response headers
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     res.setHeader('Content-Disposition', `attachment; filename=audit-logs-${timestamp}.${format}`);
-    
+
     // Return data in requested format
     if (format === 'csv') {
       // Convert to CSV format
@@ -234,12 +232,12 @@ router.post('/export', asyncHandler(async (req, res) => {
  */
 function convertToCSV(logs) {
   if (logs.length === 0) return '';
-  
+
   // Define CSV column names
   const headers = [
     'ID', 'Time', 'User', 'Email', 'Action', 'Resource Type', 'Resource ID', 'IP Address', 'User Agent', 'Details'
   ];
-  
+
   // Convert each log to CSV row
   const rows = logs.map(log => [
     log.id,
@@ -253,7 +251,7 @@ function convertToCSV(logs) {
     log.user_agent ? `"${log.user_agent.replace(/"/g, '""')}"` : '',
     log.details ? `"${JSON.stringify(log.details).replace(/"/g, '""')}"` : ''
   ]);
-  
+
   // Merge headers and data rows
   return [headers, ...rows].map(row => row.join(',')).join('\n');
 }

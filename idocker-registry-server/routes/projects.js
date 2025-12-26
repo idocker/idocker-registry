@@ -26,13 +26,35 @@ const router = express.Router();
  * Supports pagination and search, returns projects based on user role
  */
 router.get('/', authMiddleware, asyncHandler(async (req, res) => {
-  const { page = 1, limit = 20, search = '' } = req.query;
+  const { page = 1, limit = 20, search = '', isActive='all'} = req.query;
   const { id: userId, role: userRole } = req.user;
-
+  //logger.info(`/api/projects isActive:${isActive}`);
   try {
-    const result = await projectModel.getProjectsList(userId, userRole, { page, limit, search });
-
+    const result = await projectModel.getProjectsList(userId, userRole, isActive, { page, limit, search });
+    //logger.info(`/api/projects result:${JSON.stringify(result)}`)
     // Use unified pagination response format
+    res.status(200).json(paginated(
+      result.data,
+      result.pagination,
+      'Project list retrieved successfully'
+    ));
+  } catch (error) {
+    logger.error('Error getting project list:', error);
+    res.status(500).json(error('Failed to get project list'));
+  }
+}));
+
+/**
+ * GET /api/projects/all
+ * Get all project list
+ * Supports pagination and search, returns all projects
+ */
+router.get('/all', authMiddleware, requireAdmin, asyncHandler(async (req, res) => {
+  const { isActive='all' ,page = 1, limit = 20, search = '' } = req.query;
+  logger.info(`/api/projects/all isActive:${isActive}`);
+  try {
+    const result = await projectModel.getProjectsAllList(isActive,{ page, limit, search });
+    //logger.info(`/api/projects/all result:${JSON.stringify(result)}`);
     res.status(200).json(paginated(
       result.data,
       result.pagination,

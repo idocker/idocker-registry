@@ -86,6 +86,7 @@ import { ref, reactive, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
+import userService from '@/services/user.service'
 
 const { t } = useI18n()
 
@@ -155,15 +156,17 @@ const changePassword = async () => {
     try {
         isChangingPassword.value = true
 
-        await axios.put('/api/users/password/me', {
-            currentPassword: passwordForm.currentPassword,
-            newPassword: passwordForm.newPassword
+        const response = await userService.resetUserPassword('me', {
+            password: passwordForm.newPassword
         })
-
-        // 清空密码表单
-        resetForm()
-
-        showMessage(t('password.passwordChanged'), 'success')
+        
+        if (response.success) {
+            // 清空密码表单
+            resetForm()
+            showMessage(t('password.passwordChanged'), 'success')
+        } else {
+            showMessage(response.message || t('password.changePasswordFailed'), 'error')
+        }
     } catch (error: any) {
         console.error('Failed to change password:', error)
         showMessage(error.response?.data?.error || t('password.changePasswordFailed'), 'error')

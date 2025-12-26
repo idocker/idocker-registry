@@ -6,12 +6,12 @@
   "scripts": {
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:client": "vite",
-    "dev:server": "cd server && npm run dev",
+    "dev:server": "cd idocker-registry-server && npm run dev",
     "build": "vue-tsc && vite build",
-    "build:server": "cd server && npm run build",
+    "build:server": "cd idocker-registry-server && npm run build",
     "preview": "vite preview",
-    "start": "cd server && npm start",
-    "init-db": "cd server && npm run init-db",
+    "start": "cd idocker-registry-server && npm start",
+    "init-db": "cd idocker-registry-server && npm run init-db",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
     "format": "prettier --write src/"
   },

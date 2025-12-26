@@ -126,6 +126,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
+import userService from '@/services/user.service'
 import axios from 'axios'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
 import type { SnackbarMessage } from '@/types'
@@ -179,14 +180,18 @@ const formatDate = (dateString: string) => {
 // 加载用户信息
 const loadUserProfile = async () => {
     try {
-        const response = await axios.get('/api/users/'+authStore.user.id)
+        const response = await userService.getUser(authStore.user.id.toString())
+        
+        if (response.success) {
+            // 更新表单数据
+            Object.assign(profileForm, response.data)
 
-        // 更新表单数据
-        Object.assign(profileForm, response.data)
-
-        // 加载用户项目
-        if (response.data.role !== 'admin') {
-            await loadUserProjects()
+            // 加载用户项目
+            if (response.data.role !== 'admin') {
+                await loadUserProjects()
+            }
+        } else {
+            showMessage(t('profile.loadProfileFailed'), 'error')
         }
     } catch (error) {
         console.error('Failed to load user profile:', error)
@@ -197,8 +202,13 @@ const loadUserProfile = async () => {
 // 加载用户项目
 const loadUserProjects = async () => {
     try {
-        const response = await axios.get('/api/projects')
-        userProjects.value = response.data.projects || []
+        const response = await userService.getUserProjects(authStore.user.id.toString())
+        
+        if (response.success) {
+            userProjects.value = response.data.projects || []
+        } else {
+            showMessage(t('profile.loadProjectsFailed'), 'error')
+        }
     } catch (error) {
         console.error('Failed to load user projects:', error)
         showMessage(t('profile.loadProjectsFailed'), 'error')
@@ -210,16 +220,19 @@ const updateProfile = async () => {
     try {
         isUpdatingProfile.value = true
 
-        const response = await axios.put('/api/users/'+authStore.user.id, {
+        const response = await userService.updateUser(authStore.user.id.toString(), {
             username: profileForm.username,
             email: profileForm.email
         })
 
-        // 更新存储的用户信息
-        authStore.user = response.data
-        localStorage.setItem('user_data', JSON.stringify(response.data))
-
-        showMessage(t('profile.profileUpdated'), 'success')
+        if (response.success) {
+            // 更新存储的用户信息
+            authStore.user = response.data
+            localStorage.setItem('user_data', JSON.stringify(response.data))
+            showMessage(t('profile.profileUpdated'), 'success')
+        } else {
+            showMessage(response.message || t('profile.updateProfileFailed'), 'error')
+        }
     } catch (error: any) {
         console.error('Failed to update profile:', error)
         showMessage(error.response?.data?.error || t('profile.updateProfileFailed'), 'error')
@@ -257,29 +270,25 @@ const uploadAvatar = async () => {
         const blob = await response.blob()
         const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' })
 
-        const formData = new FormData()
-        formData.append('avatar', file)
+        // 使用userService上传头像
+        const uploadResponse = await userService.uploadAvatar(file)
 
-        const uploadResponse = await axios.post('/api/users/avatar', formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data'
-            }
-        })
+        if (uploadResponse.success) {
+            // 更新头像URL
+            profileForm.avatar = uploadResponse.data.avatarUrl
 
-        // 更新头像URL
-        profileForm.avatar = uploadResponse.data.avatarUrl
+            // 重新加载用户信息
+            await loadUserProfile()
 
-        // 更新用户信息
-        const userResponse = await axios.get('/api/users/profile/me')
-        authStore.user = userResponse.data
-        localStorage.setItem('user_data', JSON.stringify(userResponse.data))
-
-        showMessage(t('profile.avatarUploaded'), 'success')
-        showAvatarUpload.value = false
-        avatarPreview.value = ''
+            showMessage(t('profile.avatarUploaded'), 'success')
+            showAvatarUpload.value = false
+            avatarPreview.value = ''
+        } else {
+            throw new Error(uploadResponse.message || t('profile.uploadAvatarFailed'))
+        }
     } catch (error: any) {
         console.error('Failed to upload avatar:', error)
-        showMessage(error.response?.data?.error || t('profile.uploadAvatarFailed'), 'error')
+        showMessage(error.message || t('profile.uploadAvatarFailed'), 'error')
     } finally {
         isUploadingAvatar.value = false
     }

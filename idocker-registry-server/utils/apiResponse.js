@@ -5,7 +5,7 @@
  * @author IDocker Registry Team
  * @version 2.0.0
  */
-
+import { logger } from '../utils/logger.js';
 /**
  * Success response - return data
  * @param {*} data - Data to return
@@ -19,6 +19,7 @@ export function success(data = null, message = null) {
 
   if (data !== null && data !== undefined) {
     response.data = data;
+    //response.paginate = data.paginate
   }
 
   if (message) {
@@ -68,22 +69,20 @@ export function error(message, statusCode = 500, errorCode = null) {
  * @returns {Object} Standard paginated response
  */
 export function paginated(items, pagination, message = null) {
+  //logger.info(`paginated: ${JSON.stringify(items)}`);
   const response = {
     success: true,
-    data: {
-      [items.name === 'projects' ? 'projects' : 'images']: items
+    data: items,
+    pagination: {
+      page: pagination.page,
+      limit: pagination.limit,
+      total: pagination.total,
+      totalPages: pagination.totalPages,
+      hasNextPage: pagination.hasNextPage,
+      hasPrevPage: pagination.hasPrevPage
     }
   };
 
-  // Add pagination information
-  response.data.pagination = {
-    page: pagination.page,
-    limit: pagination.limit,
-    total: pagination.total,
-    totalPages: pagination.totalPages,
-    hasNextPage: pagination.hasNextPage,
-    hasPrevPage: pagination.hasPrevPage
-  };
 
   if (message) {
     response.message = message;

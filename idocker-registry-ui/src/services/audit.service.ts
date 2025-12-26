@@ -35,7 +35,7 @@ export interface AuditLogFilters {
 }
 
 export interface PaginatedResponse<T> {
-  logs: T[]
+  data: T[]
   pagination: {
     page: number
     limit: number
@@ -80,7 +80,9 @@ class AuditService {
     if (filters.userId) queryParams.append('userId', filters.userId)
     if (filters.startDate) queryParams.append('startDate', filters.startDate)
     if (filters.endDate) queryParams.append('endDate', filters.endDate)
-    
+    http.get(`/api/audit/logs?${queryParams.toString()}`).then(res => {
+      console.log(res)
+    })
     return http.get(`/api/audit/logs?${queryParams.toString()}`)
   }
 
