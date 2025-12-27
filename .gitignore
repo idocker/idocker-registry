@@ -5,6 +5,8 @@
 
 **/*.log*
 
+docs/dev
+
 idocker-registry-ui/dist/
 
 node_modules/
