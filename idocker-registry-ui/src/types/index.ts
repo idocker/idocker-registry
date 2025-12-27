@@ -23,14 +23,6 @@ export interface RegistryConfig {
   showTagHistory?: boolean
 }
 
-// Registry API types
-export interface Repository {
-  name: string
-  tags?: string[]
-  children?: Repository[]
-  tagCount?: number
-}
-
 export interface CatalogResponse {
   repositories: string[]
 }
@@ -163,6 +155,314 @@ export interface Project {
   repositoryCount?: number
 }
 
+export interface ProjectMember {
+  id: number
+  username: string
+  email?: string
+  fullName?: string
+  userRole: 'admin' | 'user'
+  isActive: boolean
+  memberRole: 'owner' | 'maintainer' | 'viewer'
+  memberSince: string
+}
+
+export interface ProjectDetails extends Project {
+  members: ProjectMember[]
+  repositories: Array<{
+    id: number
+    name: string
+    description?: string
+    isPublic: boolean
+    createdAt: string
+    updatedAt: string
+  }>
+}
+
+export interface CreateProjectData {
+  name: string
+  description?: string
+  namespace?: string
+}
+
+export interface UpdateProjectData {
+  name?: string
+  description?: string
+  namespace?: string
+  isActive?: boolean
+}
+
+export interface AddMemberData {
+  userId: number
+  role: 'owner' | 'maintainer' | 'viewer'
+}
+
+export interface UpdateMemberRoleData {
+  role: 'owner' | 'maintainer' | 'viewer'
+}
+
+// User types
+export interface User {
+  id: number
+  username: string
+  email?: string
+  fullName?: string
+  role: 'admin' | 'user'
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface UserDetail extends User {
+  projects: Array<{
+    id: number
+    name: string
+    description?: string
+    memberRole: 'owner' | 'maintainer' | 'viewer'
+    memberSince: string
+  }>
+}
+
+export interface CreateUser {
+  username: string
+  password: string
+  email?: string
+  fullName?: string
+  role?: 'admin' | 'user'
+}
+
+export interface UpdateUser {
+  email?: string
+  fullName?: string
+  role?: 'admin' | 'user'
+  isActive?: boolean
+}
+
+export interface ChangePassword {
+  password: string
+}
+
+export interface UserProfile {
+  id: number
+  username: string
+  email: string
+  fullName: string
+  role: 'admin' | 'user'
+  isActive: boolean
+  createdAt: string
+}
+
+// Auth types
+export interface LoginCredentials {
+  username: string
+  password: string
+}
+
+export interface RegisterData {
+  username: string
+  password: string
+  email?: string
+  fullName?: string
+}
+
+export interface ChangePasswordData {
+  currentPassword: string
+  newPassword: string
+}
+
+export interface LoginResponse {
+  success: boolean
+  message: string
+  data: {
+    token: string
+    user: UserProfile
+  }
+}
+
+// Repository/Image types
+export interface Repository {
+  id: number
+  name: string
+  description?: string
+  isPublic: boolean
+  projectId: number
+  projectName: string
+  project?: string  // 兼容字段
+  namespace: string
+  fullName: string
+}
+
+export interface Image {
+  id: number
+  name: string
+  namespace?: string
+  project: string
+  description?: string
+  tags: ImageTag[]
+}
+
+export interface ImageTag {
+  id: number
+  name: string
+  tag?: string  // 兼容字段
+  digest: string
+  size: number
+  architecture?: string
+  os?: string
+  createdAt?: string
+  created_at?: string  // 兼容字段
+  pullCommand?: string
+  pushCommand?: string
+}
+
+export interface ImageDetails {
+  repository: Repository
+  tags: ImageTag[]
+}
+
+export interface ImageTagDetails {
+  repository: Repository
+  tag: ImageTag
+  buildHistory: BuildHistory[]
+}
+
+export interface BuildHistory {
+  id: number
+  created: string
+  createdBy?: string
+  created_by?: string  // 兼容字段
+  emptyLayer: boolean
+  comment?: string
+  size: number
+}
+
+// Dashboard types
+export interface DashboardStats {
+  projectsCount: number
+  repositoriesCount: number
+  usersCount: number
+  replicationPoliciesCount: number
+}
+
+export interface RecentProject {
+  id: number
+  name: string
+  description: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface RecentRepository {
+  id: number
+  name: string
+  url: string
+  createdAt: string
+  updatedAt: string
+}
+
+// Sync types
+export interface SyncStatus {
+  repositoryStatus: 'connected' | 'disconnected'
+  repositoryUrl: string
+  projectCount: number
+  repositoryCount: number
+  tagCount: number
+  lastSync: {
+    id: number
+    type: string
+    status: string
+    processedCount: number
+    errorCount: number
+    duration: number
+    createdAt: string
+  } | null
+}
+
+export interface SyncLog {
+  id: number
+  sync_type: string
+  status: string
+  processed_count: number
+  error_count: number
+  duration: number
+  created_at: string
+  project_name?: string  // 可选字段
+  user_name?: string  // 可选字段
+}
+
+export interface SyncResult {
+  success: boolean
+  processedCount?: number
+  errorCount?: number
+  totalCount?: number
+  duration?: number
+}
+
+// Audit types
+export interface AuditLog {
+  id: number
+  action: string
+  resourceType: string
+  resourceId: string
+  details: any
+  ipAddress: string
+  userAgent: string
+  createdAt: string
+  username?: string
+  fullName?: string
+  email?: string
+}
+
+export interface AuditLogDetail extends AuditLog {
+  details: any
+}
+
+export interface AuditLogFilters {
+  page?: number
+  limit?: number
+  search?: string
+  action?: string
+  resourceType?: string
+  userId?: string
+  startDate?: string
+  endDate?: string
+}
+
+export interface AuditStatistics {
+  summary: {
+    totalOperations: number
+    daysRange: number
+  }
+  byAction: Array<{ action: string; count: number }>
+  byResourceType: Array<{ resource_type: string; count: number }>
+  byUser: Array<{ username: string; fullName: string; count: number }>
+  dailyStats: Array<{ date: string; count: number }>
+  activeOperations: Array<{ action: string; count: number }>
+}
+
+export interface ExportFilters {
+  action?: string
+  resourceType?: string
+  userId?: string
+  startDate?: string
+  endDate?: string
+  format?: 'json' | 'csv'
+}
+
+// Theme types
+export interface ThemeColors {
+  primaryText: string
+  neutralText: string
+  background: string
+  hoverBackground: string
+  accentText: string
+  headerText: string
+  headerAccentText: string
+  headerBackground: string
+  footerText: string
+  footerNeutralText: string
+  footerBackground: string
+}
+
 // 统一API响应类型
 export interface ApiResponse<T = any> {
   success: boolean
@@ -186,50 +486,51 @@ export interface PaginationMeta {
   hasPrevPage: boolean
 }
 
+export interface PaginationParams {
+  page?: number
+  limit?: number
+  search?: string
+}
+
 // 项目分页响应（保持向后兼容）
 export interface ProjectPaginatedResponse extends ApiResponse<{
-  datas: Project[] ; pagination: PaginationMeta 
+  datas: Project[]; pagination: PaginationMeta 
 }> {}
 
 // 镜像分页响应
 export interface ImagePaginatedResponse extends ApiResponse<{ datas: Image[]; pagination: PaginationMeta }> {}
 
-// Image types
-export interface ImageTag {
-  id: number | string
-  name: string
-  digest: string
-  size: number
-  architecture?: string
-  os?: string
-  createdAt?: string
-  pullCommand?: string
-  pushCommand?: string
+// 用户分页响应
+export interface UserPaginatedResponse extends ApiResponse<{ datas: User[]; pagination: PaginationMeta }> {}
+
+// 审计日志分页响应
+export interface AuditLogPaginatedResponse extends ApiResponse<{ datas: AuditLog[]; pagination: PaginationMeta }> {}
+
+// 通用分页响应
+export interface PaginatedResponse<T = any> extends ApiResponse<{ 
+  datas?: T[]; 
+  data?: T[]; 
+  pagination?: PaginationMeta 
+}> {
+  // 保持向后兼容
+  // 优先使用data字段，如果不存在则使用datas字段
 }
 
-export interface Image {
-  id: number | string
-  name: string
-  namespace?: string
-  project: string
-  description?: string
-  tags: ImageTag[]
-  size?: number
-  createdAt: string
-  updatedAt?: string
+// 特定类型的分页响应
+export interface ImageRepositoryPaginatedResponse extends ApiResponse<{ 
+  images: Image[]; 
+  pagination: { page: number; limit: number; total: number; totalPages: number } 
+}> {
+  // 保持向后兼容
+  images?: Image[]
+  pagination?: { page: number; limit: number; total: number; totalPages: number }
 }
 
-// Theme types
-export interface ThemeColors {
-  primaryText: string
-  neutralText: string
-  background: string
-  hoverBackground: string
-  accentText: string
-  headerText: string
-  headerAccentText: string
-  headerBackground: string
-  footerText: string
-  footerNeutralText: string
-  footerBackground: string
+export interface ProjectRepositoryPaginatedResponse extends ApiResponse<{ 
+  projects: Project[]; 
+  pagination: { page: number; limit: number; total: number; totalPages: number } 
+}> {
+  // 保持向后兼容
+  projects?: Project[]
+  pagination?: { page: number; limit: number; total: number; totalPages: number }
 }

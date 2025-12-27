@@ -4,86 +4,22 @@
  */
 
 import { http } from '@/utils/http'
-
-export interface Project {
-  id: number
-  name: string
-  description?: string
-  namespace?: string
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
-  createdByUsername?: string
-  createdByName?: string
-  memberRole?: 'owner' | 'maintainer' | 'viewer'
-  memberSince?: string
-  memberCount?: number
-  repositoryCount?: number
-}
-
-export interface ProjectMember {
-  id: number
-  username: string
-  email?: string
-  fullName?: string
-  userRole: 'admin' | 'user'
-  isActive: boolean
-  memberRole: 'owner' | 'maintainer' | 'viewer'
-  memberSince: string
-}
-
-export interface ProjectDetails extends Project {
-  members: ProjectMember[]
-  repositories: Array<{
-    id: number
-    name: string
-    description?: string
-    isPublic: boolean
-    createdAt: string
-    updatedAt: string
-  }>
-}
-
-export interface CreateProjectData {
-  name: string
-  description?: string
-  namespace?: string
-}
-
-export interface UpdateProjectData {
-  name?: string
-  description?: string
-  namespace?: string
-  isActive?: boolean
-}
-
-export interface AddMemberData {
-  userId: number
-  role: 'owner' | 'maintainer' | 'viewer'
-}
-
-export interface UpdateMemberRoleData {
-  role: 'owner' | 'maintainer' | 'viewer'
-}
-
-export interface PaginationParams {
-  page?: number
-  limit?: number
-  search?: string
-}
-
-// 使用统一的API响应类型
-export interface PaginatedResponse extends ApiResponse<{ projects: Project[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
-  // 保持向后兼容
-  projects?: Project[]
-  pagination?: { page: number; limit: number; total: number; totalPages: number }
-}
-
+import type {
+  Project,
+  ProjectMember,
+  ProjectDetails,
+  CreateProjectData,
+  UpdateProjectData,
+  AddMemberData,
+  UpdateMemberRoleData,
+  PaginationParams,
+  ProjectRepositoryPaginatedResponse
+} from '@/types'
 class ProjectService {
   /**
    * 获取项目列表
    */
-  async getProjects(isActive:string ,params: PaginationParams): Promise<PaginatedResponse<Project>> {
+  async getProjects(isActive:string ,params: PaginationParams): Promise<ProjectRepositoryPaginatedResponse> {
     const queryParams = new URLSearchParams()
     //console.log('isActive', isActive)
     if (isActive) queryParams.append('isActive', isActive.toString())
@@ -97,7 +33,7 @@ class ProjectService {
   /**
    * 获取所有项目列表（包括未激活，管理员专用）
    */
-  async getAllProjects(isActive: string): Promise<PaginatedResponse<Project>> {
+  async getAllProjects(isActive: string): Promise<ProjectRepositoryPaginatedResponse> {
     const queryParams = new URLSearchParams()
     if (isActive !== undefined) queryParams.append('isActive', isActive.toString())
     return http.get(`/api/projects/all?${queryParams.toString()}`)

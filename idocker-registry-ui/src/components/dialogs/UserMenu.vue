@@ -18,10 +18,10 @@
       
       <div class="menu-items">
 
-        <button class="menu-item" @click="navigateToDashboard">
+        <!-- <button class="menu-item" @click="navigateToDashboard">
           <span class="material-icons">dashboard</span>
           <span>{{ $t('nav.dashboard') }}</span>
-        </button>
+        </button> -->
 
         <button class="menu-item" @click="$emit('action', 'profile')">
           <span class="material-icons">person</span>

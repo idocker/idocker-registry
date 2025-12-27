@@ -4,70 +4,96 @@
  */
 
 import { http } from '@/utils/http'
-
-export interface SyncStatus {
-  repositoryStatus: 'connected' | 'disconnected'
-  repositoryUrl: string
-  projectCount: number
-  repositoryCount: number
-  tagCount: number
-  lastSync: {
-    id: number
-    type: string
-    status: string
-    processedCount: number
-    errorCount: number
-    duration: number
-    createdAt: string
-  } | null
-}
-
-export interface SyncLog {
-  id: number
-  sync_type: string
-  status: string
-  processed_count: number
-  error_count: number
-  duration: number
-  created_at: string
-}
-
-export interface SyncResult {
-  success: boolean
-  processedCount?: number
-  errorCount?: number
-  totalCount?: number
-  duration?: number
-  message?: string
-}
+import type {
+  SyncStatus,
+  SyncLog,
+  SyncResult
+} from '@/types'
 
 class SyncService {
   /**
    * 获取同步状态
    */
   async getSyncStatus(): Promise<{ success: boolean; data: SyncStatus }> {
-    return http.get('/api/sync/status')
+    return http.get('/api/sync/status');
   }
 
   /**
-   * 获取同步日志
+   * 获取同步日志列表
    */
-  async getSyncLogs(page: number = 1, limit: number = 20): Promise<{ success: boolean; data: SyncLog[]; pagination?: any }> {
-    return http.get(`/api/sync/logs?page=${page}&limit=${limit}`)
+  async getSyncLogs(params: {
+    page?: number;
+    limit?: number;
+  }): Promise<{ 
+    success: boolean; 
+    data: {
+      logs: SyncLog[];
+      pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+      };
+    }
+  }> {
+    const queryParams = new URLSearchParams();
+    
+    if (params.page) {
+      queryParams.append('page', params.page.toString());
+    }
+    if (params.limit) {
+      queryParams.append('limit', params.limit.toString());
+    }
+    
+    return http.get(`/api/sync/logs?${queryParams.toString()}`);
   }
 
   /**
-   * 开始完整同步
+   * 手动触发同步
    */
-  async startFullSync(): Promise<SyncResult> {
-    return http.post('/api/sync/all')
+  async triggerSync(syncType: 'full' | 'incremental' = 'incremental'): Promise<{ success: boolean; message: string }> {
+    return http.post('/api/sync/all', { type: syncType });
   }
 
   /**
-   * 开始项目同步
+   * 获取同步结果
    */
-  async startProjectSync(projectId: string): Promise<SyncResult> {
-    return http.post(`/api/sync/project/${projectId}`)
+  async getSyncResult(syncId: string): Promise<{ success: boolean; data: SyncResult }> {
+    return http.get(`/api/sync/result/${syncId}`);
+  }
+
+  /**
+   * 取消正在进行的同步
+   */
+  async cancelSync(syncId: string): Promise<{ success: boolean; message: string }> {
+    return http.post(`/api/sync/cancel/${syncId}`);
+  }
+
+  /**
+   * 配置同步设置
+   */
+  async configureSync(settings: {
+    autoSync: boolean;
+    syncInterval: number;  // 间隔分钟数
+    syncType: 'full' | 'incremental';
+    repositoryUrl?: string;
+  }): Promise<{ success: boolean; message: string }> {
+    return http.post('/api/sync/configure', settings);
+  }
+
+  /**
+   * 获取同步配置
+   */
+  async getSyncConfig(): Promise<{ 
+    success: boolean; 
+    data: {
+      autoSync: boolean;
+      syncInterval: number;
+      syncType: string;
+      repositoryUrl?: string;
+    }
+  }> {
+    return http.get('/api/sync/config');
   }
 }
 

@@ -16,8 +16,8 @@ import { AppError } from '../middleware/errorHandler.js';
 class DockerRegistryService {
   constructor() {
     this.baseURL = process.env.REGISTRY_URL || 'http://localhost:5000';
-    this.username = process.env.REGISTRY_USERNAME || null;
-    this.password = process.env.REGISTRY_PASSWORD || null;
+    //this.username = process.env.REGISTRY_USERNAME || null;
+    //this.password = process.env.REGISTRY_PASSWORD || null;
     this.timeout = parseInt(process.env.REGISTRY_TIMEOUT) || 30000;
   }
 
@@ -32,12 +32,16 @@ class DockerRegistryService {
       'Accept': 'application/vnd.docker.distribution.manifest.v2+json,application/vnd.docker.distribution.manifest.list.v2+json,application/json'
     };
 
-    if (registryConfig?.username && registryConfig?.password) {
-      const credentials = Buffer.from(`${registryConfig.username}:${registryConfig.password}`).toString('base64');
-      headers['Authorization'] = `Basic ${credentials}`;
-    } else if (this.username && this.password) {
-      const credentials = Buffer.from(`${this.username}:${this.password}`).toString('base64');
-      headers['Authorization'] = `Basic ${credentials}`;
+    // 生产环境中，Registry 是内部服务，不需要认证
+    if (process.env.NODE_ENV !== 'production') {
+      // 仅在开发环境添加认证头（连接外部 Registry）
+      if (registryConfig?.username && registryConfig?.password) {
+        const credentials = Buffer.from(`${registryConfig.username}:${registryConfig.password}`).toString('base64');
+        headers['Authorization'] = `Basic ${credentials}`;
+      } else if (this.username && this.password) {
+        const credentials = Buffer.from(`${this.username}:${this.password}`).toString('base64');
+        headers['Authorization'] = `Basic ${credentials}`;
+      }
     }
 
     return headers;

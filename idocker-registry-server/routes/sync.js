@@ -48,16 +48,17 @@ router.post('/all', asyncHandler(async (req, res) => {
     logger.info(`Admin ${req.user.username} starting full sync...`);
     
     // Log sync start
-    await repositorySyncService.logSync({
-      type: 'full',
-      status: 'started',
-      userId: req.user.id,
-      details: { stopOnError }
-    });
+    // await repositorySyncService.logSync({
+    //   type: 'full',
+    //   status: 'started',
+    //   userId: req.user.id,
+    //   details: { stopOnError }
+    // });
     
+    // Start syncing all repositories
     const result = await repositorySyncService.syncAllRepositories({ stopOnError });
     
-    // 记录同步完成
+    // Log sync completion
     await repositorySyncService.logSync({
       type: 'full',
       status: result.success ? 'completed' : 'failed',
@@ -160,6 +161,7 @@ router.get('/logs', asyncHandler(async (req, res) => {
       LEFT JOIN users u ON sl.user_id = u.id
       WHERE 1=1
     `;
+
     const params = [];
 
     if (type) {

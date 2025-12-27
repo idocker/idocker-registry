@@ -109,7 +109,7 @@
                       <td>
                         <div class="image-name-cell">
                           <span class="material-icons mr-2">inventory_2</span>
-                          <div>
+                          <div @click.stop="viewImageDetails(image.id.toString())" style="cursor: pointer;">
                             <div class="image-name">{{ image.name }}</div>
                             <!-- <div v-if="image.namespace" class="image-namespace">{{ image.namespace }}</div> -->
                           </div>
@@ -123,14 +123,14 @@
                                 v-for="tag in image.tags.slice(0, 1)"
                                 :key="tag.id"
                                 class="tag-chip"
-                                @click="viewTagDetails(image.id, tag.id)"
+                                @click.stop="viewTagDetails(image.id.toString(), tag.id.toString())"
                               >
                                 {{ tag.name || tag.tag }}
                               </span>
                               <span
                                 v-if="image.tags.length > 3"
                                 class="tag-chip more-tag"
-                                @click="viewImageDetails(image.id)"
+                                @click.stop="viewImageDetails(image.id.toString())"
                               >
                                 +{{ image.tags.length - 3 }}
                               </span>
@@ -155,14 +155,14 @@
                         <div class="actions-cell">
                           <button
                             class="btn btn-ghost btn-small"
-                            @click="copyPullLink(image)"
+                            @click.stop="copyPullLink(image)"
                           >
                             <span class="material-icons">content_copy</span>
                             复制拉取
                           </button>
                           <button
                             class="btn btn-ghost btn-small"
-                            @click="copyPushLink(image)"
+                            @click.stop="copyPushLink(image)"
                           >
                             <span class="material-icons">content_copy</span>
                             复制推送
@@ -170,7 +170,7 @@
                           <button
                             v-if="hasPermission"
                             class="btn btn-ghost btn-small"
-                            @click="viewImageDetails(image.id)"
+                            @click.stop="viewImageDetails(image.id.toString())"
                           >
                             <span class="material-icons">visibility</span>
                             详情
@@ -189,21 +189,7 @@
         </template>
       </div>
 
-      <!-- 镜像详情对话框 -->
-      <div v-if="showImageDetailDialog" class="modal-overlay" @click="showImageDetailDialog = false">
-        <div class="modal" @click.stop>
-          <div class="modal-header">
-            <h2>镜像详情</h2>
-            <button class="btn btn-ghost btn-icon" @click="showImageDetailDialog = false">
-              <span class="material-icons">close</span>
-            </button>
-          </div>
-          <div class="modal-content">
-            <p>镜像ID: {{ selectedImageId }}</p>
-            <p>镜像详情功能开发中...</p>
-          </div>
-        </div>
-      </div>
+
 
       <!-- 标签详情对话框 -->
       <div v-if="showTagDetailDialog" class="modal-overlay" @click="showTagDetailDialog = false">
@@ -248,7 +234,6 @@ const searchTerm = ref('')
 const isActive = ref("1")
 
 // 对话框状态
-const showImageDetailDialog = ref(false)
 const showTagDetailDialog = ref(false)
 const selectedImageId = ref('')
 const selectedTagId = ref('')
@@ -284,10 +269,20 @@ const loadProjects = async () => {
     
     // 适配不同的返回格式
     let projectsData: Project[] = []
-    
+
     if (result && result.success && result.data) {
+      // 格式1: { success: true, data: { projects: Project[] } }
+      if ('projects' in result.data && Array.isArray((result.data as any).projects)) {
+        projectsData = (result.data as any).projects
+      }
+      // 格式2: { success: true, data: { datas: Project[] } }
+      else if ('datas' in result.data && Array.isArray((result.data as any).datas)) {
+        projectsData = (result.data as any).datas
+      }
       // 格式3: { success: true, data: Project[] }
-      projectsData = result.data
+      else if (Array.isArray(result.data)) {
+        projectsData = result.data as Project[]
+      }
     }
     
     if (projectsData && projectsData.length > 0) {
@@ -325,10 +320,20 @@ const loadProjectImages = async (projectId: string) => {
     
     // 适配不同的返回格式
     let imagesData: Image[] = []
-    
+
     if (response && response.success && response.data) {
       // 格式1: { success: true, data: { images: Image[] } }
-      imagesData = response.data || []
+      if ('images' in response.data && Array.isArray((response.data as any).images)) {
+        imagesData = (response.data as any).images
+      }
+      // 格式2: { success: true, data: { datas: Image[] } }
+      else if ('datas' in response.data && Array.isArray((response.data as any).datas)) {
+        imagesData = (response.data as any).datas
+      }
+      // 格式3: { success: true, data: Image[] }
+      else if (Array.isArray(response.data)) {
+        imagesData = response.data as Image[]
+      }
     }
     
     if (imagesData && imagesData.length > 0) {
@@ -449,8 +454,7 @@ const copyPushLink = async (image: Image) => {
 
 // 查看镜像详情
 const viewImageDetails = (imageId: string) => {
-  selectedImageId.value = imageId
-  showImageDetailDialog.value = true
+  router.push(`/images/${imageId}`)
 }
 
 // 查看标签详情
@@ -460,23 +464,7 @@ const viewTagDetails = (imageId: string, tagId: string) => {
   showTagDetailDialog.value = true
 }
 
-// 删除镜像
-const deleteImage = async (image: Image) => {
-  if (!hasPermission.value) {
-    showError('您没有删除权限')
-    return
-  }
-  
-  if (confirm(`确定要删除镜像 ${image.name} 吗？此操作不可逆。`)) {
-    try {
-      // 这里需要调用删除镜像的API
-      // 暂时显示提示信息
-      showInfo('删除功能开发中')
-    } catch (error: any) {
-      showError(error.message || '删除失败')
-    }
-  }
-}
+
 
 // 格式化文件大小
 const formatFileSize = (bytes: number): string => {
@@ -488,7 +476,8 @@ const formatFileSize = (bytes: number): string => {
 }
 
 // 格式化日期
-const formatDate = (dateString: string): string => {
+const formatDate = (dateString: string | undefined): string => {
+  if (!dateString) return 'N/A'
   const date = new Date(dateString)
   return date.toLocaleDateString() + ' ' + date.toLocaleTimeString()
 }

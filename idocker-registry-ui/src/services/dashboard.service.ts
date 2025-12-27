@@ -4,29 +4,11 @@
  */
 
 import { http } from '@/utils/http'
-
-export interface DashboardStats {
-  projectsCount: number
-  repositoriesCount: number
-  usersCount: number
-  replicationPoliciesCount: number
-}
-
-export interface RecentProject {
-  id: number
-  name: string
-  description: string
-  createdAt: string
-  updatedAt: string
-}
-
-export interface RecentRepository {
-  id: number
-  name: string
-  url: string
-  createdAt: string
-  updatedAt: string
-}
+import type {
+  DashboardStats,
+  RecentProject,
+  RecentRepository
+} from '@/types'
 
 class DashboardService {
   /**
@@ -40,32 +22,46 @@ class DashboardService {
    * 获取最近的项目列表
    */
   async getRecentProjects(limit: number = 5): Promise<{ success: boolean; data: RecentProject[] }> {
-    return http.get(`/api/projects?limit=${limit}`)
+    return http.get(`/api/dashboard/recent-projects?limit=${limit}`)
   }
 
   /**
    * 获取最近的仓库列表
    */
   async getRecentRepositories(limit: number = 5): Promise<{ success: boolean; data: RecentRepository[] }> {
-    return http.get(`/api/repository?limit=${limit}`)
+    return http.get(`/api/dashboard/recent-repositories?limit=${limit}`)
   }
 
   /**
-   * 获取仪表板所有数据
+   * 获取用户活动摘要
    */
-  async getDashboardData(limit: number = 5): Promise<{
-    recentProjects: RecentProject[]
-    recentRepositories: RecentRepository[]
-  }> {
-    const [projectsResponse, repositoriesResponse] = await Promise.all([
-      this.getRecentProjects(limit),
-      this.getRecentRepositories(limit)
-    ])
-
-    return {
-      recentProjects: projectsResponse.data || [],
-      recentRepositories: repositoriesResponse.data || []
+  async getUserActivitySummary(): Promise<{ 
+    success: boolean; 
+    data: {
+      totalUsers: number;
+      activeUsers: number;
+      newUsersThisMonth: number;
+      userGrowthRate: number;
     }
+  }> {
+    return http.get('/api/dashboard/user-activity')
+  }
+
+  /**
+   * 获取资源使用统计
+   */
+  async getResourceUsage(): Promise<{ 
+    success: boolean; 
+    data: {
+      totalStorage: number;
+      usedStorage: number;
+      availableStorage: number;
+      storageUtilization: number;
+      totalRepositories: number;
+      totalTags: number;
+    }
+  }> {
+    return http.get('/api/dashboard/resource-usage')
   }
 }
 

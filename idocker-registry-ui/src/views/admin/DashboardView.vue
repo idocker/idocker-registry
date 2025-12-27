@@ -100,7 +100,7 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
 import dashboardService from '@/services/dashboard.service'
-import type { DashboardStats, RecentProject, RecentRepository } from '@/services/dashboard.service'
+import type { DashboardStats, RecentProject, RecentRepository } from '@/types'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
@@ -117,10 +117,23 @@ const recentRepositories = ref<RecentRepository[]>([])
 
 const fetchDashboardData = async () => {
   try {
-    const dashboardData = await dashboardService.getDashboardData(5)
+    // 获取统计数据
+    const statsResponse = await dashboardService.getStats()
+    if (statsResponse.success && statsResponse.data) {
+      stats.value = statsResponse.data
+    }
 
-    recentProjects.value = dashboardData.recentProjects
-    recentRepositories.value = dashboardData.recentRepositories
+    // 获取最近的项目列表
+    const projectsResponse = await dashboardService.getRecentProjects(5)
+    if (projectsResponse.success && projectsResponse.data) {
+      recentProjects.value = projectsResponse.data
+    }
+
+    // 获取最近的仓库列表
+    const repositoriesResponse = await dashboardService.getRecentRepositories(5)
+    if (repositoriesResponse.success && repositoriesResponse.data) {
+      recentRepositories.value = repositoriesResponse.data
+    }
   } catch (error) {
     console.error('Failed to fetch dashboard data:', error)
   }

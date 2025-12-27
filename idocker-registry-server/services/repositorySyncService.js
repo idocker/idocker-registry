@@ -92,7 +92,7 @@ class RepositorySyncService {
             }
 
             const duration = Date.now() - startTime;
-            logger.info(`Repository同步完成: 处理 ${processedCount} 个仓库, 错误 ${errorCount} 个, 耗时 ${duration}ms`);
+            logger.info(`同步完成: 处理 ${processedCount} 个仓库, 错误 ${errorCount} 个, 耗时 ${duration}ms`);
 
             return {
                 success: true,

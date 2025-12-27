@@ -4,177 +4,145 @@
       <div class="page-header">
         <h1>Docker Registry {{ $t('sync.title') }}</h1>
         <div class="header-actions">
-          <button class="btn btn-ghost" @click="refreshStatus">
-            <span class="material-icons">refresh</span>
-            {{ $t('sync.refreshStatus') }}
+          
+
+                <button class="btn btn-primary" @click="startFullSync"
+                  :disabled="isSyncing || syncStatus.repositoryStatus !== 'connected'">
+                  <span class="material-icons">sync</span>
+                  {{ isSyncing ? $t('sync.syncInProgress') : $t('sync.fullSync') }}
+                </button>
+
+        </div>
+      </div>
+
+      <!-- 标签页 -->
+      <div class="tabs-container">
+        <div class="tabs">
+          <button class="tab" :class="{ active: activeTab === 'status' }" @click="activeTab = 'status'">
+            {{ $t('sync.syncStatusTab') }}
           </button>
-          <button class="btn btn-primary" @click="startFullSync" :disabled="isSyncing">
-            <span class="material-icons">sync</span>
-            {{ $t('sync.startFullSync') }}
+          <button class="tab" :class="{ active: activeTab === 'logs' }" @click="activeTab = 'logs'">
+            {{ $t('sync.syncLogsTab') }}
           </button>
         </div>
       </div>
 
-      <!-- 状态信息 -->
-      <div class="status-section">
-        <div class="status-card">
-          <div class="status-item">
-            <div class="status-icon" :class="statusIcon">
-              <span class="material-icons">{{ statusIcon === 'connected' ? 'check_circle' : 'error' }}</span>
-            </div>
-            <div class="status-info">
-              <div class="status-label">{{ $t('sync.registryConnectionStatus') }}</div>
-              <div class="status-value">{{ syncStatus.registryStatus === 'connected' ? $t('sync.connected') : $t('sync.disconnected') }}</div>
-              <div class="status-detail">{{ syncStatus.registryUrl }}</div>
-            </div>
-          </div>
+      <!-- 状态信息标签页 -->
+      <div v-show="activeTab === 'status'" class="tab-content">
+        <div class="status-section">
+          <div class="status-card">
+            <div class="status-item">
+              <div class="status-icon" :class="statusIcon">
+                <span class="material-icons">{{ statusIcon === 'connected' ? 'check_circle' : 'error' }}</span>
+              </div>
+              <div class="status-info">
+                <div class="status-label">{{ $t('sync.registryConnectionStatus') }}</div>
+                <div class="status-value">
+                  {{ syncStatus.repositoryStatus === 'connected' ? $t('sync.connected') : $t('sync.disconnected') }}
+                    <!-- <button class="btn btn-ghost" @click="refreshStatus">
+                      <span class="material-icons">refresh</span>
+                      {{ $t('sync.refreshStatus') }}
+                    </button> -->
+                </div>
+                <div class="status-detail">{{ syncStatus.repositoryUrl }}</div>
+              </div>
 
-          <div class="stats-grid">
-            <div class="stat-item">
-              <div class="stat-number">{{ syncStatus.projectCount }}</div>
-              <div class="stat-label">{{ $t('sync.projectCount') }}</div>
             </div>
-            <div class="stat-item">
-              <div class="stat-number">{{ syncStatus.repositoryCount }}</div>
-              <div class="stat-label">{{ $t('sync.repositoryCount') }}</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-number">{{ syncStatus.tagCount }}</div>
-              <div class="stat-label">{{ $t('sync.imageTagCount') }}</div>
-            </div>
-          </div>
 
-          <div class="last-sync" v-if="syncStatus.lastSync">
-            <div class="sync-label">{{ $t('sync.lastSync') }}</div>
-            <div class="sync-info">
-              <span>{{ formatSyncType(syncStatus.lastSync.type) }}</span>
-              <span class="sync-status" :class="syncStatus.lastSync.status">
-                {{ syncStatus.lastSync.status === 'completed' ? $t('sync.success') : $t('sync.failed') }}
-              </span>
-              <span>{{ formatDate(syncStatus.lastSync.createdAt) }}</span>
+            <div class="stats-grid">
+              <div class="stat-item">
+                <div class="stat-number">{{ syncStatus.projectCount }}</div>
+                <div class="stat-label">{{ $t('sync.projectCount') }}</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-number">{{ syncStatus.repositoryCount }}</div>
+                <div class="stat-label">{{ $t('sync.repositoryCount') }}</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-number">{{ syncStatus.tagCount }}</div>
+                <div class="stat-label">{{ $t('sync.imageTagCount') }}</div>
+              </div>
+            </div>
+
+            <div class="last-sync" v-if="syncStatus.lastSync">
+              <div class="sync-label">{{ $t('sync.lastSync') }}</div>
+              <div class="sync-info">
+                <span>{{ formatSyncType(syncStatus.lastSync.type) }}</span>
+                <span class="sync-status" :class="syncStatus.lastSync.status">
+                  {{ syncStatus.lastSync.status === 'completed' ? $t('sync.success') : $t('sync.failed') }}
+                </span>
+                <span>{{ formatDate(syncStatus.lastSync.createdAt) }}</span>
+              </div>
+
             </div>
           </div>
         </div>
       </div>
 
-      <!-- 同步控制 -->
-      <div class="sync-controls">
-        <div class="control-section">
-          <h3>{{ $t('sync.syncOperations') }}</h3>
-          <div class="control-buttons">
-            <button 
-              class="btn btn-primary" 
-              @click="startFullSync" 
-              :disabled="isSyncing || syncStatus.registryStatus !== 'connected'"
-            >
-              <span class="material-icons">sync</span>
-              {{ isSyncing ? $t('sync.syncInProgress') : $t('sync.fullSync') }}
-            </button>
-            
-            <div class="sync-options">
-              <label class="checkbox-label">
-                <input type="checkbox" v-model="syncOptions.stopOnError" />
-                {{ $t('sync.stopOnErrorOption') }}
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <div class="control-section">
-          <h3>{{ $t('sync.projectSyncOption') }}</h3>
-          <div class="project-selector">
-            <select v-model="selectedProjectId" class="project-select">
-              <option value="">{{ $t('sync.selectProject') }}</option>
-              <option v-for="project in projects" :key="project.id" :value="project.id">
-                {{ project.name }}
-              </option>
-            </select>
-            <button 
-              class="btn btn-secondary" 
-              @click="startProjectSync" 
-              :disabled="!selectedProjectId || isSyncing || syncStatus.registryStatus !== 'connected'"
-            >
-              {{ $t('sync.syncThisProject') }}
+      <!-- 同步日志标签页 -->
+      <div v-show="activeTab === 'logs'" class="tab-content">
+        <div class="sync-logs">
+          <div class="logs-header">
+            <button class="btn btn-ghost" @click="refreshLogs">
+              <span class="material-icons">refresh</span>
+              {{ $t('sync.refreshLogs') }}
             </button>
           </div>
-        </div>
-      </div>
 
-      <!-- 同步日志 -->
-      <div class="sync-logs">
-        <div class="logs-header">
-          <h3>{{ $t('sync.syncLogs') }}</h3>
-          <button class="btn btn-ghost" @click="refreshLogs">
-            <span class="material-icons">refresh</span>
-          </button>
-        </div>
+          <div class="logs-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>{{ $t('sync.time') }}</th>
+                  <th>{{ $t('sync.status') }}</th>
+                  <th>{{ $t('sync.processedCountHeader') }}</th>
+                  <th>{{ $t('sync.errorCountHeader') }}</th>
+                  <th>{{ $t('sync.duration') }}</th>
+                  <th>{{ $t('sync.operator') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="logsLoading">
+                  <td colspan="8" class="loading-cell">
+                    <div class="loading-indicator">
+                      <span class="material-icons">refresh</span>
+                      {{ $t('sync.loading') }}
+                    </div>
+                  </td>
+                </tr>
+                <tr v-else-if="syncLogs.length === 0">
+                  <td colspan="8" class="empty-cell">{{ $t('sync.noSyncLogs') }}</td>
+                </tr>
+                <tr v-for="log in syncLogs" :key="log.id" class="log-row">
+                  <td>{{ formatDate(log.created_at) }}</td>
+                  <td>
+                    <span class="status-badge" :class="log.status">
+                      {{ log.status === 'completed' ? $t('sync.success') : log.status === 'failed' ? $t('sync.failed') :
+                        $t('sync.inProgress') }}
+                    </span>
+                  </td>
+                  <td>{{ log.processed_count || 0 }}</td>
+                  <td>{{ log.error_count || 0 }}</td>
+                  <td>{{ log.duration ? `${log.duration}ms` : '-' }}</td>
+                  <td>{{ log.user_name || $t('sync.system') }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-        <div class="logs-table">
-          <table>
-            <thead>
-              <tr>
-                <th>{{ $t('sync.time') }}</th>
-                <th>{{ $t('sync.type') }}</th>
-                <th>{{ $t('sync.project') }}</th>
-                <th>{{ $t('sync.status') }}</th>
-                <th>{{ $t('sync.processedCountHeader') }}</th>
-                <th>{{ $t('sync.errorCountHeader') }}</th>
-                <th>{{ $t('sync.duration') }}</th>
-                <th>{{ $t('sync.operator') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="logsLoading">
-                <td colspan="8" class="loading-cell">
-                  <div class="loading-indicator">
-                    <span class="material-icons">refresh</span>
-                    {{ $t('sync.loading') }}
-                  </div>
-                </td>
-              </tr>
-              <tr v-else-if="syncLogs.length === 0">
-                <td colspan="8" class="empty-cell">{{ $t('sync.noSyncLogs') }}</td>
-              </tr>
-              <tr v-for="log in syncLogs" :key="log.id" class="log-row">
-                <td>{{ formatDate(log.created_at) }}</td>
-                <td>
-                  <span class="log-type" :class="log.sync_type">
-                    {{ formatSyncType(log.sync_type) }}
-                  </span>
-                </td>
-                <td>{{ log.project_name || $t('sync.fullSync') }}</td>
-                <td>
-                  <span class="status-badge" :class="log.status">
-                    {{ log.status === 'completed' ? $t('sync.success') : log.status === 'failed' ? $t('sync.failed') : $t('sync.inProgress') }}
-                  </span>
-                </td>
-                <td>{{ log.processed_count || 0 }}</td>
-                <td>{{ log.error_count || 0 }}</td>
-                <td>{{ log.duration ? `${log.duration}ms` : '-' }}</td>
-                <td>{{ log.user_name || $t('sync.system') }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="pagination" v-if="logsPagination.totalPages > 1">
-          <button 
-            class="btn btn-ghost" 
-            @click="changeLogPage(logsPagination.page - 1)"
-            :disabled="logsPagination.page === 1"
-          >
-            {{ $t('sync.previousPage') }}
-          </button>
-          <span class="page-info">
-            {{ logsPagination.page }} / {{ logsPagination.totalPages }}
-          </span>
-          <button 
-            class="btn btn-ghost" 
-            @click="changeLogPage(logsPagination.page + 1)"
-            :disabled="logsPagination.page === logsPagination.totalPages"
-          >
-            {{ $t('sync.nextPage') }}
-          </button>
+          <div class="pagination" v-if="logsPagination.totalPages > 1">
+            <button class="btn btn-ghost" @click="changeLogPage(logsPagination.page - 1)"
+              :disabled="logsPagination.page === 1">
+              {{ $t('sync.previousPage') }}
+            </button>
+            <span class="page-info">
+              {{ logsPagination.page }} / {{ logsPagination.totalPages }}
+            </span>
+            <button class="btn btn-ghost" @click="changeLogPage(logsPagination.page + 1)"
+              :disabled="logsPagination.page === logsPagination.totalPages">
+              {{ $t('sync.nextPage') }}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -190,55 +158,46 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useAuthStore } from '@/stores/auth'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
 import syncService from '@/services/sync.service'
-import projectService from '@/services/project.service'
-import type { SyncStatus, SyncLog, SyncResult } from '@/services/sync.service'
+import type { SyncStatus, SyncLog, SyncResult } from '@/types'
 
 const { t } = useI18n()
-const authStore = useAuthStore()
 
 // 状态
-const syncStatus = ref({
-  registryStatus: 'unknown',
-  registryUrl: '',
+const syncStatus = ref<SyncStatus>({
+  repositoryStatus: 'disconnected',
+  repositoryUrl: '',
   projectCount: 0,
   repositoryCount: 0,
   tagCount: 0,
   lastSync: null
 })
 
-const syncLogs = ref([])
+const syncLogs = ref<SyncLog[]>([])
 const logsPagination = ref({
   page: 1,
   limit: 20,
   totalPages: 1
 })
 
-const projects = ref([])
-const selectedProjectId = ref('')
-const isSyncing = ref(false)
 const logsLoading = ref(false)
-const message = ref(null)
-
-// 同步选项
-const syncOptions = reactive({
-  stopOnError: false
-})
+const isSyncing = ref(false)
+const activeTab = ref<'status' | 'logs'>('status')
+const message = ref<{ text: string; type: 'success' | 'error' | 'info' } | null>(null)
 
 // 计算属性
 const statusIcon = computed(() => {
-  return syncStatus.value.registryStatus === 'connected' ? 'connected' : 'error'
+  return syncStatus.value.repositoryStatus === 'connected' ? 'connected' : 'error'
 })
 
 // 方法
 const fetchSyncStatus = async () => {
   try {
     const response = await syncService.getSyncStatus()
-    
+
     if (response.success) {
       syncStatus.value = response.data
     } else {
@@ -250,27 +209,18 @@ const fetchSyncStatus = async () => {
   }
 }
 
-const fetchProjects = async () => {
-  try {
-    const response = await projectService.getProjects({})
-    
-    if (response.success && response.data) {
-      projects.value = response.data.projects || []
-    }
-  } catch (error) {
-    console.error('获取项目列表失败:', error)
-  }
-}
-
 const fetchSyncLogs = async (page = 1) => {
   try {
     logsLoading.value = true
-    const response = await syncService.getSyncLogs(page, logsPagination.value.limit)
-    
-    if (response.success) {
-      syncLogs.value = response.data || []
-      if (response.pagination) {
-        logsPagination.value = response.pagination
+    const response = await syncService.getSyncLogs({
+      page,
+      limit: logsPagination.value.limit
+    })
+
+    if (response.success && response.data) {
+      syncLogs.value = response.data.logs || []
+      if (response.data.pagination) {
+        logsPagination.value = response.data.pagination
       }
     } else {
       throw new Error(t('sync.fetchSyncLogsFailed'))
@@ -287,46 +237,21 @@ const startFullSync = async () => {
   try {
     isSyncing.value = true
     showMessage(t('sync.fullSyncStarting'), 'info')
-    
-    const result = await syncService.startFullSync()
-    
+
+    const result = await syncService.triggerSync('full')
+
     if (result.success) {
-      showMessage(t('sync.fullSync') + t('sync.syncCompletedSuffix') + ` ${result.message || ''}`, 'success')
+      showMessage(t('sync.fullSync') + ' ' + t('sync.syncCompletedSuffix') + (result.message ? `: ${result.message}` : ''), 'success')
       await fetchSyncStatus()
-      await fetchSyncLogs()
+      if (activeTab.value === 'logs') {
+        await fetchSyncLogs()
+      }
     } else {
       throw new Error(result.message || t('sync.syncFailed'))
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('全量同步失败:', error)
     showMessage(`${t('sync.fullSync')}: ${error.message}`, 'error')
-  } finally {
-    isSyncing.value = false
-  }
-}
-
-const startProjectSync = async () => {
-  if (!selectedProjectId.value) {
-    showMessage(t('sync.pleaseSelectProject'), 'error')
-    return
-  }
-
-  try {
-    isSyncing.value = true
-    showMessage(`${t('sync.syncThisProjectPrefix')} ${selectedProjectId.value}...`, 'info')
-    
-    const result = await syncService.startProjectSync(selectedProjectId.value)
-    
-    if (result.success) {
-      showMessage(t('sync.projectSyncCompleted') + ` ${result.message || ''}`, 'success')
-      await fetchSyncStatus()
-      await fetchSyncLogs()
-    } else {
-      throw new Error(result.message || t('sync.projectSyncFailed'))
-    }
-  } catch (error) {
-    console.error('项目同步失败:', error)
-    showMessage(`${t('sync.projectSync')}: ${error.message}`, 'error')
   } finally {
     isSyncing.value = false
   }
@@ -342,26 +267,26 @@ const refreshLogs = () => {
   showMessage(t('sync.syncLogsRefreshed'), 'info')
 }
 
-const changeLogPage = (page) => {
+const changeLogPage = (page: number) => {
   logsPagination.value.page = page
   fetchSyncLogs(page)
 }
 
-const formatSyncType = (type) => {
-  const types = {
+const formatSyncType = (type: string) => {
+  const types: Record<string, string> = {
     'full': t('sync.fullSync'),
     'project': t('sync.projectSync')
   }
   return types[type] || type
 }
 
-const formatDate = (dateString) => {
+const formatDate = (dateString: string) => {
   if (!dateString) return ''
   const date = new Date(dateString)
   return date.toLocaleString('zh-CN')
 }
 
-const showMessage = (text, type = 'info') => {
+const showMessage = (text: string, type: 'success' | 'error' | 'info' = 'info') => {
   message.value = { text, type }
   setTimeout(() => {
     message.value = null
@@ -371,7 +296,6 @@ const showMessage = (text, type = 'info') => {
 // 生命周期
 onMounted(() => {
   fetchSyncStatus()
-  fetchProjects()
   fetchSyncLogs()
 })
 </script>
@@ -410,6 +334,46 @@ onMounted(() => {
   margin-bottom: 30px;
 }
 
+.tabs-container {
+  margin-bottom: 30px;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border-color);
+  padding: 0 16px;
+
+  .tab {
+    padding: 10px 20px;
+    background: none;
+    border: none;
+    border-radius: 4px 4px 0 0;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: -1px;
+    border-bottom: 2px solid transparent;
+
+    &:hover {
+      background: var(--hover-bg);
+      color: var(--text);
+    }
+
+    &.active {
+      color: var(--primary-color);
+      border-bottom-color: var(--primary-color);
+      background: rgba(52, 152, 219, 0.05);
+    }
+  }
+}
+
+.tab-content {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
 .status-card {
   background: var(--card-bg);
   border-radius: 8px;
@@ -420,6 +384,11 @@ onMounted(() => {
     display: flex;
     align-items: center;
     margin-bottom: 20px;
+
+    .status-actions {
+      display: flex;
+      float: right;
+    }
 
     .status-icon {
       width: 48px;
@@ -527,73 +496,6 @@ onMounted(() => {
   }
 }
 
-.sync-controls {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 30px;
-  margin-bottom: 30px;
-
-  .control-section {
-    background: var(--card-bg);
-    border-radius: 8px;
-    padding: 24px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-
-    h3 {
-      margin: 0 0 16px 0;
-      font-size: 18px;
-      font-weight: 600;
-    }
-
-    .control-buttons {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-
-      .btn {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-      }
-
-      .sync-options {
-        .checkbox-label {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 14px;
-          cursor: pointer;
-
-          input[type="checkbox"] {
-            width: 16px;
-            height: 16px;
-          }
-        }
-      }
-    }
-
-    .project-selector {
-      display: flex;
-      gap: 12px;
-
-      .project-select {
-        flex: 1;
-        padding: 8px 12px;
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-        background: var(--bg-color);
-        color: var(--text-color);
-
-        &:focus {
-          outline: none;
-          border-color: var(--primary-color);
-        }
-      }
-    }
-  }
-}
-
 .sync-logs {
   background: var(--card-bg);
   border-radius: 8px;
@@ -602,15 +504,23 @@ onMounted(() => {
 
   .logs-header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    //justify-content: space-between;
     padding: 16px 24px;
     border-bottom: 1px solid var(--border-color);
+    text-align: right;
+    justify-content: flex-end;
 
     h3 {
       margin: 0;
       font-size: 18px;
       font-weight: 600;
+    }
+
+    .btn{
+      text-align: right;
+      margin-right: auto;
+      margin-left: 1px;
+      
     }
   }
 
@@ -621,7 +531,8 @@ onMounted(() => {
       width: 100%;
       border-collapse: collapse;
 
-      th, td {
+      th,
+      td {
         padding: 12px 16px;
         text-align: left;
         border-bottom: 1px solid var(--border-color);
@@ -633,7 +544,8 @@ onMounted(() => {
         background: var(--hover-bg);
       }
 
-      .loading-cell, .empty-cell {
+      .loading-cell,
+      .empty-cell {
         text-align: center;
         padding: 40px 16px;
         color: var(--text-muted);
@@ -758,6 +670,16 @@ onMounted(() => {
   }
 }
 
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
 // 响应式设计
 @media (max-width: 768px) {
   .sync-container {
@@ -770,11 +692,6 @@ onMounted(() => {
     align-items: flex-start;
   }
 
-  .sync-controls {
-    grid-template-columns: 1fr;
-    gap: 20px;
-  }
-
   .stats-grid {
     grid-template-columns: 1fr !important;
   }
@@ -783,7 +700,9 @@ onMounted(() => {
     font-size: 12px;
 
     table {
-      th, td {
+
+      th,
+      td {
         padding: 8px 12px;
       }
     }

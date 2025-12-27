@@ -389,9 +389,8 @@ import { useRoute, useRouter } from 'vue-router'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
 import projectService from '@/services/project.service'
 import repositoryService from '@/services/repository.service'
-import type { ProjectDetails, ProjectMember, AddMemberData } from '@/services/project.service'
-import type { User } from '@/services/user.service'
 import userService from '@/services/user.service'
+import type { ProjectDetails, ProjectMember, AddMemberData, User } from '@/types'
 
 const { t } = useI18n()
 const route = useRoute()

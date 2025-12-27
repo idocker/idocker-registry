@@ -143,7 +143,7 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
 import projectService from '@/services/project.service'
-import type { Project, CreateProjectData } from '@/services/project.service'
+import type { Project, CreateProjectData } from '@/types'
 
 const { t } = useI18n()
 const authStore = useAuthStore()

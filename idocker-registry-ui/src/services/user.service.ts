@@ -4,69 +4,28 @@
  */
 
 import { http } from '@/utils/http'
+import type {
+  User,
+  UserDetail,
+  CreateUser,
+  UpdateUser,
+  ChangePassword,
+  UserPaginatedResponse
+} from '@/types'
 
-export interface User {
-  id: number
-  username: string
-  email?: string
-  fullName?: string
-  role: 'admin' | 'user'
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
-}
-
-export interface UserDetail extends User {
-  projects: Array<{
-    id: number
-    name: string
-    description?: string
-    memberRole: 'owner' | 'maintainer' | 'viewer'
-    memberSince: string
-  }>
-}
-
-export interface CreateUser {
-  username: string
-  password: string
-  email?: string
-  fullName?: string
-  role?: 'admin' | 'user'
-}
-
-export interface UpdateUser {
-  email?: string
-  fullName?: string
-  role?: 'admin' | 'user'
-  isActive?: boolean
-}
-
-export interface ChangePassword {
-  password: string
-}
-
-export interface PaginationParams {
+// 扩展PaginationParams接口，添加role属性
+interface UserPaginationParams {
   page?: number
   limit?: number
   search?: string
   role?: string
 }
 
-export interface PaginatedResponse<T> {
-  data: T[]
-  pagination: {
-    page: number
-    limit: number
-    total: number
-    totalPages: number
-  }
-}
-
 class UserService {
   /**
    * 获取用户列表
    */
-  async getUsers(params: PaginationParams): Promise<PaginatedResponse<User>> {
+  async getUsers(params: UserPaginationParams): Promise<UserPaginatedResponse> {
     const queryParams = new URLSearchParams()
     
     if (params.page) queryParams.append('page', params.page.toString())

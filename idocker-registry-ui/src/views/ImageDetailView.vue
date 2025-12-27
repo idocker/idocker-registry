@@ -1,149 +1,1031 @@
+<!--
+  镜像详情视图
+  显示镜像的所有标签列表，支持查看标签详情、Dockerfile和删除标签
+-->
 <template>
-  <v-container class="pa-6">
-    <v-breadcrumbs :items="breadcrumbs" class="mb-4"></v-breadcrumbs>
+  <div class="image-detail-view">
+    <!-- 页面标题和导航 -->
+    <div class="page-header">
 
-    <v-card v-if="image">
-      <v-card-title>
-        {{ $t('images.imageDetails') }}
-        <v-spacer></v-spacer>
-        <v-btn
-          color="primary"
-          prepend-icon="mdi-arrow-left"
-          variant="text"
-          @click="goBack"
-        >
-          {{ $t('common.back') }}
-        </v-btn>
-      </v-card-title>
+      <div class="header-content">
+        <h1 v-if="image">{{ image.repository?.name || '镜像详情' }}</h1>
+        <p v-if="image">{{ image.repository?.description || '暂无描述' }}</p>
+      </div>
+      <div class="spacer"></div>
+      <!-- <button class="btn btn-primary" @click="refreshImageDetails" :disabled="isLoading">
+        <span v-if="isLoading" class="material-icons rotating">refresh</span>
+        <span v-else class="material-icons">refresh</span>
+        刷新
+      </button> -->
+      <button class="btn btn-ghost" @click="goBack">
+        <span class="material-icons">arrow_back</span>
+        返回
+      </button>
+    </div>
 
-      <v-card-text>
-        <v-row>
-          <v-col cols="6">
-            <v-list-item density="compact">
-              <template v-slot:prepend>
-                <v-icon>mdi-image</v-icon>
-              </template>
-              <v-list-item-subtitle>{{ $t('images.imageName') }}</v-list-item-subtitle>
-              <v-list-item-title>{{ image.name }}</v-list-item-title>
-            </v-list-item>
-          </v-col>
-          <v-col cols="6">
-            <v-list-item density="compact">
-              <template v-slot:prepend>
-                <v-icon>mdi-clock</v-icon>
-              </template>
-              <v-list-item-subtitle>{{ $t('images.createdAt') }}</v-list-item-subtitle>
-              <v-list-item-title>{{ formatDate(image.createdAt) }}</v-list-item-title>
-            </v-list-item>
-          </v-col>
-        </v-row>
+    <!-- 加载状态 -->
+    <div v-if="isLoading && !image" class="loading-card">
+      <div class="loading-container">
+        <span class="material-icons rotating">refresh</span>
+        <span>加载中...</span>
+      </div>
+    </div>
 
-        <v-divider class="my-4"></v-divider>
+    <!-- 错误状态 -->
+    <div v-else-if="error" class="error-card">
+      <div class="error-container">
+        <span class="material-icons">error</span>
+        <h3>加载失败</h3>
+        <p>{{ error }}</p>
+        <button class="btn btn-primary" @click="refreshImageDetails">重试</button>
+      </div>
+    </div>
 
-        <h3 class="text-h6 mb-3">{{ $t('images.imageTags') }}</h3>
-        <v-list>
-          <v-list-item
-            v-for="tag in image.tags"
-            :key="tag.id"
-            class="px-0"
-            @click="viewTagDetails(tag)"
-          >
-            <template v-slot:prepend>
-              <v-icon>mdi-tag-outline</v-icon>
-            </template>
-            <v-list-item-title>{{ tag.name }}</v-list-item-title>
-            <v-list-item-subtitle>
-              {{ formatSize(tag.size) }} | {{ tag.digest }}
-            </v-list-item-subtitle>
-            <template v-slot:append>
-              <v-icon>mdi-chevron-right</v-icon>
-            </template>
-          </v-list-item>
-        </v-list>
-      </v-card-text>
-    </v-card>
-  </v-container>
+    <!-- 镜像详情 -->
+    <div v-else-if="image" class="image-detail">
+      <div class="info-card">
+        <h2>镜像信息</h2>
+        <div class="info-grid">
+          <div class="info-item">
+            <div class="info-label">镜像名称</div>
+            <div class="info-value">{{ image.repository?.name || 'N/A' }}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">完整名称</div>
+            <div class="info-value">{{ image.repository?.fullName || 'N/A' }}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">所属项目</div>
+            <div class="info-value">{{ image.repository?.projectName || 'N/A' }}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">命名空间</div>
+            <div class="info-value">{{ image.repository?.namespace || 'N/A' }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 标签列表 -->
+      <div class="tags-card">
+        <div class="tags-header">
+          <h2>标签列表</h2>
+          <span class="tag-count">{{ image.tags?.length || 0 }} 个标签</span>
+        </div>
+        
+        <div v-if="!image.tags || image.tags.length === 0" class="empty-tags">
+          <div class="empty-state">
+            <span class="material-icons">tag</span>
+            <p>暂无标签</p>
+          </div>
+        </div>
+        
+        <div v-else class="tags-table">
+          <table class="tag-table">
+            <thead>
+              <tr>
+                <th>标签名称</th>
+                <th>摘要</th>
+                <th>大小</th>
+                <th>架构/系统</th>
+                <th>创建时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="tag in image.tags" :key="tag.id">
+                <td>
+                  <div class="tag-name-cell">
+                    <div class="tag-name">{{ tag.tag }}</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="digest-cell">
+                    <code>{{ tag.digest.substring(0, 12) }}...</code>
+                    <button 
+                      class="btn btn-ghost btn-icon" 
+                      @click="copyToClipboard(tag.digest)"
+                      title="复制摘要"
+                    >
+                      <span class="material-icons">content_copy</span>
+                    </button>
+                  </div>
+                </td>
+                <td>{{ formatFileSize(tag.size) }}</td>
+                <td>
+                  <div class="arch-os-cell">
+                    <span v-if="tag.architecture" class="chip">{{ tag.architecture }}</span>
+                    <span v-if="tag.os" class="chip">{{ tag.os }}</span>
+                  </div>
+                </td>
+                <td>{{ formatDate(tag.createdAt) }}</td>
+                <td>
+                  <div class="actions-cell">
+                    <button
+                      class="btn btn-ghost btn-small"
+                      @click="viewTagDetails(tag)"
+                    >
+                      <span class="material-icons">info</span>
+                      详情
+                    </button>
+                    <button
+                      class="btn btn-ghost btn-small"
+                      @click="viewDockerfile(tag)"
+                    >
+                      <span class="material-icons">description</span>
+                      Dockerfile
+                    </button>
+                    <button
+                      v-if="hasPermission"
+                      class="btn btn-ghost btn-small btn-danger"
+                      @click="confirmDeleteTag(tag)"
+                    >
+                      <span class="material-icons">delete</span>
+                      删除
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 标签详情对话框 -->
+    <div v-if="showTagDetailDialog" class="modal-overlay" @click="showTagDetailDialog = false">
+      <div class="modal tag-detail-modal" @click.stop>
+        <div class="modal-header">
+          <h2>标签详情</h2>
+          <button class="btn btn-ghost btn-icon" @click="showTagDetailDialog = false">
+            <span class="material-icons">close</span>
+          </button>
+        </div>
+        <div class="modal-content">
+          <div v-if="tagDetailLoading" class="loading-container">
+            <span class="material-icons rotating">refresh</span>
+            <span>加载中...</span>
+          </div>
+          
+          <div v-else-if="tagDetailError" class="error-container">
+            <span class="material-icons">error</span>
+            <p>{{ tagDetailError }}</p>
+          </div>
+          
+          <div v-else-if="tagDetails" class="tag-detail-content">
+            <div class="tag-info">
+              <div class="info-item">
+                <div class="info-label">标签名称</div>
+                <div class="info-value">{{ tagDetails.tag.name || tagDetails.tag.tag || 'N/A' }}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">摘要</div>
+                <div class="info-value">
+                  <code>{{ tagDetails.tag.digest }}</code>
+                  <button 
+                    class="btn btn-ghost btn-icon" 
+                    @click="copyToClipboard(tagDetails.tag.digest)"
+                  >
+                    <span class="material-icons">content_copy</span>
+                  </button>
+                </div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">大小</div>
+                <div class="info-value">{{ formatFileSize(tagDetails.tag.size) }}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">架构</div>
+                <div class="info-value">{{ tagDetails.tag.architecture || 'N/A' }}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">操作系统</div>
+                <div class="info-value">{{ tagDetails.tag.os || 'N/A' }}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">创建时间</div>
+                <div class="info-value">{{ formatDate(tagDetails.tag.createdAt || tagDetails.tag.created_at) }}</div>
+              </div>
+            </div>
+            
+            <div v-if="tagDetails.buildHistory && tagDetails.buildHistory.length > 0" class="build-history">
+              <h3>构建历史</h3>
+              <div class="history-table">
+                <table class="build-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>创建者</th>
+                      <th>命令</th>
+                      <th>大小</th>
+                      <th>注释</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(layer, index) in tagDetails.buildHistory" :key="layer.id">
+                      <td>{{ index + 1 }}</td>
+                      <td>{{ layer.createdBy || layer.created_by || 'N/A' }}</td>
+                      <td>
+                        <code class="command-code">{{ layer.comment || 'N/A' }}</code>
+                      </td>
+                      <td>{{ formatFileSize(layer.size) }}</td>
+                      <td>{{ layer.comment || 'N/A' }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dockerfile 对话框 -->
+    <div v-if="showDockerfileDialog" class="modal-overlay" @click="showDockerfileDialog = false">
+      <div class="modal dockerfile-modal" @click.stop>
+        <div class="modal-header">
+          <h2>Dockerfile</h2>
+          <button class="btn btn-ghost btn-icon" @click="showDockerfileDialog = false">
+            <span class="material-icons">close</span>
+          </button>
+        </div>
+        <div class="modal-content">
+          <div v-if="dockerfileLoading" class="loading-container">
+            <span class="material-icons rotating">refresh</span>
+            <span>加载中...</span>
+          </div>
+          
+          <div v-else-if="dockerfileError" class="error-container">
+            <span class="material-icons">error</span>
+            <p>{{ dockerfileError }}</p>
+          </div>
+          
+          <div v-else-if="dockerfileContent" class="dockerfile-content">
+            <div class="dockerfile-actions">
+              <button
+                class="btn btn-ghost"
+                @click="copyToClipboard(dockerfileContent)"
+              >
+                <span class="material-icons">content_copy</span>
+                复制
+              </button>
+            </div>
+            <pre><code>{{ dockerfileContent }}</code></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 删除确认对话框 -->
+    <div v-if="showDeleteDialog" class="modal-overlay" @click="showDeleteDialog = false">
+      <div class="modal" @click.stop>
+        <div class="modal-header">
+          <h2>确认删除</h2>
+        </div>
+        <div class="modal-content">
+          <p>确定要删除标签 <strong>{{ tagToDelete?.name || tagToDelete?.tag }}</strong> 吗？</p>
+          <p class="warning">此操作不可逆，请谨慎操作。</p>
+          <div class="dialog-actions">
+            <button class="btn btn-ghost" @click="showDeleteDialog = false">
+              取消
+            </button>
+            <button class="btn btn-danger" @click="deleteTag" :disabled="isDeleting">
+              <span v-if="isDeleting" class="material-icons rotating">refresh</span>
+              {{ isDeleting ? '删除中...' : '确认删除' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { useI18n } from 'vue-i18n'
+import { useRoute, useRouter } from 'vue-router'
+import { useNotifications } from '@/composables/useNotifications'
+import repositoryService from '@/services/repository.service'
+import authService from '@/services/auth.service'
+import type { ImageTag, ImageTagDetails, ImageDetails } from '@/types'
 
-interface Tag {
-  id: string
-  name: string
-  digest: string
-  size: number
-}
-
-interface Image {
-  id: string
-  name: string
-  createdAt: string
-  tags: Tag[]
-}
-
-const router = useRouter()
 const route = useRoute()
-const { t } = useI18n()
+const router = useRouter()
+const { showSuccess, showError, showInfo } = useNotifications()
 
-const image = ref<Image | null>(null)
+// 状态管理
 const isLoading = ref(false)
+const error = ref('')
+const image = ref<ImageDetails | null>(null)
 
-const breadcrumbs = computed(() => [
-  { title: t('nav.home'), href: '/' },
-  { title: t('images.imageList'), href: '/images' },
-  { title: t('images.imageDetails'), disabled: true }
-])
+// 标签详情相关
+const showTagDetailDialog = ref(false)
+const tagDetailLoading = ref(false)
+const tagDetailError = ref('')
+const selectedTag = ref<ImageTag | null>(null)
+const tagDetails = ref<ImageTagDetails | null>(null)
 
-onMounted(async () => {
-  await loadImageDetails()
+// Dockerfile 相关
+const showDockerfileDialog = ref(false)
+const dockerfileContent = ref('')
+const dockerfileLoading = ref(false)
+const dockerfileError = ref('')
+
+// 删除相关
+const showDeleteDialog = ref(false)
+const tagToDelete = ref<ImageTag | null>(null)
+const isDeleting = ref(false)
+
+// 计算属性
+const hasPermission = computed(() => {
+  try {
+    const token = authService.getToken()
+    if (!token) return false
+    
+    // 尝试从本地存储获取用户信息
+    const userData = localStorage.getItem('user_data')
+    if (userData) {
+      const user = JSON.parse(userData)
+      return user?.role === 'admin'
+    }
+    
+    return false
+  } catch (error) {
+    console.error('权限检查失败:', error)
+    return false
+  }
 })
 
+// 加载镜像详情
 const loadImageDetails = async () => {
-  isLoading.value = true
   try {
+    isLoading.value = true
+    error.value = ''
     const imageId = route.params.id as string
-    // 这里应该调用 API 获取镜像详情
-    // 暂时使用模拟数据
-    image.value = {
-      id: imageId,
-      name: imageId,
-      createdAt: new Date().toISOString(),
-      tags: [
-        { id: '1', name: 'latest', digest: 'sha256:abc123', size: 12345678 },
-        { id: '2', name: 'v1.0', digest: 'sha256:def456', size: 12345678 }
-      ]
+    const response = await repositoryService.getImageDetails(imageId)
+    
+    
+    if (response && response.success && response.data) {
+      image.value = response.data
+      console.log('image.projectName', image.value.repository?.projectName)
+      console.log('response.projectName', response.data.repository?.projectName)
+      console.log('image.value', image.value)
+    } else {
+      error.value = '加载镜像详情失败'
     }
-  } catch (error) {
-    console.error('加载镜像详情失败:', error)
+  } catch (err: any) {
+    console.error('加载镜像详情失败:', err)
+    error.value = err.message || '加载镜像详情失败'
   } finally {
     isLoading.value = false
   }
 }
 
-const viewTagDetails = (tag: Tag) => {
-  router.push({
-    name: 'image-tag-detail',
-    params: { imageId: image.value!.id, tagId: tag.id }
-  })
+// 刷新镜像详情
+const refreshImageDetails = () => {
+  loadImageDetails()
 }
 
-const formatSize = (bytes: number) => {
+// 查看标签详情
+const viewTagDetails = async (tag: ImageTag) => {
+  try {
+    tagDetailLoading.value = true
+    tagDetailError.value = ''
+    showTagDetailDialog.value = true
+    
+    const imageId = route.params.id as string
+    const response = await repositoryService.getImageTagDetails(imageId, tag.id.toString())
+    
+    if (response.success) {
+      tagDetails.value = response.data
+    } else {
+      tagDetailError.value = '加载标签详情失败'
+    }
+  } catch (err: any) {
+    console.error('加载标签详情失败:', err)
+    tagDetailError.value = err.message || '加载标签详情失败'
+  } finally {
+    tagDetailLoading.value = false
+  }
+}
+
+// 查看Dockerfile
+const viewDockerfile = async (tag: ImageTag) => {
+  try {
+    selectedTag.value = tag
+    dockerfileLoading.value = true
+    dockerfileError.value = ''
+    dockerfileContent.value = ''
+    showDockerfileDialog.value = true
+    
+    // 这里应该调用API获取Dockerfile内容，暂时使用模拟数据
+    // 实际实现可能需要从构建历史中提取或调用专门的API
+    const imageId = route.params.id as string
+    const response = await repositoryService.getImageTagDetails(imageId, tag.id.toString())
+    
+    if (response.success && response.data.buildHistory) {
+      // 从构建历史生成简单的Dockerfile
+      const history = response.data.buildHistory
+      const dockerfileCommands = history
+        .filter(layer => layer.comment && !layer.emptyLayer)
+        .map(layer => layer.comment)
+        .join('\n')
+      
+      dockerfileContent.value = dockerfileCommands || 'FROM scratch\n# Dockerfile信息不可用'
+    } else {
+      dockerfileError.value = '无法获取Dockerfile信息'
+    }
+  } catch (err: any) {
+    console.error('加载Dockerfile失败:', err)
+    dockerfileError.value = err.message || '加载Dockerfile失败'
+  } finally {
+    dockerfileLoading.value = false
+  }
+}
+
+// 确认删除标签
+const confirmDeleteTag = (tag: ImageTag) => {
+  tagToDelete.value = tag
+  showDeleteDialog.value = true
+}
+
+// 删除标签
+const deleteTag = async () => {
+  if (!tagToDelete.value) return
+  
+  try {
+    isDeleting.value = true
+    
+    const imageId = route.params.id as string
+    const response = await repositoryService.deleteImageTag(imageId, tagToDelete.value.id.toString())
+    
+    if (response.success) {
+      const tagName = tagToDelete.value.name || tagToDelete.value.tag
+      showSuccess(`标签 ${tagName} 已删除`)
+      showDeleteDialog.value = false
+      
+      // 重新加载镜像详情
+      await loadImageDetails()
+    } else {
+      showError(response.message || '删除标签失败')
+    }
+  } catch (err: any) {
+    console.error('删除标签失败:', err)
+    showError(err.message || '删除标签失败')
+  } finally {
+    isDeleting.value = false
+  }
+}
+
+// 复制到剪贴板
+const copyToClipboard = async (text: string) => {
+  try {
+    await navigator.clipboard.writeText(text)
+    showInfo('已复制到剪贴板')
+  } catch (err) {
+    console.error('复制失败:', err)
+    showError('复制失败')
+  }
+}
+
+// 格式化文件大小
+const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 B'
   const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i]
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
-const formatDate = (dateString: string) => {
+// 格式化日期
+const formatDate = (dateString: string | undefined): string => {
   if (!dateString) return 'N/A'
-  return new Date(dateString).toLocaleString('zh-CN')
+  const date = new Date(dateString)
+  return date.toLocaleDateString() + ' ' + date.toLocaleTimeString()
 }
 
+// 返回上一页
 const goBack = () => {
-  router.push('/images')
+  router.go(-1)
 }
+
+// 初始化
+onMounted(() => {
+  loadImageDetails()
+})
 </script>
+
+<style scoped lang="scss">
+@use '@/styles/variables.scss' as *;
+
+.image-detail-view {
+  padding: 1rem;
+  color: var(--primary-text);
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 2rem;
+  gap: 1rem;
+
+  .header-content {
+    flex: 1;
+
+    h1 {
+      margin-bottom: 0.25rem;
+      color: var(--primary-text);
+    }
+
+    p {
+      color: var(--neutral-text);
+      margin: 0;
+    }
+  }
+}
+
+.loading-card, .error-card {
+  background-color: var(--card-bg);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  margin-bottom: 2rem;
+
+  .loading-container, .error-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    gap: 1rem;
+    color: var(--neutral-text);
+
+    .material-icons {
+      font-size: 48px;
+      
+      &.rotating {
+        animation: spin 2s linear infinite;
+      }
+    }
+  }
+
+  .error-container {
+    .material-icons {
+      color: var(--error-color);
+    }
+
+    h3 {
+      margin: 0;
+      color: var(--primary-text);
+    }
+  }
+}
+
+.image-detail {
+  .info-card, .tags-card {
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+
+    h2 {
+      margin: 0;
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--primary-text);
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+      padding: 1.5rem;
+
+      .info-item {
+        .info-label {
+          font-size: 0.875rem;
+          color: var(--neutral-text);
+          margin-bottom: 0.25rem;
+        }
+
+        .info-value {
+          font-weight: 500;
+          color: var(--primary-text);
+        }
+      }
+    }
+  }
+
+  .tags-card {
+    .tags-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+
+      h2 {
+        margin: 0;
+        padding: 0;
+        border: none;
+      }
+
+      .tag-count {
+        background-color: rgba(92, 136, 255, 0.1);
+        color: var(--accent-text);
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.875rem;
+        font-weight: 500;
+      }
+    }
+
+    .empty-tags {
+      .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 3rem;
+        gap: 1rem;
+        color: var(--neutral-text);
+
+        .material-icons {
+          font-size: 48px;
+        }
+      }
+    }
+
+    .tags-table {
+      overflow-x: auto;
+
+      .tag-table {
+        width: 100%;
+        border-collapse: collapse;
+
+        th {
+          padding: 0.75rem 1rem;
+          text-align: left;
+          font-weight: 600;
+          color: var(--primary-text);
+          border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+          padding: 0.75rem 1rem;
+          border-bottom: 1px solid var(--border-color);
+        }
+
+        tr:last-child td {
+          border-bottom: none;
+        }
+
+        tr:hover {
+          background-color: var(--hover-background);
+        }
+
+        .tag-name-cell {
+          display: flex;
+          align-items: center;
+          color: var(--primary-text);
+
+          .tag-name {
+            font-weight: 500;
+            color: var(--accent-text);
+          }
+
+          .material-icons {
+            color: var(--primary-text) !important;
+            font-size: 20px !important;
+          }
+        }
+
+        .digest-cell {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+
+          code {
+            font-family: monospace;
+            background-color: var(--hover-background);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+          }
+        }
+
+        .arch-os-cell {
+          display: flex;
+          gap: 0.5rem;
+
+          .chip {
+            background-color: var(--hover-background);
+            color: var(--primary-text);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+          }
+        }
+
+        .actions-cell {
+          display: flex;
+          gap: 0.5rem;
+          flex-wrap: wrap;
+        }
+      }
+    }
+  }
+}
+
+// 模态框样式
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modal {
+  background-color: var(--card-bg);
+  border-radius: 8px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-3);
+  border: 1px solid var(--border-color);
+
+  &.tag-detail-modal {
+    max-width: 1000px;
+  }
+
+  &.dockerfile-modal {
+    max-width: 900px;
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+
+    h2 {
+      margin: 0;
+      color: var(--primary-text);
+    }
+  }
+
+  .modal-content {
+    padding: 1.5rem;
+    color: var(--primary-text);
+
+    .tag-detail-content {
+      .tag-info {
+        margin-bottom: 2rem;
+
+        .info-item {
+          display: flex;
+          flex-direction: column;
+          margin-bottom: 1rem;
+
+          .info-label {
+            font-size: 0.875rem;
+            color: var(--neutral-text);
+            margin-bottom: 0.25rem;
+          }
+
+          .info-value {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 500;
+
+            code {
+              font-family: monospace;
+              background-color: var(--hover-background);
+              padding: 0.25rem 0.5rem;
+              border-radius: 4px;
+              font-size: 0.875rem;
+            }
+          }
+        }
+      }
+
+      .build-history {
+        h3 {
+          margin-bottom: 1rem;
+        }
+
+        .history-table {
+          overflow-x: auto;
+
+          .build-table {
+            width: 100%;
+            border-collapse: collapse;
+
+            th, td {
+              padding: 0.75rem;
+              text-align: left;
+              border-bottom: 1px solid var(--border-color);
+            }
+
+            th {
+              font-weight: 600;
+            }
+
+            tr:last-child td {
+              border-bottom: none;
+            }
+
+            .command-code {
+              font-family: monospace;
+              background-color: var(--hover-background);
+              padding: 0.25rem 0.5rem;
+              border-radius: 4px;
+              font-size: 0.875rem;
+              max-width: 300px;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+              display: inline-block;
+            }
+          }
+        }
+      }
+    }
+
+    .dockerfile-content {
+      .dockerfile-actions {
+        margin-bottom: 1rem;
+      }
+
+      pre {
+        background-color: var(--hover-background);
+        padding: 1rem;
+        border-radius: 8px;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        font-family: monospace;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        max-height: 500px;
+        overflow-y: auto;
+      }
+    }
+
+    .dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 1rem;
+      margin-top: 1.5rem;
+
+      .warning {
+        color: var(--error-color);
+      }
+    }
+  }
+}
+
+// 按钮样式
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: white;
+  gap: 0.5rem;
+
+  .material-icons {
+    font-size: 18px;
+  }
+
+  &:last-child .material-icons {
+    margin-right: 0;
+  }
+
+  &.btn-primary {
+    background-color: var(--primary-color);
+
+    &:hover:not(:disabled) {
+      background-color: var(--primary-dark);
+    }
+  }
+
+  &.btn-danger {
+    background-color: var(--error-color);
+
+    &:hover:not(:disabled) {
+      background-color: #d32f2f;
+    }
+  }
+
+  &.btn-ghost {
+    background-color: transparent;
+    color: var(--primary-text);
+    border: 1px solid transparent;
+
+    &:hover {
+      background-color: var(--hover-background);
+      border-color: var(--border-color);
+    }
+
+    &.btn-danger {
+      color: var(--error-color);
+
+      &:hover {
+        background-color: rgba(244, 67, 54, 0.1);
+      }
+    }
+
+    &.btn-small {
+      padding: 0.25rem 0.5rem;
+      font-size: 12px;
+      gap: 0.25rem;
+
+      .material-icons {
+        font-size: 16px;
+      }
+    }
+  }
+
+  &.btn-icon {
+    padding: 0.5rem;
+    width: 36px;
+    height: 36px;
+    gap: 0;
+
+    .material-icons {
+      margin: 0;
+      font-size: 18px;
+    }
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.mr-2 {
+  margin-right: 0.5rem;
+}
+
+.spacer {
+  flex-grow: 1;
+}
+
+// 响应式设计
+@media (max-width: 960px) {
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+
+    .header-content {
+      text-align: center;
+    }
+  }
+
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .actions-cell {
+    flex-direction: column;
+    align-items: flex-start;
+
+    .btn {
+      width: 100%;
+      justify-content: flex-start;
+    }
+  }
+
+  .modal {
+    width: 95%;
+    margin: 1rem;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+</style>

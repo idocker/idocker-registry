@@ -21,8 +21,14 @@ const router = express.Router();
 const dockerRegistryModel = new DockerRegistryModel();
 const registryConfigModel = new RegistryConfigModel();
 
-// All Docker Registry API requests require authentication
-router.use(dockerAuthMiddleware);
+// Docker Registry API authentication middleware (with /v2/ public access exception)
+router.use(async (req, res, next) => {
+  // GET /v2/ is a public endpoint for API version check
+  if (req.method === 'GET' && (req.path === '/' || req.path === '')) {
+    return next();
+  }
+  await dockerAuthMiddleware(req, res, next);
+});
 
 // Response time logging middleware
 router.use((req, res, next) => {

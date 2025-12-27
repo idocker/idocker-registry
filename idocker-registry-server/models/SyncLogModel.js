@@ -18,6 +18,7 @@ export class SyncLogModel extends BaseModel {
       const data = {
         sync_type: syncData.type || 'full',
         project_id: syncData.projectId || null,
+        user_id: syncData.userId || null,
         status: syncData.status || 'completed',
         processed_count: syncData.processedCount || 0,
         error_count: syncData.errorCount || 0,

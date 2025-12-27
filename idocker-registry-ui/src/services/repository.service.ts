@@ -3,79 +3,14 @@
  * 处理镜像仓库相关的API调用
  */
 
+import type { 
+  ImageDetails, 
+  ImageTagDetails, 
+  PaginationParams,
+  ImageRepositoryPaginatedResponse
+} from '@/types'
+
 import { http } from '@/utils/http'
-
-export interface Image {
-  id: number
-  name: string
-  namespace: string
-  project: string
-  description?: string
-  tags: ImageTag[]
-}
-
-export interface ImageTag {
-  id: number
-  name: string
-  digest: string
-  size: number
-  architecture?: string
-  os?: string
-  createdAt: string
-  pullCommand?: string
-  pushCommand?: string
-}
-
-export interface BuildHistory {
-  id: number
-  created: string
-  createdBy: string
-  emptyLayer: boolean
-  comment: string
-  size: number
-}
-
-export interface PaginationParams {
-  page?: number
-  limit?: number
-  search?: string
-}
-
-// 使用统一的API响应类型
-export interface PaginatedResponse extends ApiResponse<{ images: Image[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
-  // 保持向后兼容
-  images?: Image[]
-  pagination?: { page: number; limit: number; total: number; totalPages: number }
-}
-
-export interface ImageDetails {
-  repository: {
-    id: number
-    name: string
-    description?: string
-    isPublic: boolean
-    projectId: number
-    projectName: string
-    namespace: string
-    fullName: string
-  }
-  tags: ImageTag[]
-}
-
-export interface ImageTagDetails {
-  repository: {
-    id: number
-    name: string
-    description?: string
-    isPublic: boolean
-    projectId: number
-    projectName: string
-    namespace: string
-    fullName: string
-  }
-  tag: ImageTag
-  buildHistory: BuildHistory[]
-}
 
 class RepositoryService {
   /**
@@ -100,7 +35,7 @@ class RepositoryService {
   /**
    * 获取镜像列表
    */
-  async getImages(params: PaginationParams & { projectId?: string }): Promise<PaginatedResponse<Image>> {
+  async getImages(params: PaginationParams & { projectId?: string }): Promise<ImageRepositoryPaginatedResponse> {
     const queryParams = new URLSearchParams();
 
     if (params.page) {
@@ -128,7 +63,7 @@ class RepositoryService {
   async getProjectImages(
     projectId: string,
     params: PaginationParams
-  ): Promise<PaginatedResponse<Image>> {
+  ): Promise<ImageRepositoryPaginatedResponse> {
     this.validateRequired(projectId, '项目ID');
 
     const queryParams = new URLSearchParams();

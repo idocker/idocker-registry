@@ -134,7 +134,7 @@ const routes: Array<RouteRecordRaw> = [
   {
     path: '/admin/projects',
     name: 'admin-projects',
-    component: () => import('@/views/admin/projects/ProjectsView.vue'),
+    component: () => import('@/views/admin/ProjectsView.vue'),
     meta: {
       title: 'Projects',
       requiresAuth: true
@@ -143,7 +143,7 @@ const routes: Array<RouteRecordRaw> = [
   {
     path: '/admin/projects/:id',
     name: 'admin-project-detail',
-    component: () => import('@/views/admin/projects/ProjectDetailView.vue'),
+    component: () => import('@/views/admin/ProjectDetailView.vue'),
     meta: {
       title: 'Project Detail',
       requiresAuth: true

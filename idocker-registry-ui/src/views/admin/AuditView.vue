@@ -263,8 +263,9 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
-import auditService, { type AuditLog } from '@/services/audit.service'
+import auditService from '@/services/audit.service'
 import userService from '@/services/user.service'
+import type { AuditLog } from '@/types'
 import axios from 'axios'
 
 const { t, locale } = useI18n()

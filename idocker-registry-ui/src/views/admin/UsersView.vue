@@ -176,7 +176,7 @@ import { useI18n } from 'vue-i18n'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
 import { useAuthStore } from '@/stores/auth'
 import userService from '@/services/user.service'
-import type { User } from '@/services/user.service'
+import type { User } from '@/types'
 
 const { t, locale } = useI18n()
 
