@@ -45,8 +45,8 @@
                                         {{ getRoleDisplay(user.role) }}
                                     </span>
                                 </td>
-                                <td>{{ formatDate(user.created_at) }}</td>
-                                <td>{{ user.last_login ? formatDate(user.last_login) : $t('userList.neverLoggedIn') }}</td>
+                                <td>{{ formatDate(user.createdAt) }}</td>
+                                <td>-</td>
                                 <td class="action-buttons">
                                     <button class="btn-icon btn-ghost" @click="editUser(user)" :title="$t('userList.editUser')">
                                         <span class="material-icons">edit</span>
@@ -109,7 +109,6 @@
                                 <label for="role">{{ $t('userList.role') }}</label>
                                 <select id="role" v-model="userForm.role" required>
                                     <option value="user">{{ $t('userList.roleUser') }}</option>
-                                    <option value="maintainer">{{ $t('userList.roleMaintainer') }}</option>
                                     <option value="admin">{{ $t('userList.roleAdmin') }}</option>
                                 </select>
                             </div>
@@ -162,7 +161,7 @@
             <!-- 消息提示 -->
             <div v-if="message" class="snackbar" :class="`snackbar-${message.type}`">
                 {{ message.text }}
-                <button class="snackbar-close" @click="message = ''">
+                <button class="snackbar-close" @click="message.text = ''">
                     <span class="material-icons">close</span>
                 </button>
             </div>
@@ -176,47 +175,47 @@ import { useI18n } from 'vue-i18n'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
 import { useAuthStore } from '@/stores/auth'
 import userService from '@/services/user.service'
-import type { User } from '@/types'
+import type { Message, User } from '@/types'
 
 const { t, locale } = useI18n()
 
-// 状态
+// State
 const isLoading = ref(false)
 const isSaving = ref(false)
 const isDeleting = ref(false)
-const message = ref('')
+const message = ref<Message | null>(null)
 const searchQuery = ref('')
 const currentPage = ref(1)
 const pageSize = ref(8)
 
-// 认证存储
+// Auth store
 const authStore = useAuthStore()
 
-// 对话框状态
+// Dialog state
 const showCreateDialog = ref(false)
 const showEditDialog = ref(false)
 const showDeleteDialog = ref(false)
 
-// 用户数据
+// User data
 const users = ref<User[]>([])
 const userToDelete = ref<User>({} as User)
 const userForm = reactive({
-    id: null,
+    id: null as number | null,
     username: '',
     email: '',
     password: '',
-    role: 'user',
+    role: 'user' as 'user' | 'admin',
     isActive: true
 })
 
-// 计算属性
+// Computed properties
 const filteredUsers = computed(() => {
     if (!searchQuery.value) return users.value
 
     const query = searchQuery.value.toLowerCase()
     return users.value.filter((user: User) =>
         user.username.toLowerCase().includes(query) ||
-        user.email.toLowerCase().includes(query)
+        user.email?.toLowerCase().includes(query)
     )
 })
 
@@ -231,7 +230,7 @@ const totalPages = computed(() => {
     return Math.ceil(filteredUsers.value.length / pageSize.value)
 })
 
-// 获取用户角色显示
+// Get user role display
 const getRoleDisplay = (role: string) => {
     switch (role) {
         case 'admin':
@@ -245,7 +244,7 @@ const getRoleDisplay = (role: string) => {
     }
 }
 
-// 格式化日期
+// Format date
 const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleDateString(locale.value, {
@@ -255,7 +254,7 @@ const formatDate = (dateString: string) => {
     })
 }
 
-// 加载用户列表
+// Load user list
 const loadUsers = async () => {
     try {
         isLoading.value = true
@@ -265,8 +264,9 @@ const loadUsers = async () => {
             limit: pageSize.value
         }).then(response => {
             console.log('response====', response)
+            // 兼容两种数据结构：data 和 datas
             users.value = response.data || []
-            //totalPages.value = response.pagination.totalPages
+            //totalPages.value = response.pagination?.totalPages || 1
         })
         
     } catch (error) {
@@ -284,127 +284,126 @@ const refreshUsers = () => {
 
 // 编辑用户
 const editUser = (user: User) => {
-    Object.assign(userForm, {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        password: '',
-        role: user.role
-    })
+        Object.assign(userForm, {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            password: '',
+            role: user.role as 'user' | 'admin'
+        })
     showEditDialog.value = true
 }
 
-// 删除用户
+// Delete user
 const deleteUser = (user: User) => {
     userToDelete.value = user
     showDeleteDialog.value = true
 }
 
-// 确认删除
+// Confirm delete
 const confirmDelete = async () => {
     try {
         isDeleting.value = true
-        const response = await userService.deleteUser(userToDelete.value.id)
+        const response = await userService.deleteUser(userToDelete.value.id.toString())
         
         if (response.success) {
-            // 从列表中移除用户
+            // Remove user from list
             const index = users.value.findIndex(u => u.id === userToDelete.value.id)
             if (index !== -1) {
                 users.value.splice(index, 1)
             }
-            showMessage(t('userList.userDeleted'), 'success')
+            showMessage( t('userList.userDeleted'),  'success')
         } else {
-            showMessage(response.message || t('userList.deleteUserFailed'), 'error')
+            showMessage(response.message || t('userList.deleteUserFailed'),  'error')
         }
         
         showDeleteDialog.value = false
         userToDelete.value = null
     } catch (error) {
         console.error('Failed to delete user:', error)
-        showMessage(t('userList.deleteUserFailed'), 'error')
+        showMessage( t('userList.deleteUserFailed'),  'error' )
     } finally {
         isDeleting.value = false
     }
 }
 
-// 保存用户
+// Save user
 const saveUser = async () => {
     try {
         isSaving.value = true
         
         if (showEditDialog.value) {
-            // 编辑用户
-            const response = await userService.updateUser(userForm.id, {
-                username: userForm.username,
+            // Edit user
+            const response = await userService.updateUser(userForm.id?.toString(), {
                 email: userForm.email,
-                role: userForm.role,
+                role: userForm.role as 'user' | 'admin',
                 isActive: userForm.isActive
             })
             
             if (response.success) {
-                // 更新列表中的用户
+                // Update user in list
                 const index = users.value.findIndex(u => u.id === userForm.id)
                 if (index !== -1) {
                     Object.assign(users.value[index], response.data)
                 }
-                showMessage(t('userList.userUpdated'), 'success')
+                showMessage( t('userList.userUpdated'), 'success')
             } else {
-                showMessage(response.message || t('userList.saveUserFailed'), 'error')
+                showMessage(response.message || t('userList.saveUserFailed'), 'error' )
             }
         } else {
-            // 创建用户
+            // Create user
             const response = await userService.createUser({
                 username: userForm.username,
                 email: userForm.email,
                 password: userForm.password,
-                role: userForm.role
+                role: (userForm.role || 'user') as 'user' | 'admin'
             })
             
             if (response.success) {
-                // 添加到列表
+                // Add to list
                 users.value.unshift(response.data)
-                showMessage(t('userList.userCreated'), 'success')
+                showMessage( t('userList.userCreated'), 'success')
             } else {
-                showMessage(response.message || t('userList.saveUserFailed'), 'error')
+                showMessage(response.message || t('userList.saveUserFailed'),  'error')
             }
         }
 
         closeDialogs()
     } catch (error) {
         console.error('Failed to save user:', error)
-        showMessage(showEditDialog.value ? t('userList.saveUserFailed') : t('userList.saveUserFailed'), 'error')
+        showMessage( showEditDialog.value ? t('userList.saveUserFailed') : t('userList.saveUserFailed'), 'error' )
     } finally {
         isSaving.value = false
     }
 }
 
-// 关闭对话框
+// Close dialogs
 const closeDialogs = () => {
     showCreateDialog.value = false
     showEditDialog.value = false
     resetForm()
 }
 
-// 重置表单
+// Reset form
 const resetForm = () => {
-    Object.assign(userForm, {
-        id: null,
-        username: '',
-        email: '',
-        password: '',
-        role: 'user',
-        ldapUser: false
-    })
+        Object.assign(userForm, {
+            id: null,
+            username: '',
+            email: '',
+            password: '',
+            role: 'user',
+            isActive: true
+        })
 }
 
-// 显示消息
+// Show message
 const showMessage = (text: string, type: 'success' | 'error' | 'info' = 'info') => {
-    message.value = { text, type }
+    message.value = { text, type } as Message
 }
 
-// 组件挂载时加载用户列表
+// Load user list on component mount
 onMounted(async () => {
-    // 确保已加载用户信息
+    // Ensure user profile is loaded
     if (authStore.token && !authStore.currentUser) {
         try {
             await authStore.fetchProfile()
@@ -573,7 +572,7 @@ onMounted(async () => {
     }
 }
 
-// 对话框样式
+// Dialog styles
 .dialog-overlay {
     position: fixed;
     top: 0;
@@ -686,7 +685,7 @@ onMounted(async () => {
     }
 }
 
-// 提示框样式
+// Snackbar styles
 .snackbar {
     position: fixed;
     bottom: 20px;
@@ -724,7 +723,7 @@ onMounted(async () => {
     }
 }
 
-// 动画
+// Animation
 @keyframes spin {
     0% {
         transform: rotate(0deg);
@@ -735,7 +734,7 @@ onMounted(async () => {
     }
 }
 
-// 响应式设计
+// Responsive design
 @media (max-width: 768px) {
     .users-container {
         padding: 16px;

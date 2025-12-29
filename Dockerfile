@@ -1,44 +1,46 @@
-# 多阶段构建
-FROM node:18-alpine as builder
+# ============================================ Multi-stage build
+FROM node:22-alpine AS builder
 WORKDIR /app
 
-# 构建后端
-COPY idocker-registry-server/package*.json idocker-registry-server/
-RUN cd idocker-registry-server && npm install
-COPY idocker-registry-server idocker-registry-server
-RUN cd idocker-registry-server && npm run build
+RUN apk add --update --no-cache curl jq py3-configobj py3-pip py3-setuptools python3 python3-dev make gcc g++
+#RUN apk add make gcc g++ python3 python3-pip && pip install setuptools
+RUN npm config set registry  https://registry.npmmirror.com
 
-# 构建前端
-COPY idocker-registry-ui/package*.json idocker-registry-ui/
-RUN cd idocker-registry-ui && npm install
-COPY idocker-registry-ui idocker-registry-ui
-RUN cd idocker-registry-ui && npm run build
+# Copy backend dependencies and source code 
+COPY idocker-registry-server/package*.json /app/idocker/
+RUN cd idocker && npm install --only=production
+COPY idocker-registry-server /app/idocker
 
-# 运行时镜像
-FROM node:18-alpine
+# Build frontend
+COPY idocker-registry-ui/package*.json /app/ui/
+RUN cd /app/ui && npm install
+COPY idocker-registry-ui /app/ui
+RUN cd /app/ui && npm run build
+
+# ============================================ Runtime image
+FROM node:22-alpine
 WORKDIR /app
 
-# 安装 Docker Registry
+# Install Docker Registry
 RUN apk add --no-cache docker-registry
 
-# 复制后端文件
-COPY --from=builder /app/idocker-registry-server/package*.json ./
-COPY --from=builder /app/idocker-registry-server/node_modules ./node_modules
-COPY --from=builder /app/idocker-registry-server/dist ./dist
-COPY --from=builder /app/idocker-registry-server/database ./database
+# Copy backend build artifacts
+COPY --from=builder /app/idocker /app/idocker
 
-# 复制前端构建产物
-COPY --from=builder /app/idocker-registry-ui/dist ./public
+# Copy frontend build artifacts
+COPY --from=builder /app/ui/dist /app/idocker/public
 
-# 复制 Registry 配置文件
+# Copy Registry configuration
 COPY deploy/config.yaml /etc/docker/registry/config.yml
 
-# 复制启动脚本
+# Copy startup script
 COPY deploy/docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# 创建数据目录
-RUN mkdir -p /var/lib/registry /app/data
+# Create data directories
+RUN mkdir -p /var/lib/registry /app/data /app/logs 
 
-EXPOSE 8080
+EXPOSE 7518
+EXPOSE 7519
+
 CMD ["docker-entrypoint.sh"]

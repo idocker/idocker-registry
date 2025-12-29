@@ -205,6 +205,7 @@ export default {
     imageList: 'Image List',
     searchImages: 'Search Images',
     imageName: 'Image Name',
+    latestTag: 'Latest Tag',
     tag: 'Tag',
     tags: 'Tags',
     pullCommand: 'Pull Command',
@@ -224,7 +225,7 @@ export default {
     imageDeleted: 'Image deleted successfully',
     tagDeleted: 'Tag deleted successfully',
     noImages: 'No images found',
-    noTags: 'No tags found',
+    noTags: 'No tags',
     noProjects: 'No Projects',
     noProjectPermission: 'You do not have permission to access any project',
     noDescription: 'No description',
@@ -251,8 +252,70 @@ export default {
     dataRefreshed: 'Data refreshed',
     imageSyncSuccess: 'Image information synced successfully',
     loadProjectsFailed: 'Failed to load project list',
-    loadProjectImagesFailed: 'Failed to load project images'
+    loadProjectImagesFailed: 'Failed to load project images',
+    // ImageView specific
+    loading: 'Loading...',
+    refresh: 'Refresh',
+    actions: 'Actions',
+    tagDetailsTitle: 'Tag Details',
+    imageIdLabel: 'Image ID',
+    tagIdLabel: 'Tag ID',
+    tagDetailsInDevelopment: 'Tag details feature under development...'
   },
+
+  // Image Detail View
+  imageDetail: {
+    title: 'Image Details',
+    back: 'Back',
+    loading: 'Loading...',
+    loadingFailed: 'Loading Failed',
+    retry: 'Retry',
+    // Info
+    imageInfo: 'Image Information',
+    imageName: 'Image Name',
+    fullName: 'Full Name',
+    project: 'Project',
+    namespace: 'Namespace',
+    // Tags
+    tagsList: 'Tags List',
+    tagCount: 'tags',
+    noTags: 'No tags',
+    tagName: 'Tag Name',
+    digest: 'Digest',
+    archOs: 'Arch/OS',
+    createdAt: 'Created At',
+    actions: 'Actions',
+    details: 'Details',
+    dockerfile: 'Dockerfile',
+    delete: 'Delete',
+    copyDigest: 'Copy Digest',
+    // Tag Details Dialog
+    tagDetail: 'Tag Details',
+    tagLoading: 'Loading...',
+    tagDigest: 'Digest',
+    imageSize: 'Image Size',
+    architecture: 'Architecture',
+    os: 'Operating System',
+    createdTime: 'Created At',
+    buildHistory: 'Build History',
+    index: '#',
+    creator: 'Creator',
+    command: 'Command',
+    size: 'Size',
+    comment: 'Comment',
+    // Dockerfile Dialog
+    dockerfileTitle: 'Dockerfile',
+    dockerfileLoading: 'Loading...',
+    copyDockerfile: 'Copy',
+    // Delete Dialog
+    confirmDelete: 'Confirm Delete',
+    confirmDeleteTag: 'Are you sure you want to delete tag {name}?',
+    confirmDeleteWarning: 'This action cannot be undone. Please be careful.',
+    cancel: 'Cancel',
+    confirm: 'Confirm Delete',
+    deleting: 'Deleting...'
+  },
+
 
   // Sync
   sync: {
@@ -674,9 +737,19 @@ export default {
   
   // Footer
   footer: {
-    copyright: 'Hyperlinked.cn All Rights Reserved © 2025-2026.'
+    copyright: 'Hyperlinked.cn All Rights Reserved © 2025-2026.',
+    versionPrefix: 'iDocker Registry v'
   },
-  
+
+  // Components
+  components: {
+    userMenu: 'User Menu',
+    managementConsole: 'Management Console',
+    registrySettings: 'Registry Settings',
+    switchToLightTheme: 'Switch to light theme',
+    switchToDarkTheme: 'Switch to dark theme'
+  },
+
   // Search Bar
   searchBar: {
     placeholder: 'Search repositories...'
@@ -704,7 +777,8 @@ export default {
     dataDeleted: 'Data deleted successfully',
     dataUploaded: 'Data uploaded successfully',
     dataExported: 'Data exported successfully',
-    dataImported: 'Data imported successfully'
+    dataImported: 'Data imported successfully',
+    dataCopied: 'Copied to clipboard'
   },
 
   // Confirmations

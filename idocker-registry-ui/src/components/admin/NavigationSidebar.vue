@@ -56,7 +56,7 @@ const { t } = useI18n()
 
 const user = computed(() => authStore.user)
 
-// 检查当前路由是否匹配给定的路径
+// Check if current route matches given path
 const isActive = (path: string) => {
   return route.path === path || route.path.startsWith(path + '/')
 }
@@ -136,7 +136,7 @@ const isActive = (path: string) => {
   }
 }
 
-// 响应式设计
+// Responsive design
 @media (max-width: 768px) {
 
 

@@ -1,6 +1,6 @@
 /**
- * 审计日志数据模型类
- * 处理所有与审计日志相关的数据库操作
+ * Audit log data model class
+ * Handles all database operations related to audit logs
  */
 import { BaseModel } from './BaseModel.js';
 import { logger } from '../utils/logger.js';
@@ -11,7 +11,7 @@ export class AuditModel extends BaseModel {
   }
 
   /**
-   * 获取审计日志列表（支持分页、搜索和过滤）
+   * Get audit logs list (with pagination, search and filtering support)
    */
   async getAuditLogs({
     page = 1,
@@ -35,31 +35,31 @@ export class AuditModel extends BaseModel {
       `;
       const params = [];
 
-      // 添加搜索条件
+      // Add search conditions
       if (search) {
         query += ' AND (al.action LIKE ? OR al.resource_type LIKE ? OR al.resource_id LIKE ? OR u.username LIKE ?)';
         params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
       }
 
-      // 添加操作类型过滤
+      // Add action type filter
       if (action) {
         query += ' AND al.action = ?';
         params.push(action);
       }
 
-      // 添加资源类型过滤
+      // Add resource type filter
       if (resourceType) {
         query += ' AND al.resource_type = ?';
         params.push(resourceType);
       }
 
-      // 添加用户过滤
+      // Add user filter
       if (userId) {
         query += ' AND al.user_id = ?';
         params.push(userId);
       }
 
-      // 添加日期范围过滤
+      // Add date range filter
       if (startDate) {
         query += ' AND al.created_at >= ?';
         params.push(startDate);
@@ -75,7 +75,7 @@ export class AuditModel extends BaseModel {
       const result = await this.paginate(query, params, page, limit);
       //logger.info(`result:${JSON.stringify(result)}`)
       
-      // 格式化日志详情（如果是JSON字符串）
+      // Format log details (if it's a JSON string)
       if (result.data && Array.isArray(result.data)) {
         result.data.forEach(log => {
           try {
@@ -83,20 +83,20 @@ export class AuditModel extends BaseModel {
               log.details = JSON.parse(log.details);
             }
           } catch (e) {
-            // 保持原样，如果不是有效的JSON
+            // Keep as is if not valid JSON
           }
         });
       }
 
       return result;
     } catch (error) {
-      logger.error('获取审计日志列表失败:', error);
+      logger.error('Failed to get audit logs list:', error);
       throw error;
     }
   }
 
   /**
-   * 获取特定审计日志的详细信息
+   * Get detailed information of a specific audit log
    */
   async getAuditLogById(id) {
     try {
@@ -113,25 +113,25 @@ export class AuditModel extends BaseModel {
       const log = await this.get(query, [id]);
       
       if (log) {
-        // 格式化日志详情
+        // Format log details
         try {
           if (log.details) {
             log.details = JSON.parse(log.details);
           }
         } catch (e) {
-          // 保持原样，如果不是有效的JSON
+          // Keep as is if not valid JSON
         }
       }
 
       return log;
     } catch (error) {
-      logger.error('获取审计日志详情失败:', error);
+      logger.error('Failed to get audit log details:', error);
       throw error;
     }
   }
 
   /**
-   * 创建审计日志
+   * Create audit log
    */
   async createAuditLog(auditData) {
     try {
@@ -143,13 +143,13 @@ export class AuditModel extends BaseModel {
       const result = await this.create(data);
       return result;
     } catch (error) {
-      logger.error('创建审计日志失败:', error);
+      logger.error('Failed to create audit log:', error);
       throw error;
     }
   }
 
   /**
-   * 获取审计日志统计信息
+   * Get audit log statistics
    */
   async getAuditStatistics(days = 30) {
     try {
@@ -157,13 +157,13 @@ export class AuditModel extends BaseModel {
       startDate.setDate(startDate.getDate() - parseInt(days));
       const startDateStr = startDate.toISOString().split('T')[0];
 
-      // 总操作数
+      // Total operations count
       const totalOperations = await this.get(
         'SELECT COUNT(*) as count FROM audit_logs WHERE created_at >= ?',
         [startDateStr]
       );
 
-      // 按操作类型统计
+      // Count by action type
       const actionsCount = await this.all(`
         SELECT action, COUNT(*) as count 
         FROM audit_logs 
@@ -172,7 +172,7 @@ export class AuditModel extends BaseModel {
         ORDER BY count DESC
       `, [startDateStr]);
 
-      // 按资源类型统计
+      // Count by resource type
       const resourceTypesCount = await this.all(`
         SELECT resource_type, COUNT(*) as count 
         FROM audit_logs 
@@ -181,7 +181,7 @@ export class AuditModel extends BaseModel {
         ORDER BY count DESC
       `, [startDateStr]);
 
-      // 按用户统计
+      // Count by user
       const usersCount = await this.all(`
         SELECT u.username, u.full_name, COUNT(al.id) as count
         FROM audit_logs al
@@ -192,7 +192,7 @@ export class AuditModel extends BaseModel {
         LIMIT 10
       `, [startDateStr]);
 
-      // 按日期统计（最近7天）
+      // Count by date (last 7 days)
       const lastWeek = new Date();
       lastWeek.setDate(lastWeek.getDate() - 7);
       const lastWeekStr = lastWeek.toISOString().split('T')[0];
@@ -207,7 +207,7 @@ export class AuditModel extends BaseModel {
         ORDER BY date
       `, [lastWeekStr]);
 
-      // 最活跃的操作（排除登录/登出）
+      // Most active operations (excluding login/logout)
       const activeOperations = await this.all(`
         SELECT action, COUNT(*) as count
         FROM audit_logs 
@@ -229,22 +229,22 @@ export class AuditModel extends BaseModel {
         activeOperations
       };
     } catch (error) {
-      logger.error('获取审计统计信息失败:', error);
+      logger.error('Failed to get audit statistics:', error);
       throw error;
     }
   }
 
   /**
-   * 清理旧的审计日志
+   * Clean up old audit logs
    */
   async cleanupOldLogs(days = 90) {
     try {
-      // 计算截止日期
+      // Calculate cutoff date
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - parseInt(days));
       const cutoffDateStr = cutoffDate.toISOString().split('T')[0];
 
-      // 统计要删除的日志数量
+      // Count logs to be deleted
       const deleteCount = await this.get(
         'SELECT COUNT(*) as count FROM audit_logs WHERE created_at < ?',
         [cutoffDateStr]
@@ -257,26 +257,26 @@ export class AuditModel extends BaseModel {
         };
       }
 
-      // 执行删除
+      // Execute deletion
       const result = await this.run(
         'DELETE FROM audit_logs WHERE created_at < ?',
         [cutoffDateStr]
       );
 
-      logger.info(`审计日志清理完成: 删除了 ${result.changes} 条记录`);
+      logger.info(`Audit log cleanup completed: deleted ${result.changes} records`);
 
       return {
         deletedCount: result.changes,
         cutoffDate: cutoffDateStr
       };
     } catch (error) {
-      logger.error('清理审计日志失败:', error);
+      logger.error('Failed to clean up audit logs:', error);
       throw error;
     }
   }
 
   /**
-   * 获取所有可用的操作类型
+   * Get all available action types
    */
   async getAvailableActions() {
     try {
@@ -285,13 +285,13 @@ export class AuditModel extends BaseModel {
       );
       return actions.map(item => item.action);
     } catch (error) {
-      logger.error('获取操作类型列表失败:', error);
+      logger.error('Failed to get action types list:', error);
       throw error;
     }
   }
 
   /**
-   * 获取所有可用的资源类型
+   * Get all available resource types
    */
   async getAvailableResourceTypes() {
     try {
@@ -300,13 +300,13 @@ export class AuditModel extends BaseModel {
       );
       return resourceTypes.map(item => item.resource_type);
     } catch (error) {
-      logger.error('获取资源类型列表失败:', error);
+      logger.error('Failed to get resource types list:', error);
       throw error;
     }
   }
 
   /**
-   * 导出审计日志
+   * Export audit logs
    */
   async exportAuditLogs({
     action = '',
@@ -327,7 +327,7 @@ export class AuditModel extends BaseModel {
       `;
       const params = [];
 
-      // 添加过滤条件
+      // Add filter conditions
       if (action) {
         query += ' AND al.action = ?';
         params.push(action);
@@ -357,7 +357,7 @@ export class AuditModel extends BaseModel {
 
       const logs = await this.all(query, params);
 
-      // 格式化日志详情
+      // Format log details
       if (logs && Array.isArray(logs)) {
         logs.forEach(log => {
           try {
@@ -365,14 +365,14 @@ export class AuditModel extends BaseModel {
               log.details = JSON.parse(log.details);
             }
           } catch (e) {
-            // 保持原样，如果不是有效的JSON
+            // Keep as is if not valid JSON
           }
         });
       }
 
       return logs;
     } catch (error) {
-      logger.error('导出审计日志失败:', error);
+      logger.error('Failed to export audit logs:', error);
       throw error;
     }
   }

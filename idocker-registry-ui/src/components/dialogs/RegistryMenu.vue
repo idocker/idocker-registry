@@ -252,7 +252,7 @@ const switchToRegistry = (url: string) => {
 
 const confirmDeleteRegistry = (url: string) => {
   registryToDelete.value = url
-  registryDeleteMsg = `Are you sure you want to delete registry [${url}]?`
+  registryDeleteMsg = t('dialogs.registrySettings.confirmRemoveRegistry', { name: url })
   showDeleteDialog.value = true
 }
 

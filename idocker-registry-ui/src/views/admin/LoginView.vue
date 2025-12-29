@@ -61,7 +61,7 @@ const authStore = useAuthStore()
 const isLoading = ref(false)
 const error = ref('')
 
-// 计算属性：是否显示登录提示
+// Computed: show login prompt
 const showLoginPrompt = computed(() => {
   return authStore.showLoginPrompt && authStore.loginRedirectPath
 })
@@ -77,17 +77,17 @@ const handleLogin = async () => {
     isLoading.value = true
     error.value = ''
 
-    // 重置登录提示状态
+    // Reset login prompt state
     authStore.showLoginPrompt = false
 
     await authStore.login(loginForm)
 
-    // 检查是否有重定向地址，优先使用存储的路径
+    // Check if there is a redirect path, prioritize stored path
     const redirectPath = authStore.loginRedirectPath ||
                      router.currentRoute.value.query.redirect as string ||
                      '/admin/profile'
 
-    // 清除重定向路径
+    // Clear redirect path
     authStore.loginRedirectPath = ''
 
     router.push(redirectPath)

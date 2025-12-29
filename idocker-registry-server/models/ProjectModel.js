@@ -1,6 +1,6 @@
 /**
- * 项目数据模型类
- * 处理所有与项目相关的数据库操作
+ * Project data model class
+ * Handles all database operations related to projects
  */
 import { BaseModel } from './BaseModel.js';
 import { logger } from '../utils/logger.js';
@@ -11,7 +11,7 @@ export class ProjectModel extends BaseModel {
   }
 
   /**
-   * 根据项目名称搜索
+   * Search by project name
    * @param {*} projectName 
    * @returns 
    */
@@ -23,8 +23,8 @@ export class ProjectModel extends BaseModel {
   }
 
   /**
-   * 获取所有项目列表(管理员管理专用，不含权限过滤)
-   * @param {*} isActive 是否活跃 
+   * Get all projects list (for admin management, without permission filtering)
+   * @param {*} isActive Whether active 
    * @returns 
    */
   async getProjectsAllList(isActive , { page = 1, limit = 20, search = '' } = {}) {
@@ -55,13 +55,13 @@ export class ProjectModel extends BaseModel {
       logger.info(`getProjectsAllList:${JSON.stringify(result)}`);
       return result || [];
     } catch (error) {
-      logger.error('获取项目(All)列表失败:', error);
+      logger.error('Failed to get project list (All):', error);
       throw error;
     }
   }
 
   /**
-   * 获取项目列表（支持分页和搜索，含权限过滤）
+   * Get project list (with pagination and search, including permission filtering)
    */
   async getProjectsList(userId, userRole, isActive, { page = 1, limit = 20, search = '' } = {}) {
     try {
@@ -110,7 +110,7 @@ export class ProjectModel extends BaseModel {
 
       const result = await this.paginate(query, params, page, limit);
 
-      // 为每个项目添加成员数量和仓库数量
+      // Add member count and repository count for each project
       if (result.data && result.data.length > 0) {
         const enrichedProjects = await Promise.all(
           result.data.map(async (project) => {
@@ -135,13 +135,13 @@ export class ProjectModel extends BaseModel {
 
       return result || [];
     } catch (error) {
-      logger.error('获取项目列表失败:', error);
+      logger.error('Failed to get project list:', error);
       throw error;
     }
   }
 
   /**
-   * 获取项目成员数量
+   * Get project member count
    */
   async getProjectMemberCount(projectId) {
     return await this.get(
@@ -151,7 +151,7 @@ export class ProjectModel extends BaseModel {
   }
 
   /**
-   * 获取项目仓库数量
+   * Get project repository count
    */
   async getProjectRepositoryCount(projectId) {
     return await this.get(
@@ -161,7 +161,7 @@ export class ProjectModel extends BaseModel {
   }
 
   /**
-   * 创建新项目
+   * Create new project
    */
   async createProject(projectData, createdBy) {
     try {
@@ -175,13 +175,13 @@ export class ProjectModel extends BaseModel {
       const result = await this.create(data);
       return result;
     } catch (error) {
-      logger.error('创建项目失败:', error);
+      logger.error('Failed to create project:', error);
       throw error;
     }
   }
 
   /**
-   * 更新项目信息
+   * Update project information
    */
   async updateProject(projectId, updateData) {
     try {
@@ -193,13 +193,13 @@ export class ProjectModel extends BaseModel {
       const result = await this.update(projectId, data);
       return result;
     } catch (error) {
-      logger.error('更新项目失败:', error);
+      logger.error('Failed to update project:', error);
       throw error;
     }
   }
 
   /**
-   * 删除项目（软删除）
+   * Delete project (soft delete)
    */
   async deleteProject(projectId) {
     try {
@@ -209,13 +209,13 @@ export class ProjectModel extends BaseModel {
       });
       return result;
     } catch (error) {
-      logger.error('删除项目失败:', error);
+      logger.error('Failed to delete project:', error);
       throw error;
     }
   }
 
   /**
-   * 检查项目名称是否唯一
+   * Check if project name is unique
    */
   async isProjectNameUnique(name, excludeId = null) {
     try {
@@ -230,13 +230,13 @@ export class ProjectModel extends BaseModel {
       const result = await this.get(sql, params);
       return result.count === 0;
     } catch (error) {
-      logger.error('检查项目名称唯一性失败:', error);
+      logger.error('Failed to check project name uniqueness:', error);
       throw error;
     }
   }
 
   /**
-   * 检查用户是否有项目访问权限
+   * Check if user has project access permission
    */
   async checkProjectPermission(projectId, userId, userRole) {
     try {
@@ -476,7 +476,7 @@ export class ProjectModel extends BaseModel {
 
       return { id: result.lastID };
     } catch (error) {
-      logger.error('创建项目失败:', error);
+      logger.error('Failed to create project:', error);
       throw error;
     }
   }

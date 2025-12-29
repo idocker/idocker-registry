@@ -22,9 +22,9 @@
         </span>
       </button>
 
-            <!-- 如果已登录，显示用户头像菜单 -->
+            <!-- If logged in, show user avatar menu -->
       <div v-if="isLoggedIn" class="user-menu-container">
-        <button class="btn btn-ghost user-avatar-btn" @click="showUserMenu = !showUserMenu" title="User Menu">
+        <button class="btn btn-ghost user-avatar-btn" @click="showUserMenu = !showUserMenu" :title="t('components.userMenu')">
           <!-- <img v-if="userAvatarUrl" :src="userAvatarUrl" alt="User Avatar" class="user-avatar" />
           <img v-else :src="idocker" alt="Default Avatar" class="user-avatar" /> -->
           <img :src="idocker" alt="User Avatar" class="user-avatar" />
@@ -34,13 +34,13 @@
           @action="handleUserMenuAction" />
       </div>
 
-      <!-- 未登录时显示登录按钮 -->
-      <router-link v-else to="/admin/login" class="btn btn-ghost btn-icon" title="Management Console">
+      <!-- If not logged in, show login button -->
+      <router-link v-else to="/admin/login" class="btn btn-ghost btn-icon" :title="t('components.managementConsole')">
         <span class="material-icons">admin_panel_settings</span>
       </router-link>
 
       <template v-if="!registryStore.singleRegistry">
-        <button class="btn btn-ghost btn-icon" @click="showRegistryMenu = !showRegistryMenu" title="Registry Settings">
+        <button class="btn btn-ghost btn-icon" @click="showRegistryMenu = !showRegistryMenu" :title="t('components.registrySettings')">
           <span class="material-icons">settings</span>
         </button>
 
@@ -54,6 +54,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useRegistryStore } from '@/stores/registry'
 import { useAuthStore } from '@/stores/auth'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
@@ -66,27 +67,28 @@ import logo from '@/assets/logo.png'
 import idocker from '@/assets/idocker.png'
 
 const router = useRouter()
+const { t } = useI18n()
 const registryStore = useRegistryStore()
 const authStore = useAuthStore()
 const showRegistryMenu = ref(false)
 const showUserMenu = ref(false)
 
-// 计算属性，获取用户头像URL
+// Computed: get user avatar URL
 const userAvatarUrl = computed(() => {
   if (authStore.user?.avatar) {
     return authStore.user.avatar
   }
-  // 使用Gravatar或其他默认头像服务
+  // Use Gravatar or other default avatar service
   if (authStore.user?.email) {
     return `https://www.gravatar.com/avatar/${encodeURIComponent(authStore.user.email)}?d=identicon&s=40`
   }
   return null
 })
 
-// 检查是否已登录
+// Check if logged in
 const isLoggedIn = computed(() => authStore.isAuthenticated)
 
-// 处理用户菜单项点击
+// Handle user menu item click
 const handleUserMenuAction = (action: string) => {
   showUserMenu.value = false
 
@@ -98,10 +100,10 @@ const handleUserMenuAction = (action: string) => {
       router.push('/admin/projects')
       break
     case 'users':
-      // 用户管理和日志导航已在UserMenu组件中处理
+      // User management and logs navigation are handled in UserMenu component
       break
     case 'logs':
-      // 用户管理和日志导航已在UserMenu组件中处理
+      // User management and logs navigation are handled in UserMenu component
       break
     case 'logout':
       handleLogout()
@@ -109,7 +111,7 @@ const handleUserMenuAction = (action: string) => {
   }
 }
 
-// 处理登出
+// Handle logout
 const handleLogout = async () => {
   try {
     await authStore.logout()
@@ -119,14 +121,14 @@ const handleLogout = async () => {
   }
 }
 
-// 在组件挂载时，如果有token但无用户信息，则获取用户信息
+// When component mounts, fetch user info if token exists but no user info
 onMounted(async () => {
   if (authStore.token && !authStore.user) {
     try {
       await authStore.fetchProfile()
     } catch (error) {
       console.error('Failed to fetch user profile:', error)
-      // 如果获取用户信息失败，清除token并跳转到登录页
+      // If failed to fetch user info, clear token and redirect to login page
       authStore.logout()
       router.push('/admin/login')
     }
@@ -153,11 +155,11 @@ const toggleTheme = () => {
 const getThemeButtonTitle = () => {
   const { theme, isDarkTheme } = registryStore
   if (theme === 'auto') {
-    return isDarkTheme ? 'Switch to light theme' : 'Switch to dark theme'
+    return isDarkTheme ? t('components.switchToLightTheme') : t('components.switchToDarkTheme')
   } else if (theme === 'dark') {
-    return 'Switch to light theme'
+    return t('components.switchToLightTheme')
   } else {
-    return 'Switch to dark theme'
+    return t('components.switchToDarkTheme')
   }
 }
 

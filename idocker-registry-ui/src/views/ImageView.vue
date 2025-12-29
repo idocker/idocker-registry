@@ -1,27 +1,27 @@
 <!--
-  镜像列表视图
-  按项目层级展示镜像仓库及其标签信息
+  Image List View
+  Display image repositories and tags by project hierarchy
 -->
 <template>
     <div class="image-view">
-      <!-- 页面标题 -->
+      <!-- Page Title -->
       <div class="page-header">
-        <h1>镜像仓库</h1>
-        <p>按项目浏览和管理Docker镜像仓库</p>
+        <h1>{{ $t('images.title') }}</h1>
+        <p>{{ $t('images.subtitle') }}</p>
       </div>
 
-      <!-- 搜索和刷新 -->
+      <!-- Search and Refresh -->
       <div class="search-section" v-if="false">
         <div class="search-bar">
           <input
             v-model="searchTerm"
             type="text"
-            placeholder="搜索镜像"
+            :placeholder="$t('images.searchImages')"
             @input="handleSearch"
             class="search-input"
           />
-        </div> 
-        
+        </div>
+
         <button
           class="btn btn-primary"
           :disabled="isRefreshing"
@@ -29,24 +29,24 @@
         >
           <span v-if="isRefreshing" class="material-icons rotating">refresh</span>
           <span v-else class="material-icons">refresh</span>
-          刷新
+          {{ $t('images.refresh') }}
         </button>
       </div>
 
-      <!-- 项目列表 -->
+      <!-- Project List -->
       <div class="project-list">
         <div v-if="isLoading" class="loading-card">
           <div class="loading-container">
             <span class="material-icons rotating">refresh</span>
-            <span>加载中...</span>
+            <span>{{ $t('images.loading') }}</span>
           </div>
         </div>
-        
+
         <div v-else-if="projects.length === 0" class="empty-card">
           <div class="empty-state">
             <span class="material-icons">folder_open</span>
-            <h3>暂无项目</h3>
-            <p>您没有权限访问任何项目</p>
+            <h3>{{ $t('images.noProjects') }}</h3>
+            <p>{{ $t('images.noProjectPermission') }}</p>
           </div>
         </div>
         
@@ -62,12 +62,12 @@
                 <span class="material-icons mr-2 project-icon">folder_outline</span>
                 <div class="project-info">
                   <div class="project-name">{{ project.name }}</div>
-                  <div class="project-description">{{ project.description || '暂无描述' }}</div>
+                  <div class="project-description">{{ project.description || $t('images.noDescription') }}</div>
                 </div>
                 <div class="spacer"></div>
                 <div class="project-stats">
                   <span class="stat-chip">
-                    {{ project.repositoryCount || 0 }} 个镜像
+                    {{ project.repositoryCount || 0 }} {{ $t('images.imageCount') }}
                   </span>
                   <button
                     class="icon-btn"
@@ -83,25 +83,25 @@
             <div v-show="expandedProjects.has(project.id.toString())" class="image-list">
               <div v-if="projectImagesLoading[project.id]" class="loading-container">
                 <span class="material-icons rotating">refresh</span>
-                <span>加载中...</span>
+                <span>{{ $t('images.loading') }}</span>
               </div>
-              
+
               <div v-else-if="!projectImages[project.id] || projectImages[project.id].length === 0" class="empty-images">
                 <div class="empty-state">
                   <span class="material-icons">inventory_2</span>
-                  <p>该项目暂无镜像</p>
+                  <p>{{ $t('images.noImagesInProject') }}</p>
                 </div>
               </div>
-              
+
               <div v-else class="images-table">
                 <table class="image-table">
                   <thead>
                     <tr>
-                      <th>镜像名称</th>
-                      <th>最新标签</th>
-                      <th>大小</th>
-                      <th>更新时间</th>
-                      <th>操作</th>
+                      <th>{{ $t('images.imageName') }}</th>
+                      <th>{{ $t('images.latestTag') }}</th>
+                      <th>{{ $t('images.size') }}</th>
+                      <th>{{ $t('images.lastUpdated') }}</th>
+                      <th>{{ $t('images.actions') }}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -136,7 +136,7 @@
                               </span>
                             </div>
                           </div>
-                          <span v-else class="no-tags">暂无标签</span>
+                          <span v-else class="no-tags">{{ $t('images.noTags') }}</span>
                         </div>
                       </td>
                       <td>
@@ -158,14 +158,14 @@
                             @click.stop="copyPullLink(image)"
                           >
                             <span class="material-icons">content_copy</span>
-                            复制拉取
+                            {{ $t('images.copyPull') }}
                           </button>
                           <button
                             class="btn btn-ghost btn-small"
                             @click.stop="copyPushLink(image)"
                           >
                             <span class="material-icons">content_copy</span>
-                            复制推送
+                            {{ $t('images.copyPush') }}
                           </button>
                           <button
                             v-if="hasPermission"
@@ -173,7 +173,7 @@
                             @click.stop="viewImageDetails(image.id.toString())"
                           >
                             <span class="material-icons">visibility</span>
-                            详情
+                            {{ $t('common.details') }}
                           </button>
                         </div>
                       </td>
@@ -191,19 +191,19 @@
 
 
 
-      <!-- 标签详情对话框 -->
+      <!-- Tag Details Dialog -->
       <div v-if="showTagDetailDialog" class="modal-overlay" @click="showTagDetailDialog = false">
         <div class="modal" @click.stop>
           <div class="modal-header">
-            <h2>标签详情</h2>
+            <h2>{{ $t('images.tagDetailsTitle') }}</h2>
             <button class="btn btn-ghost btn-icon" @click="showTagDetailDialog = false">
               <span class="material-icons">close</span>
             </button>
           </div>
           <div class="modal-content">
-            <p>镜像ID: {{ selectedImageId }}</p>
-            <p>标签ID: {{ selectedTagId }}</p>
-            <p>标签详情功能开发中...</p>
+            <p>{{ $t('images.imageIdLabel') }}: {{ selectedImageId }}</p>
+            <p>{{ $t('images.tagIdLabel') }}: {{ selectedTagId }}</p>
+            <p>{{ $t('images.tagDetailsInDevelopment') }}</p>
           </div>
         </div>
       </div>
@@ -213,6 +213,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useNotifications } from '@/composables/useNotifications'
 import repositoryService from '@/services/repository.service'
 import projectService from '@/services/project.service'
@@ -221,9 +222,10 @@ import authService from '@/services/auth.service'
 import type { Image, Project } from '@/types'
 
 const router = useRouter()
+const { t } = useI18n()
 const { showSuccess, showError, showInfo } = useNotifications()
 
-// 状态管理
+// State management
 const projects = ref<Project[]>([])
 const projectImages = reactive<Record<string, Image[]>>({})
 const expandedProjects = reactive(new Set<string>())
@@ -233,12 +235,12 @@ const isRefreshing = ref(false)
 const searchTerm = ref('')
 const isActive = ref("1")
 
-// 对话框状态
+// Dialog state
 const showTagDetailDialog = ref(false)
 const selectedImageId = ref('')
 const selectedTagId = ref('')
 
-// 计算属性
+// Computed properties
 const hasPermission = computed(() => {
   try {
     const token = authService.getToken()
@@ -253,45 +255,34 @@ const hasPermission = computed(() => {
     
     return false
   } catch (error) {
-    console.error('权限检查失败:', error)
+    console.error('Permission check error:', error)
     return false
   }
 })
 
-// 获取项目列表（按创建时间降序）
+// Get project list (sorted by creation time descending)
 const loadProjects = async () => {
   try {
     isLoading.value = true
-    const result = await projectService.getProjects(isActive.value,{ 
+    const result = await projectService.getProjects(isActive.value,{
       limit: 1000,
-      search: searchTerm.value 
+      search: searchTerm.value
     })
-    
-    // 适配不同的返回格式
+
+    // Adapt to different response formats
     let projectsData: Project[] = []
 
     if (result && result.success && result.data) {
-      // 格式1: { success: true, data: { projects: Project[] } }
-      if ('projects' in result.data && Array.isArray((result.data as any).projects)) {
-        projectsData = (result.data as any).projects
-      }
-      // 格式2: { success: true, data: { datas: Project[] } }
-      else if ('datas' in result.data && Array.isArray((result.data as any).datas)) {
-        projectsData = (result.data as any).datas
-      }
-      // 格式3: { success: true, data: Project[] }
-      else if (Array.isArray(result.data)) {
-        projectsData = result.data as Project[]
-      }
+      projectsData = result.data
     }
-    
+
     if (projectsData && projectsData.length > 0) {
-      // 按创建时间降序排序
-      projects.value = projectsData.sort((a: Project, b: Project) => 
+      // Sort by creation time descending
+      projects.value = projectsData.sort((a: Project, b: Project) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       )
-      
-      // 默认展开第一个项目
+
+      // Expand first project by default
       if (projects.value.length > 0 && expandedProjects.size === 0) {
         expandedProjects.add(projects.value[0].id.toString())
         await loadProjectImages(projects.value[0].id.toString())
@@ -300,44 +291,44 @@ const loadProjects = async () => {
       projects.value = []
     }
   } catch (error) {
-    console.error('加载项目列表失败:', error)
-    showError('加载项目列表失败')
+    console.error('Failed to load projects:', error)
+    showError(t('images.loadProjectsFailed'))
   } finally {
     isLoading.value = false
   }
 }
 
-// 加载项目下的镜像列表
+// Load image list under project
 const loadProjectImages = async (projectId: string) => {
   if (!expandedProjects.has(projectId)) return
-  
+
   try {
     projectImagesLoading[projectId] = true
     const response = await repositoryService.getProjectImages(projectId, {
       limit: 1000,
       search: searchTerm.value
     })
-    
-    // 适配不同的返回格式
+
+    // Adapt to different response formats
     let imagesData: Image[] = []
 
     if (response && response.success && response.data) {
-      // 格式1: { success: true, data: { images: Image[] } }
+      // Format 1: { success: true, data: { images: Image[] } }
       if ('images' in response.data && Array.isArray((response.data as any).images)) {
         imagesData = (response.data as any).images
       }
-      // 格式2: { success: true, data: { datas: Image[] } }
+      // Format 2: { success: true, data: { datas: Image[] } }
       else if ('datas' in response.data && Array.isArray((response.data as any).datas)) {
         imagesData = (response.data as any).datas
       }
-      // 格式3: { success: true, data: Image[] }
+      // Format 3: { success: true, data: Image[] }
       else if (Array.isArray(response.data)) {
         imagesData = response.data as Image[]
       }
     }
-    
+
     if (imagesData && imagesData.length > 0) {
-      // 适配数据格式
+      // Adapt data format
       const adaptedImages = imagesData.map((img: any) => ({
         ...img,
         id: img.id || img.name || '',
@@ -355,20 +346,20 @@ const loadProjectImages = async (projectId: string) => {
           createdAt: tag.created_at || tag.createdAt || ''
         }))
       }))
-      
+
       projectImages[projectId] = adaptedImages
     } else {
       projectImages[projectId] = []
     }
   } catch (error) {
-    console.error(`加载项目 ${projectId} 的镜像列表失败:`, error)
+    console.error(`Load project ${projectId} images failed:`, error)
     projectImages[projectId] = []
   } finally {
     projectImagesLoading[projectId] = false
   }
 }
 
-// 切换项目展开状态
+// Toggle project expansion state
 const toggleProject = async (projectId: number) => {
   const pid = projectId.toString()
   if (expandedProjects.has(pid)) {
@@ -381,83 +372,83 @@ const toggleProject = async (projectId: number) => {
   }
 }
 
-// 搜索处理
+// Search handler
 const handleSearch = () => {
   loadProjects()
 }
 
-// 刷新所有数据
+// Refresh all data
 const refreshAll = async () => {
   try {
     isRefreshing.value = true
-    
-    // 同步镜像信息
+
+    // Sync image information
     const syncResponse = await repositoryService.syncRepositories()
     if (syncResponse.success) {
-      showSuccess('镜像信息同步成功')
+      showSuccess(t('images.imageSyncSuccess'))
     }
-    
-    // 重新加载所有展开的项目
+
+    // Reload all expanded projects
     for (const projectId of expandedProjects) {
       await loadProjectImages(projectId)
     }
-    
-    showSuccess('数据已刷新')
+
+    showSuccess(t('images.dataRefreshed'))
   } catch (error: any) {
-    showError(error.message || '刷新失败')
+    showError(error.message || t('error.loadFailed'))
   } finally {
     isRefreshing.value = false
   }
 }
 
-// 复制拉取链接
+// Copy pull link
 const copyPullLink = async (image: Image) => {
   try {
     const projectName = image.project || ''
     const imageName = image.name || ''
     const namespace = image.namespace || ''
-    
+
     if (!projectName || !imageName) {
-      showError('镜像信息不完整，无法生成拉取链接')
+      showError(t('images.imageInfoIncomplete') + ' ' + t('images.cannotGeneratePullLink'))
       return
     }
-    
+
     const pullCommand = `docker pull ${namespace ? namespace + '/' : ''}${projectName}/${imageName}:latest`
     await navigator.clipboard.writeText(pullCommand)
-    showInfo('拉取链接已复制到剪贴板')
+    showInfo(t('images.pullLinkCopied'))
   } catch (error) {
-    console.error('复制拉取链接失败:', error)
-    showError('复制失败')
+    console.error('Failed to copy pull link:', error)
+    showError(t('images.copyFailed'))
   }
 }
 
-// 复制推送链接
+// Copy push link
 const copyPushLink = async (image: Image) => {
   try {
     const projectName = image.project || ''
     const imageName = image.name || ''
     const namespace = image.namespace || ''
-    
+
     if (!projectName || !imageName) {
-      showError('镜像信息不完整，无法生成推送链接')
+      showError(t('images.imageInfoIncomplete') + ' ' + t('images.cannotGeneratePushLink'))
       return
     }
-    
+
     const pushCommand = `docker push ${namespace ? namespace + '/' : ''}${projectName}/${imageName}:latest`
     await navigator.clipboard.writeText(pushCommand)
-    showInfo('推送链接已复制到剪贴板')
+    showInfo(t('images.pushLinkCopied'))
   } catch (error) {
-    console.error('复制推送链接失败:', error)
-    showError('复制失败')
+    console.error('Failed to copy push link:', error)
+    showError(t('images.copyFailed'))
   }
 }
 
-// 查看镜像详情
+// View image details
 const viewImageDetails = (imageId: string) => {
   router.push(`/images/${imageId}`)
 }
 
-// 查看标签详情
+// View tag details
 const viewTagDetails = (imageId: string, tagId: string) => {
   selectedImageId.value = imageId
   selectedTagId.value = tagId
@@ -466,7 +457,7 @@ const viewTagDetails = (imageId: string, tagId: string) => {
 
 
 
-// 格式化文件大小
+// Format file size
 const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 B'
   const k = 1024
@@ -475,19 +466,19 @@ const formatFileSize = (bytes: number): string => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
-// 格式化日期
+// Format date
 const formatDate = (dateString: string | undefined): string => {
   if (!dateString) return 'N/A'
   const date = new Date(dateString)
   return date.toLocaleDateString() + ' ' + date.toLocaleTimeString()
 }
 
-// 监听搜索条件变化
+// Watch search term changes
 watch(searchTerm, () => {
   loadProjects()
 })
 
-// 初始化
+// Initialize
 onMounted(() => {
   loadProjects()
 })
@@ -768,7 +759,7 @@ onMounted(() => {
   }
 }
 
-// 按钮样式
+// Button styles
 .btn {
   display: inline-flex;
   align-items: center;
@@ -896,7 +887,7 @@ onMounted(() => {
   margin-left: 0.5rem;
 }
 
-// 模态框样式
+// Modal styles
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -940,7 +931,7 @@ onMounted(() => {
   }
 }
 
-// 响应式设计
+// Responsive design
 @media (max-width: 960px) {
   .search-section {
     flex-direction: column;

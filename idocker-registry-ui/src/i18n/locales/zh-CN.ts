@@ -205,6 +205,7 @@ export default {
     imageList: '镜像列表',
     searchImages: '搜索镜像',
     imageName: '镜像名称',
+    latestTag: '最新标签',
     tag: '标签',
     tags: '标签列表',
     pullCommand: '拉取命令',
@@ -224,7 +225,7 @@ export default {
     imageDeleted: '镜像删除成功',
     tagDeleted: '标签删除成功',
     noImages: '未找到镜像',
-    noTags: '未找到标签',
+    noTags: '暂无标签',
     noProjects: '暂无项目',
     noProjectPermission: '您没有权限访问任何项目',
     noDescription: '暂无描述',
@@ -251,8 +252,70 @@ export default {
     dataRefreshed: '数据已刷新',
     imageSyncSuccess: '镜像信息同步成功',
     loadProjectsFailed: '加载项目列表失败',
-    loadProjectImagesFailed: '加载项目镜像列表失败'
+    loadProjectImagesFailed: '加载项目镜像列表失败',
+    // ImageView specific
+    loading: '加载中...',
+    refresh: '刷新',
+    actions: '操作',
+    tagDetailsTitle: '标签详情',
+    imageIdLabel: '镜像ID',
+    tagIdLabel: '标签ID',
+    tagDetailsInDevelopment: '标签详情功能开发中...'
   },
+
+  // Image Detail View
+  imageDetail: {
+    title: '镜像详情',
+    back: '返回',
+    loading: '加载中...',
+    loadingFailed: '加载失败',
+    retry: '重试',
+    // Info
+    imageInfo: '镜像信息',
+    imageName: '镜像名称',
+    fullName: '完整名称',
+    project: '所属项目',
+    namespace: '命名空间',
+    // Tags
+    tagsList: '标签列表',
+    tagCount: '个标签',
+    noTags: '暂无标签',
+    tagName: '标签名称',
+    digest: '摘要',
+    archOs: '架构/系统',
+    createdAt: '创建时间',
+    actions: '操作',
+    details: '详情',
+    dockerfile: 'Dockerfile',
+    delete: '删除',
+    copyDigest: '复制摘要',
+    // Tag Details Dialog
+    tagDetail: '标签详情',
+    tagLoading: '加载中...',
+    tagDigest: '摘要',
+    imageSize: '大小',
+    architecture: '架构',
+    os: '操作系统',
+    createdTime: '创建时间',
+    buildHistory: '构建历史',
+    index: '#',
+    creator: '创建者',
+    command: '命令',
+    size: '大小',
+    comment: '注释',
+    // Dockerfile Dialog
+    dockerfileTitle: 'Dockerfile',
+    dockerfileLoading: '加载中...',
+    copyDockerfile: '复制',
+    // Delete Dialog
+    confirmDelete: '确认删除',
+    confirmDeleteTag: '确定要删除标签 {name} 吗？',
+    confirmDeleteWarning: '此操作不可逆，请谨慎操作。',
+    cancel: '取消',
+    confirm: '确认删除',
+    deleting: '删除中...'
+  },
+
 
   // 同步
   sync: {
@@ -309,11 +372,9 @@ export default {
     system: '系统',
     stopOnErrorOption: '遇到错误时停止',
     syncThisProjectPrefix: '开始同步项目',
-    syncCompletedSuffix: ':',
     projectSyncCompleted: '项目同步完成',
     projectSyncFailed: '项目同步失败',
     fullSyncSuffix: ':',
-    fullSyncStarting: '开始全量同步...',
     syncStatusRefreshed: '状态已刷新',
     syncLogsRefreshed: '日志已刷新',
     pleaseSelectProject: '请选择项目',
@@ -679,9 +740,19 @@ export default {
   
   // 页面底部
   footer: {
-    copyright: 'Hyperlinked.cn All Rights Reserved © 2025-2026.'
+    copyright: 'Hyperlinked.cn All Rights Reserved © 2025-2026.',
+    versionPrefix: 'iDocker Registry v'
   },
-  
+
+  // 组件
+  components: {
+    userMenu: '用户菜单',
+    managementConsole: '管理控制台',
+    registrySettings: 'Registry 设置',
+    switchToLightTheme: '切换到浅色主题',
+    switchToDarkTheme: '切换到深色主题'
+  },
+
   // 搜索栏
   searchBar: {
     placeholder: '搜索仓库...'
@@ -709,7 +780,8 @@ export default {
     dataDeleted: '数据删除成功',
     dataUploaded: '数据上传成功',
     dataExported: '数据导出成功',
-    dataImported: '数据导入成功'
+    dataImported: '数据导入成功',
+    dataCopied: '已复制到剪贴板'
   },
 
   // 确认对话框

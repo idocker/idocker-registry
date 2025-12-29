@@ -7,9 +7,9 @@ storage:
   filesystem:
     rootdirectory: /var/lib/registry
 http:
-  addr: :5000
+  addr: :7519
   net: tcp
-  # 不需要认证，仅内部访问
+  # No authentication required, internal access only
   headers:
     X-Content-Type-Options: [nosniff]
 health:

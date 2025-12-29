@@ -1,15 +1,15 @@
 <!--
-  镜像详情视图
-  显示镜像的所有标签列表，支持查看标签详情、Dockerfile和删除标签
+  Image Detail View
+  Display all tags of an image with tag details, Dockerfile view, and delete tag functionality
 -->
 <template>
   <div class="image-detail-view">
-    <!-- 页面标题和导航 -->
+    <!-- Page Header and Navigation -->
     <div class="page-header">
 
       <div class="header-content">
-        <h1 v-if="image">{{ image.repository?.name || '镜像详情' }}</h1>
-        <p v-if="image">{{ image.repository?.description || '暂无描述' }}</p>
+        <h1 v-if="image">{{ image.repository?.name || $t('imageDetail.title') }}</h1>
+        <p v-if="image">{{ image.repository?.description || $t('images.noDescription') }}</p>
       </div>
       <div class="spacer"></div>
       <!-- <button class="btn btn-primary" @click="refreshImageDetails" :disabled="isLoading">
@@ -19,76 +19,76 @@
       </button> -->
       <button class="btn btn-ghost" @click="goBack">
         <span class="material-icons">arrow_back</span>
-        返回
+        {{ $t('imageDetail.back') }}
       </button>
     </div>
 
-    <!-- 加载状态 -->
+    <!-- Loading State -->
     <div v-if="isLoading && !image" class="loading-card">
       <div class="loading-container">
         <span class="material-icons rotating">refresh</span>
-        <span>加载中...</span>
+        <span>{{ $t('imageDetail.loading') }}</span>
       </div>
     </div>
 
-    <!-- 错误状态 -->
+    <!-- Error State -->
     <div v-else-if="error" class="error-card">
       <div class="error-container">
         <span class="material-icons">error</span>
-        <h3>加载失败</h3>
+        <h3>{{ $t('imageDetail.loadingFailed') }}</h3>
         <p>{{ error }}</p>
-        <button class="btn btn-primary" @click="refreshImageDetails">重试</button>
+        <button class="btn btn-primary" @click="refreshImageDetails">{{ $t('imageDetail.retry') }}</button>
       </div>
     </div>
 
-    <!-- 镜像详情 -->
+    <!-- Image Details -->
     <div v-else-if="image" class="image-detail">
       <div class="info-card">
-        <h2>镜像信息</h2>
+        <h2>{{ $t('imageDetail.imageInfo') }}</h2>
         <div class="info-grid">
           <div class="info-item">
-            <div class="info-label">镜像名称</div>
+            <div class="info-label">{{ $t('imageDetail.imageName') }}</div>
             <div class="info-value">{{ image.repository?.name || 'N/A' }}</div>
           </div>
           <div class="info-item">
-            <div class="info-label">完整名称</div>
+            <div class="info-label">{{ $t('imageDetail.fullName') }}</div>
             <div class="info-value">{{ image.repository?.fullName || 'N/A' }}</div>
           </div>
           <div class="info-item">
-            <div class="info-label">所属项目</div>
+            <div class="info-label">{{ $t('imageDetail.project') }}</div>
             <div class="info-value">{{ image.repository?.projectName || 'N/A' }}</div>
           </div>
           <div class="info-item">
-            <div class="info-label">命名空间</div>
+            <div class="info-label">{{ $t('imageDetail.namespace') }}</div>
             <div class="info-value">{{ image.repository?.namespace || 'N/A' }}</div>
           </div>
         </div>
       </div>
 
-      <!-- 标签列表 -->
+      <!-- Tags List -->
       <div class="tags-card">
         <div class="tags-header">
-          <h2>标签列表</h2>
-          <span class="tag-count">{{ image.tags?.length || 0 }} 个标签</span>
+          <h2>{{ $t('imageDetail.tagsList') }}</h2>
+          <span class="tag-count">{{ image.tags?.length || 0 }} {{ $t('imageDetail.tagCount') }}</span>
         </div>
-        
+
         <div v-if="!image.tags || image.tags.length === 0" class="empty-tags">
           <div class="empty-state">
             <span class="material-icons">tag</span>
-            <p>暂无标签</p>
+            <p>{{ $t('imageDetail.noTags') }}</p>
           </div>
         </div>
-        
+
         <div v-else class="tags-table">
           <table class="tag-table">
             <thead>
               <tr>
-                <th>标签名称</th>
-                <th>摘要</th>
-                <th>大小</th>
-                <th>架构/系统</th>
-                <th>创建时间</th>
-                <th>操作</th>
+                <th>{{ $t('imageDetail.tagName') }}</th>
+                <th>{{ $t('imageDetail.digest') }}</th>
+                <th>{{ $t('imageDetail.size') }}</th>
+                <th>{{ $t('imageDetail.archOs') }}</th>
+                <th>{{ $t('imageDetail.createdAt') }}</th>
+                <th>{{ $t('imageDetail.actions') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -101,10 +101,10 @@
                 <td>
                   <div class="digest-cell">
                     <code>{{ tag.digest.substring(0, 12) }}...</code>
-                    <button 
-                      class="btn btn-ghost btn-icon" 
+                    <button
+                      class="btn btn-ghost btn-icon"
                       @click="copyToClipboard(tag.digest)"
-                      title="复制摘要"
+                      :title="$t('imageDetail.copyDigest')"
                     >
                       <span class="material-icons">content_copy</span>
                     </button>
@@ -125,14 +125,14 @@
                       @click="viewTagDetails(tag)"
                     >
                       <span class="material-icons">info</span>
-                      详情
+                      {{ $t('imageDetail.details') }}
                     </button>
                     <button
                       class="btn btn-ghost btn-small"
                       @click="viewDockerfile(tag)"
                     >
                       <span class="material-icons">description</span>
-                      Dockerfile
+                      {{ $t('imageDetail.dockerfile') }}
                     </button>
                     <button
                       v-if="hasPermission"
@@ -140,7 +140,7 @@
                       @click="confirmDeleteTag(tag)"
                     >
                       <span class="material-icons">delete</span>
-                      删除
+                      {{ $t('imageDetail.delete') }}
                     </button>
                   </div>
                 </td>
@@ -151,11 +151,11 @@
       </div>
     </div>
 
-    <!-- 标签详情对话框 -->
+    <!-- Tag Details Dialog -->
     <div v-if="showTagDetailDialog" class="modal-overlay" @click="showTagDetailDialog = false">
       <div class="modal tag-detail-modal" @click.stop>
         <div class="modal-header">
-          <h2>标签详情</h2>
+          <h2>{{ $t('imageDetail.tagDetail') }}</h2>
           <button class="btn btn-ghost btn-icon" @click="showTagDetailDialog = false">
             <span class="material-icons">close</span>
           </button>
@@ -163,26 +163,26 @@
         <div class="modal-content">
           <div v-if="tagDetailLoading" class="loading-container">
             <span class="material-icons rotating">refresh</span>
-            <span>加载中...</span>
+            <span>{{ $t('imageDetail.tagLoading') }}</span>
           </div>
-          
+
           <div v-else-if="tagDetailError" class="error-container">
             <span class="material-icons">error</span>
             <p>{{ tagDetailError }}</p>
           </div>
-          
+
           <div v-else-if="tagDetails" class="tag-detail-content">
             <div class="tag-info">
               <div class="info-item">
-                <div class="info-label">标签名称</div>
+                <div class="info-label">{{ $t('imageDetail.tagName') }}</div>
                 <div class="info-value">{{ tagDetails.tag.name || tagDetails.tag.tag || 'N/A' }}</div>
               </div>
               <div class="info-item">
-                <div class="info-label">摘要</div>
+                <div class="info-label">{{ $t('imageDetail.digest') }}</div>
                 <div class="info-value">
                   <code>{{ tagDetails.tag.digest }}</code>
-                  <button 
-                    class="btn btn-ghost btn-icon" 
+                  <button
+                    class="btn btn-ghost btn-icon"
                     @click="copyToClipboard(tagDetails.tag.digest)"
                   >
                     <span class="material-icons">content_copy</span>
@@ -190,34 +190,34 @@
                 </div>
               </div>
               <div class="info-item">
-                <div class="info-label">大小</div>
+                <div class="info-label">{{ $t('imageDetail.imageSize') }}</div>
                 <div class="info-value">{{ formatFileSize(tagDetails.tag.size) }}</div>
               </div>
               <div class="info-item">
-                <div class="info-label">架构</div>
+                <div class="info-label">{{ $t('imageDetail.architecture') }}</div>
                 <div class="info-value">{{ tagDetails.tag.architecture || 'N/A' }}</div>
               </div>
               <div class="info-item">
-                <div class="info-label">操作系统</div>
+                <div class="info-label">{{ $t('imageDetail.os') }}</div>
                 <div class="info-value">{{ tagDetails.tag.os || 'N/A' }}</div>
               </div>
               <div class="info-item">
-                <div class="info-label">创建时间</div>
+                <div class="info-label">{{ $t('imageDetail.createdTime') }}</div>
                 <div class="info-value">{{ formatDate(tagDetails.tag.createdAt || tagDetails.tag.created_at) }}</div>
               </div>
             </div>
-            
+
             <div v-if="tagDetails.buildHistory && tagDetails.buildHistory.length > 0" class="build-history">
-              <h3>构建历史</h3>
+              <h3>{{ $t('imageDetail.buildHistory') }}</h3>
               <div class="history-table">
                 <table class="build-table">
                   <thead>
                     <tr>
-                      <th>#</th>
-                      <th>创建者</th>
-                      <th>命令</th>
-                      <th>大小</th>
-                      <th>注释</th>
+                      <th>{{ $t('imageDetail.index') }}</th>
+                      <th>{{ $t('imageDetail.creator') }}</th>
+                      <th>{{ $t('imageDetail.command') }}</th>
+                      <th>{{ $t('imageDetail.size') }}</th>
+                      <th>{{ $t('imageDetail.comment') }}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -239,11 +239,11 @@
       </div>
     </div>
 
-    <!-- Dockerfile 对话框 -->
+    <!-- Dockerfile Dialog -->
     <div v-if="showDockerfileDialog" class="modal-overlay" @click="showDockerfileDialog = false">
       <div class="modal dockerfile-modal" @click.stop>
         <div class="modal-header">
-          <h2>Dockerfile</h2>
+          <h2>{{ $t('imageDetail.dockerfileTitle') }}</h2>
           <button class="btn btn-ghost btn-icon" @click="showDockerfileDialog = false">
             <span class="material-icons">close</span>
           </button>
@@ -251,14 +251,14 @@
         <div class="modal-content">
           <div v-if="dockerfileLoading" class="loading-container">
             <span class="material-icons rotating">refresh</span>
-            <span>加载中...</span>
+            <span>{{ $t('imageDetail.dockerfileLoading') }}</span>
           </div>
-          
+
           <div v-else-if="dockerfileError" class="error-container">
             <span class="material-icons">error</span>
             <p>{{ dockerfileError }}</p>
           </div>
-          
+
           <div v-else-if="dockerfileContent" class="dockerfile-content">
             <div class="dockerfile-actions">
               <button
@@ -266,7 +266,7 @@
                 @click="copyToClipboard(dockerfileContent)"
               >
                 <span class="material-icons">content_copy</span>
-                复制
+                {{ $t('imageDetail.copyDockerfile') }}
               </button>
             </div>
             <pre><code>{{ dockerfileContent }}</code></pre>
@@ -275,22 +275,22 @@
       </div>
     </div>
 
-    <!-- 删除确认对话框 -->
+    <!-- Delete Confirmation Dialog -->
     <div v-if="showDeleteDialog" class="modal-overlay" @click="showDeleteDialog = false">
       <div class="modal" @click.stop>
         <div class="modal-header">
-          <h2>确认删除</h2>
+          <h2>{{ $t('imageDetail.confirmDelete') }}</h2>
         </div>
         <div class="modal-content">
-          <p>确定要删除标签 <strong>{{ tagToDelete?.name || tagToDelete?.tag }}</strong> 吗？</p>
-          <p class="warning">此操作不可逆，请谨慎操作。</p>
+          <p>{{ $t('imageDetail.confirmDeleteTag', { name: tagToDelete?.name || tagToDelete?.tag }) }}</p>
+          <p class="warning">{{ $t('imageDetail.confirmDeleteWarning') }}</p>
           <div class="dialog-actions">
             <button class="btn btn-ghost" @click="showDeleteDialog = false">
-              取消
+              {{ $t('imageDetail.cancel') }}
             </button>
             <button class="btn btn-danger" @click="deleteTag" :disabled="isDeleting">
               <span v-if="isDeleting" class="material-icons rotating">refresh</span>
-              {{ isDeleting ? '删除中...' : '确认删除' }}
+              {{ isDeleting ? $t('imageDetail.deleting') : $t('imageDetail.confirm') }}
             </button>
           </div>
         </div>
@@ -302,6 +302,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useNotifications } from '@/composables/useNotifications'
 import repositoryService from '@/services/repository.service'
 import authService from '@/services/auth.service'
@@ -309,32 +310,33 @@ import type { ImageTag, ImageTagDetails, ImageDetails } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 const { showSuccess, showError, showInfo } = useNotifications()
 
-// 状态管理
+// State management
 const isLoading = ref(false)
 const error = ref('')
 const image = ref<ImageDetails | null>(null)
 
-// 标签详情相关
+// Tag details related
 const showTagDetailDialog = ref(false)
 const tagDetailLoading = ref(false)
 const tagDetailError = ref('')
 const selectedTag = ref<ImageTag | null>(null)
 const tagDetails = ref<ImageTagDetails | null>(null)
 
-// Dockerfile 相关
+// Dockerfile related
 const showDockerfileDialog = ref(false)
 const dockerfileContent = ref('')
 const dockerfileLoading = ref(false)
 const dockerfileError = ref('')
 
-// 删除相关
+// Delete related
 const showDeleteDialog = ref(false)
 const tagToDelete = ref<ImageTag | null>(null)
 const isDeleting = ref(false)
 
-// 计算属性
+// Computed properties
 const hasPermission = computed(() => {
   try {
     const token = authService.getToken()
@@ -349,12 +351,12 @@ const hasPermission = computed(() => {
     
     return false
   } catch (error) {
-    console.error('权限检查失败:', error)
+    console.error('Failed to check permission:', error)
     return false
   }
 })
 
-// 加载镜像详情
+// load image details
 const loadImageDetails = async () => {
   try {
     isLoading.value = true
@@ -369,22 +371,22 @@ const loadImageDetails = async () => {
       console.log('response.projectName', response.data.repository?.projectName)
       console.log('image.value', image.value)
     } else {
-      error.value = '加载镜像详情失败'
+      error.value = t('error.loadFailed')
     }
   } catch (err: any) {
-    console.error('加载镜像详情失败:', err)
-    error.value = err.message || '加载镜像详情失败'
+    console.error('Failed to load image details:', err)
+    error.value = err.message || t('error.loadFailed')
   } finally {
     isLoading.value = false
   }
 }
 
-// 刷新镜像详情
+// Refresh image details
 const refreshImageDetails = () => {
   loadImageDetails()
 }
 
-// 查看标签详情
+// View tag details
 const viewTagDetails = async (tag: ImageTag) => {
   try {
     tagDetailLoading.value = true
@@ -397,17 +399,17 @@ const viewTagDetails = async (tag: ImageTag) => {
     if (response.success) {
       tagDetails.value = response.data
     } else {
-      tagDetailError.value = '加载标签详情失败'
+      tagDetailError.value = t('error.loadFailed')
     }
   } catch (err: any) {
-    console.error('加载标签详情失败:', err)
-    tagDetailError.value = err.message || '加载标签详情失败'
+    console.error('Failed to load tag details:', err)
+    tagDetailError.value = err.message || t('error.loadFailed')
   } finally {
     tagDetailLoading.value = false
   }
 }
 
-// 查看Dockerfile
+// View Dockerfile
 const viewDockerfile = async (tag: ImageTag) => {
   try {
     selectedTag.value = tag
@@ -416,38 +418,38 @@ const viewDockerfile = async (tag: ImageTag) => {
     dockerfileContent.value = ''
     showDockerfileDialog.value = true
     
-    // 这里应该调用API获取Dockerfile内容，暂时使用模拟数据
-    // 实际实现可能需要从构建历史中提取或调用专门的API
+    // Call API to get Dockerfile content, using mock data for now
+    // Actual implementation may need to extract from build history or call dedicated API
     const imageId = route.params.id as string
     const response = await repositoryService.getImageTagDetails(imageId, tag.id.toString())
     
     if (response.success && response.data.buildHistory) {
-      // 从构建历史生成简单的Dockerfile
+      // Generate simple Dockerfile from build history
       const history = response.data.buildHistory
       const dockerfileCommands = history
         .filter(layer => layer.comment && !layer.emptyLayer)
         .map(layer => layer.comment)
         .join('\n')
       
-      dockerfileContent.value = dockerfileCommands || 'FROM scratch\n# Dockerfile信息不可用'
+      dockerfileContent.value = dockerfileCommands || 'FROM scratch\n# Dockerfile info not available'
     } else {
-      dockerfileError.value = '无法获取Dockerfile信息'
+      dockerfileError.value = t('error.loadFailed')
     }
   } catch (err: any) {
-    console.error('加载Dockerfile失败:', err)
-    dockerfileError.value = err.message || '加载Dockerfile失败'
+    console.error('Failed to load Dockerfile:', err)
+    dockerfileError.value = err.message || t('error.loadFailed')
   } finally {
     dockerfileLoading.value = false
   }
 }
 
-// 确认删除标签
+// Confirm delete tag
 const confirmDeleteTag = (tag: ImageTag) => {
   tagToDelete.value = tag
   showDeleteDialog.value = true
 }
 
-// 删除标签
+// Delete tag
 const deleteTag = async () => {
   if (!tagToDelete.value) return
   
@@ -459,34 +461,34 @@ const deleteTag = async () => {
     
     if (response.success) {
       const tagName = tagToDelete.value.name || tagToDelete.value.tag
-      showSuccess(`标签 ${tagName} 已删除`)
+      showSuccess(`Tag ${tagName} deleted`)
       showDeleteDialog.value = false
-      
-      // 重新加载镜像详情
+
+      // Reload image details
       await loadImageDetails()
     } else {
-      showError(response.message || '删除标签失败')
+      showError(response.message || t('error.deleteFailed'))
     }
   } catch (err: any) {
-    console.error('删除标签失败:', err)
-    showError(err.message || '删除标签失败')
+    console.error('Failed to delete tag:', err)
+    showError(err.message || t('error.deleteFailed'))
   } finally {
     isDeleting.value = false
   }
 }
 
-// 复制到剪贴板
+// Copy to clipboard
 const copyToClipboard = async (text: string) => {
   try {
     await navigator.clipboard.writeText(text)
-    showInfo('已复制到剪贴板')
+    showInfo(t('success.dataCopied'))
   } catch (err) {
-    console.error('复制失败:', err)
-    showError('复制失败')
+    console.error('Failed to copy:', err)
+    showError(t('error.loadFailed'))
   }
 }
 
-// 格式化文件大小
+// Format file size
 const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 B'
   const k = 1024
@@ -495,19 +497,19 @@ const formatFileSize = (bytes: number): string => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
-// 格式化日期
+// Format date
 const formatDate = (dateString: string | undefined): string => {
   if (!dateString) return 'N/A'
   const date = new Date(dateString)
   return date.toLocaleDateString() + ' ' + date.toLocaleTimeString()
 }
 
-// 返回上一页
+// Go back
 const goBack = () => {
   router.go(-1)
 }
 
-// 初始化
+// Initialize
 onMounted(() => {
   loadImageDetails()
 })
@@ -736,7 +738,7 @@ onMounted(() => {
   }
 }
 
-// 模态框样式
+// Modal styles
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -893,7 +895,7 @@ onMounted(() => {
   }
 }
 
-// 按钮样式
+// Button styles
 .btn {
   display: inline-flex;
   align-items: center;
@@ -987,7 +989,7 @@ onMounted(() => {
   flex-grow: 1;
 }
 
-// 响应式设计
+// Responsive design
 @media (max-width: 960px) {
   .page-header {
     flex-direction: column;

@@ -10,8 +10,11 @@ import type {
   CreateUser,
   UpdateUser,
   ChangePassword,
-  UserPaginatedResponse
+  UserPaginatedResponse,
+  ApiResponse,
+  UserProjects
 } from '@/types'
+import type { A } from 'vue-router/dist/router-CWoNjPRp.mjs'
 
 // 扩展PaginationParams接口，添加role属性
 interface UserPaginationParams {
@@ -39,56 +42,56 @@ class UserService {
   /**
    * 获取用户详情
    */
-  async getUser(id: string): Promise<{ success: boolean; data: UserDetail }> {
+  async getUser(id: string): Promise<ApiResponse<UserDetail>> {
     return http.get(`/api/users/${id}`)
   }
 
   /**
    * 创建用户
    */
-  async createUser(userData: CreateUser): Promise<{ success: boolean; message: string; data: User }> {
+  async createUser(userData: CreateUser): Promise<ApiResponse<User>> {
     return http.post('/api/users', userData)
   }
 
   /**
    * 更新用户
    */
-  async updateUser(id: string, userData: UpdateUser): Promise<{ success: boolean; message: string; data: User }> {
+  async updateUser(id: string, userData: UpdateUser): Promise<ApiResponse<User>> {
     return http.put(`/api/users/${id}`, userData)
   }
 
   /**
    * 删除用户
    */
-  async deleteUser(id: string): Promise<{ success: boolean; message: string }> {
+  async deleteUser(id: string): Promise<ApiResponse<void>> {
     return http.delete(`/api/users/${id}`)
   }
 
   /**
    * 重置用户密码
    */
-  async resetUserPassword(id: string, passwordData: ChangePassword): Promise<{ success: boolean; message: string }> {
+  async resetUserPassword(id: string, passwordData: ChangePassword): Promise<ApiResponse<void>> {
     return http.put(`/api/users/${id}/password`, passwordData)
   }
 
   /**
    * 获取用户项目列表
    */
-  async getUserProjects(id: string): Promise<{ success: boolean; data: { user: { id: number; username: string }; projects: any[] } }> {
+  async getUserProjects(id: string): Promise<ApiResponse<UserProjects>> {
     return http.get(`/api/users/${id}/projects`)
   }
 
   /**
    * 将用户添加到项目
    */
-  async addUserToProject(id: string, projectId: string, role: 'owner' | 'maintainer' | 'viewer' = 'viewer'): Promise<{ success: boolean; message: string }> {
+  async addUserToProject(id: string, projectId: string, role: 'owner' | 'maintainer' | 'viewer' = 'viewer'): Promise<ApiResponse<void>> {
     return http.post(`/api/users/${id}/projects/${projectId}`, { role })
   }
 
   /**
    * 从项目中移除用户
    */
-  async removeUserFromProject(id: string, projectId: string): Promise<{ success: boolean; message: string }> {
+  async removeUserFromProject(id: string, projectId: string): Promise<ApiResponse<void>> {
     return http.delete(`/api/users/${id}/projects/${projectId}`)
   }
 

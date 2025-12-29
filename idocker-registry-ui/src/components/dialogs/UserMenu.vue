@@ -88,74 +88,74 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'action'])
 
-// 点击外部关闭菜单
+// Click outside to close menu
 const handleClickOutside = (event: MouseEvent) => {
   if (menuRef.value && !menuRef.value.contains(event.target as Node)) {
     emit('close')
   }
 }
 
-// 添加延迟的事件监听器，避免立即触发关闭
+// Add delayed event listener to avoid immediate trigger
 const addClickOutsideListener = () => {
-  // 使用 setTimeout 延迟添加监听器，避免在菜单弹出时立即触发
+  // Use setTimeout to delay adding listener to avoid immediate trigger when menu appears
   setTimeout(() => {
     document.addEventListener('click', handleClickOutside)
   }, 0)
 }
 
-// 移除事件监听器
+// Remove event listener
 const removeClickOutsideListener = () => {
   document.removeEventListener('click', handleClickOutside)
 }
 
-// 监听菜单显示状态变化
+// Watch menu display state changes
 watch(() => props.showMenu, (newVal) => {
   if (newVal) {
-    // 菜单显示时添加监听器
+    // Add listener when menu shows
     addClickOutsideListener()
   } else {
-    // 菜单隐藏时移除监听器
+    // Remove listener when menu hides
     removeClickOutsideListener()
   }
 })
 
 onMounted(() => {
-  // 如果初始状态是显示，则添加监听器
+  // Add listener if initial state is shown
   if (props.showMenu) {
     addClickOutsideListener()
   }
 })
 
 onUnmounted(() => {
-  // 移除事件监听器
+  // Remove event listener
   removeClickOutsideListener()
 })
 
-// 导航到用户管理页面
+// Navigate to user management page
 const navigateToUsers = () => {
   emit('close')
   router.push('/admin/users')
 }
 
-// 导航到项目管理页面
+// Navigate to project management page
 const navigateToDashboard = () => {
   emit('close')
   router.push('/admin/dashboard')
 }
 
-// 导航到仓库同步页面
+// Navigate to warehouse sync page
 const navigateToSync = () => {
   emit('close')
   router.push('/admin/sync')
 }
 
-// 导航到密码修改页面
+// Navigate to password change page
 const navigateToPassword = () => {
   emit('close')
   router.push('/admin/password')
 }
 
-// 导航到日志页面
+// Navigate to logs page
 const navigateToLogs = () => {
   emit('close')
   router.push('/admin/audit')

@@ -1,7 +1,7 @@
 /**
- * 基础数据模型类
- * 提供通用的数据库操作方法
- * 所有具体模型类都应继承此类
+ * Base data model class
+ * Provides common database operation methods
+ * All specific model classes should inherit from this class
  */
 import { getDb } from '../config/database.js';
 import { logger } from '../utils/logger.js';
@@ -12,14 +12,14 @@ export class BaseModel {
   }
 
   /**
-   * 获取数据库连接
+   * Get database connection
    */
   async getDb() {
     return await getDb();
   }
 
   /**
-   * 执行查询并返回单条记录
+   * Execute query and return single record
    */
   async get(sql, params = []) {
     try {
@@ -27,7 +27,7 @@ export class BaseModel {
       return new Promise((resolve, reject) => {
         db.get(sql, params, (err, row) => {
           if (err) {
-            logger.error(`数据库查询错误 [${this.tableName}.get]:`, err);
+            logger.error(`Database query error [${this.tableName}.get]:`, err);
             reject(err);
           } else {
             resolve(row);
@@ -35,13 +35,13 @@ export class BaseModel {
         });
       });
     } catch (error) {
-      logger.error(`获取数据库连接失败 [${this.tableName}.get]:`, error);
+      logger.error(`Failed to get database connection [${this.tableName}.get]:`, error);
       throw error;
     }
   }
 
   /**
-   * 执行查询并返回多条记录
+   * Execute query and return multiple records
    */
   async all(sql, params = []) {
     try {
@@ -49,7 +49,7 @@ export class BaseModel {
       return new Promise((resolve, reject) => {
         db.all(sql, params, (err, rows) => {
           if (err) {
-            logger.error(`数据库查询错误 [${this.tableName}.all]:`, err);
+            logger.error(`Database query error [${this.tableName}.all]:`, err);
             reject(err);
           } else {
             resolve(rows || []);
@@ -57,13 +57,13 @@ export class BaseModel {
         });
       });
     } catch (error) {
-      logger.error(`获取数据库连接失败 [${this.tableName}.all]:`, error);
+      logger.error(`Failed to get database connection [${this.tableName}.all]:`, error);
       throw error;
     }
   }
 
   /**
-   * 执行SQL语句（INSERT, UPDATE, DELETE）
+   * Execute SQL statements (INSERT, UPDATE, DELETE)
    */
   async run(sql, params = []) {
     try {
@@ -71,7 +71,7 @@ export class BaseModel {
       return new Promise((resolve, reject) => {
         db.run(sql, params, function(err) {
           if (err) {
-            logger.error(`数据库执行错误 [${this.tableName}.run]:`, err);
+            logger.error(`Database execution error [${this.tableName}.run]:`, err);
             reject(err);
           } else {
             resolve({ 
@@ -82,13 +82,13 @@ export class BaseModel {
         });
       });
     } catch (error) {
-      logger.error(`获取数据库连接失败 [${this.tableName}.run]:`, error);
+      logger.error(`Failed to get database connection [${this.tableName}.run]:`, error);
       throw error;
     }
   }
 
   /**
-   * 分页查询
+   * Paginated query
    */
   async paginate(sql, params = [], page = 1, limit = 20) {
     try {
@@ -110,20 +110,20 @@ export class BaseModel {
         }
       };
     } catch (error) {
-      logger.error(`分页查询错误 [${this.tableName}.paginate]:`, error);
+      logger.error(`Pagination query error [${this.tableName}.paginate]:`, error);
       throw error;
     }
   }
 
   /**
-   * 根据ID查找记录
+   * Find record by ID
    */
   async findById(id) {
     return await this.get(`SELECT * FROM ${this.tableName} WHERE id = ?`, [id]);
   }
 
   /**
-   * 查找所有记录
+   * Find all records
    */
   async findAll(where = '', params = []) {
     const sql = `SELECT * FROM ${this.tableName} ${where ? 'WHERE ' + where : ''}`;
@@ -131,7 +131,7 @@ export class BaseModel {
   }
 
   /**
-   * 创建新记录
+   * Create new record
    */
   async create(data) {
     const keys = Object.keys(data);
@@ -145,13 +145,13 @@ export class BaseModel {
       logger.info(`create:${JSON.stringify(result)}`);
       return { ...data, id: result.lastID };
     } catch (error) {
-      logger.error(`创建记录错误 [${this.tableName}.create]:`, error);
+      logger.error(`Create record error [${this.tableName}.create]:`, error);
       throw error;
     }
   }
 
   /**
-   * 更新记录
+   * Update record
    */
   async update(id, data) {
     const keys = Object.keys(data);
@@ -165,7 +165,7 @@ export class BaseModel {
   }
 
   /**
-   * 删除记录
+   * Delete record
    */
   async delete(id) {
     const sql = `DELETE FROM ${this.tableName} WHERE id = ?`;

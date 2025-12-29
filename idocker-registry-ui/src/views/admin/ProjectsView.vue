@@ -56,8 +56,8 @@
                 <td>{{ project.namespace }}</td>
                 <td>{{ project.description || '-' }}</td>
                 <td>{{ project.repositoryCount || 0 }}</td>
-                <td>{{ project.members?.length || 0 }}</td>
-                <td>{{ formatDate(project.created_at) }}</td>
+                <td>{{ project.memberCount || 0 }}</td>
+                <td>{{ formatDate(project.createdAt) }}</td>
                 <td class="action-buttons">
                   <router-link :to="`/admin/projects/${project.id}`" class="btn-icon btn-ghost"
                     :title="$t('projectList.viewDetails')">
@@ -143,16 +143,18 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
 import projectService from '@/services/project.service'
-import type { Project, CreateProjectData } from '@/types'
+import { useNotifications } from '@/composables/useNotifications'
+import type { Project, CreateProjectData, ProjectPaginatedResponse } from '@/types'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
+const { showError, showSuccess } = useNotifications()
 
-const projects = ref([])
+const projects = ref<Project[]>([])
 const isLoading = ref(false)
 const isSubmitting = ref(false)
 const showCreateModal = ref(false)
-const editingProject = ref<Project>(null)
+const editingProject = ref<Project | null>(null)
 const isActive = ref("all")
 const searchQuery = ref('')
 const currentPage = ref(1)
@@ -173,7 +175,8 @@ const fetchProjects = async () => {
       limit: pageSize.value
     })
     if (response.success && response.data) {
-      projects.value = response.data || []
+      //console.log(response.data )
+      projects.value = response.data;
     } else {
       projects.value = []
     }
@@ -189,7 +192,7 @@ const saveProject = async () => {
   try {
     isSubmitting.value = true
 
-    let response
+    let response: any
     if (editingProject.value) {
       response = await projectService.updateProject(editingProject.value.id.toString(), projectForm)
     } else {
@@ -203,9 +206,9 @@ const saveProject = async () => {
     } else {
       throw new Error(response.message || 'Failed to save project')
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error saving project:', error)
-    alert(`${t('error.loadFailed')}: ${error.message}`)
+    showError(t('error.loadFailed'), error.message)
   } finally {
     isSubmitting.value = false
   }
@@ -228,9 +231,9 @@ const deleteProject = async (project: Project) => {
       } else {
         throw new Error(response.message || 'Failed to delete project')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting project:', error)
-      alert(`${t('error.loadFailed')}: ${error.message}`)
+      showError(t('error.loadFailed'), error.message)
     }
   }
 }
@@ -242,12 +245,12 @@ const resetForm = () => {
   projectForm.description = ''
 }
 
-// 刷新项目列表
+// Refresh project list
 const refreshProjects = () => {
   fetchProjects()
 }
 
-// 格式化日期
+// Format date
 const formatDate = (dateString: string) => {
   const date = new Date(dateString)
   return date.toLocaleDateString('en-US', {
@@ -256,7 +259,7 @@ const formatDate = (dateString: string) => {
     day: 'numeric'
   })
 }
-// 计算属性
+// Computed properties
 const filteredProjects = computed(() => {
   if (!searchQuery.value) return projects.value
   const query = searchQuery.value.toLowerCase()
@@ -533,7 +536,7 @@ onMounted(() => {
   }
 }
 
-// 动画
+// Animation
 @keyframes spin {
   0% {
     transform: rotate(0deg);
@@ -544,7 +547,7 @@ onMounted(() => {
   }
 }
 
-// 响应式设计
+// Responsive design
 @media (max-width: 768px) {
   .projects-container {
     padding: 16px;

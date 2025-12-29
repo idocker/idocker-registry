@@ -118,14 +118,14 @@ const internalValue = computed({
 const tagDetails = ref<TagDetail | null>(null)
 const isLoading = ref(false)
 
-// 监听 tagId 变化
+// Watch tagId changes
 watch(() => props.tagId, async (newId) => {
   if (newId && props.modelValue) {
     await loadTagDetails()
   }
 })
 
-// 监听对话框打开状态
+// Watch dialog open state
 watch(() => props.modelValue, async (isOpen) => {
   if (isOpen && props.tagId) {
     await loadTagDetails()
@@ -135,12 +135,12 @@ watch(() => props.modelValue, async (isOpen) => {
 const loadTagDetails = async () => {
   isLoading.value = true
   try {
-    // 使用真实API获取标签详情
+    // Use real API to get tag details
     const response = await repositoryService.getImageTagDetails(props.imageId, props.tagId)
     if (response.success) {
       const { repository, tag } = response.data
       
-      // 转换为组件期望的格式
+      // Convert to component expected format
       tagDetails.value = {
         id: tag.id.toString(),
         name: tag.tag || tag.name,
@@ -151,11 +151,11 @@ const loadTagDetails = async () => {
         createdAt: tag.created_at || tag.createdAt
       }
     } else {
-      throw new Error(response.message || t('error.loadFailed'))
+      throw new Error( t('error.loadFailed'))
     }
   } catch (error) {
-    console.error('加载标签详情失败:', error)
-    // 如果API失败，显示错误信息
+    console.error('Failed to load tag details:', error)
+    // If API fails, display error message
     tagDetails.value = {
       id: props.tagId,
       name: t('dialogs.tagDetails.loadingFailed'),

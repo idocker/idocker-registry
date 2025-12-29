@@ -32,11 +32,11 @@ const sidebarRef = ref(null)
 const isMobile = ref(false)
 const { t } = useI18n()
 
-// 页面标题
+// Page title
 const pageTitle = ref('')
 const pageSubtitle = ref('')
 
-// 设置页面标题
+// Set page title
 const setPageTitle = () => {
   switch (route.path) {
     case '/admin/profile':
@@ -68,7 +68,7 @@ const setPageTitle = () => {
       pageSubtitle.value = t('pageTitles.warehouseSyncSubtitle')
       break
     default:
-      // 如果是项目详情页
+      // If it's a project detail page
       if (route.path.startsWith('/admin/projects/')) {
         pageTitle.value = t('pageTitles.projectDetail')
         pageSubtitle.value = t('pageTitles.projectDetailSubtitle')
@@ -79,19 +79,19 @@ const setPageTitle = () => {
   }
 }
 
-// 检测是否是移动设备
+// Check if it's a mobile device
 const checkMobile = () => {
   isMobile.value = window.innerWidth < 768
 }
 
-// 切换侧边栏
+// Toggle sidebar
 const toggleSidebar = () => {
   if (sidebarRef.value && sidebarRef.value.$el && isMobile.value) {
     sidebarRef.value.$el.classList.toggle('open')
   }
 }
 
-// 处理窗口大小变化
+// Handle window resize
 const handleResize = () => {
   checkMobile()
 }
@@ -172,7 +172,7 @@ onUnmounted(() => {
   overflow-y: auto;
 }
 
-// 响应式设计
+// Responsive design
 @media (max-width: 768px) {
   .management-layout[data-v-5b26ef54] {
     display: flex;

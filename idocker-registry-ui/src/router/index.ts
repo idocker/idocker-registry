@@ -25,26 +25,26 @@ const routes: Array<RouteRecordRaw> = [
       requiresAuth: true
     }
   },
-  {
-    path: '/taglist/:image',
-    name: 'taglist',
-    component: () => import('@/views/TagListView.vue'),
-    props: true,
-    meta: {
-      title: 'Tags',
-      requiresAuth: true
-    }
-  },
-  {
-    path: '/taghistory/:image/:tag',
-    name: 'taghistory',
-    component: () => import('@/views/TagHistoryView.vue'),
-    props: true,
-    meta: {
-      title: 'Tag History',
-      requiresAuth: true
-    }
-  },
+  // {
+  //   path: '/taglist/:image',
+  //   name: 'taglist',
+  //   component: () => import('@/views/TagListView.vue'),
+  //   props: true,
+  //   meta: {
+  //     title: 'Tags',
+  //     requiresAuth: true
+  //   }
+  // },
+  // {
+  //   path: '/taghistory/:image/:tag',
+  //   name: 'taghistory',
+  //   component: () => import('@/views/TagHistoryView.vue'),
+  //   props: true,
+  //   meta: {
+  //     title: 'Tag History',
+  //     requiresAuth: true
+  //   }
+  // },
   {
     path: '/images',
     name: 'images',

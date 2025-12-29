@@ -20,8 +20,14 @@ export interface PaginationOptions {
   totalPages: number
 }
 
-export function useApi<T = any>(initialData: T | null = null): ApiState<T> {
-  const data = ref<T | null>(initialData)
+export function useApi<T = any>(initialData: T | null = null): ApiState<T> & {
+  resetState: () => void
+  setLoading: (loading: boolean) => void
+  setError: (errorMessage: string) => void
+  setSuccess: (responseData: T) => void
+  execute: (apiCall: () => Promise<T>) => Promise<T | null>
+} {
+  const data = ref<T | null>(initialData) as Ref<T, T>
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   const isSuccess = ref(false)
@@ -87,10 +93,12 @@ export function usePaginatedApi<T = any>(initialData: any[] = [], initialPaginat
   total: 0,
   totalPages: 0
 }) {
-  const { data, isLoading, error, isSuccess, execute, resetState, setLoading, setError, setSuccess } = useApi<{
+  const apiState = useApi<{
     items: T[]
     pagination: PaginationOptions
   }>({ items: initialData, pagination: initialPagination })
+  
+  const { data, isLoading, error, isSuccess } = apiState
 
   const items = computed(() => data.value?.items || [])
   const pagination = computed(() => data.value?.pagination || initialPagination)
@@ -100,13 +108,13 @@ export function usePaginatedApi<T = any>(initialData: any[] = [], initialPaginat
 
   const loadPage = async (page: number, limit: number = pagination.value.limit, apiCall: (page: number, limit: number) => Promise<any>) => {
     try {
-      setLoading(true)
+      apiState.setLoading(true)
       const result = await apiCall(page, limit)
-      setSuccess(result)
+      apiState.setSuccess(result)
       return result
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || '加载失败'
-      setError(errorMessage)
+      apiState.setError(errorMessage)
       showError(errorMessage)
       throw err
     }
@@ -144,11 +152,11 @@ export function usePaginatedApi<T = any>(initialData: any[] = [], initialPaginat
     currentPage,
     totalItems,
     totalPages,
-    resetState,
-    setLoading,
-    setError,
-    setSuccess,
-    execute,
+    resetState: apiState.resetState,
+    setLoading: apiState.setLoading,
+    setError: apiState.setError,
+    setSuccess: apiState.setSuccess,
+    execute: apiState.execute,
     loadPage,
     nextPage,
     prevPage,

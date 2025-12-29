@@ -141,8 +141,8 @@ const loadTagDetails = async () => {
   try {
     const imageId = route.params.imageId as string
     const tagId = route.params.tagId as string
-    // 这里应该调用 API 获取标签详情
-    // 暂时使用模拟数据
+    // Should call API to get tag details
+    // Using mock data for now
     tagDetails.value = {
       id: tagId,
       name: 'latest',

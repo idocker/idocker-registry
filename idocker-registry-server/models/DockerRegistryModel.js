@@ -1,6 +1,6 @@
 /**
- * Docker Registry 数据模型类
- * 处理Docker Registry API相关的数据库操作
+ * Docker Registry data model class
+ * Handles database operations related to Docker Registry API
  */
 import { BaseModel } from './BaseModel.js';
 import { logger } from '../utils/logger.js';
@@ -11,8 +11,8 @@ export class DockerRegistryModel extends BaseModel {
   }
 
   /**
-   * 根据仓库名称解析并获取项目信息
-   * 仓库名称格式: project/imagename 或 namespace/project/imagename
+   * Parse and get project information by repository name
+   * Repository name format: project/imagename or namespace/project/imagename
    */
   async getProjectByRepositoryName(repository) {
     try {
@@ -38,13 +38,13 @@ export class DockerRegistryModel extends BaseModel {
 
       return project;
     } catch (error) {
-      logger.error('根据仓库名称获取项目失败:', error);
+      logger.error('Failed to get project by repository name:', error);
       throw error;
     }
   }
 
   /**
-   * 检查用户对项目的访问权限
+   * Check user access to project
    */
   async checkProjectAccess(projectId, userId, userRole) {
     try {
@@ -52,7 +52,7 @@ export class DockerRegistryModel extends BaseModel {
         return false;
       }
 
-      // 管理员拥有所有权限
+      // Administrators have all permissions
       if (userRole === 'admin') {
         return true;
       }
@@ -64,14 +64,14 @@ export class DockerRegistryModel extends BaseModel {
 
       return !!membership;
     } catch (error) {
-      logger.error('检查项目访问权限失败:', error);
+      logger.error('Failed to check project access:', error);
       throw error;
     }
   }
 
   /**
-   * 检查用户对项目的删除权限
-   * 管理员或项目owner/maintainer可以删除
+   * Check user delete access to project
+   * Administrators or project owners/maintainers can delete
    */
   async checkProjectDeleteAccess(projectId, userId, userRole) {
     try {
@@ -79,7 +79,7 @@ export class DockerRegistryModel extends BaseModel {
         return false;
       }
 
-      // 管理员拥有所有权限
+      // Administrators have all permissions
       if (userRole === 'admin') {
         return true;
       }
@@ -95,14 +95,14 @@ export class DockerRegistryModel extends BaseModel {
 
       return ['owner', 'maintainer'].includes(membership.role);
     } catch (error) {
-      logger.error('检查项目删除权限失败:', error);
+      logger.error('Failed to check project delete access:', error);
       throw error;
     }
   }
 
   /**
-   * 检查用户对项目的上传权限
-   * 管理员或项目owner/maintainer可以上传
+   * Check user upload access to project
+   * Administrators or project owners/maintainers can upload
    */
   async checkProjectUploadAccess(projectId, userId, userRole) {
     try {
@@ -110,7 +110,7 @@ export class DockerRegistryModel extends BaseModel {
         return false;
       }
 
-      // 管理员拥有所有权限
+      // Administrators have all permissions
       if (userRole === 'admin') {
         return true;
       }
@@ -126,18 +126,18 @@ export class DockerRegistryModel extends BaseModel {
 
       return ['owner', 'maintainer'].includes(membership.role);
     } catch (error) {
-      logger.error('检查项目上传权限失败:', error);
+      logger.error('Failed to check project upload access:', error);
       throw error;
     }
   }
 
   /**
-   * 记录Docker API操作日志
+   * Log Docker API operation
    */
   async logDockerApiOperation(logData) {
     try {
       if (!logData || !logData.user_id || !logData.action) {
-        throw new Error('日志数据不完整');
+        throw new Error('Log data is incomplete');
       }
 
       const sql = `
@@ -157,7 +157,7 @@ export class DockerRegistryModel extends BaseModel {
 
       await this.run(sql, params);
     } catch (error) {
-      logger.error('记录Docker API操作日志失败:', error);
+      logger.error('Failed to log Docker API operation:', error);
       throw error;
     }
   }

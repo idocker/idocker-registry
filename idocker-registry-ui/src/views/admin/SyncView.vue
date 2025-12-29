@@ -15,7 +15,7 @@
         </div>
       </div>
 
-      <!-- 标签页 -->
+      <!-- Tab pages -->
       <div class="tabs-container">
         <div class="tabs">
           <button class="tab" :class="{ active: activeTab === 'status' }" @click="activeTab = 'status'">
@@ -27,7 +27,7 @@
         </div>
       </div>
 
-      <!-- 状态信息标签页 -->
+      <!-- Status information tab page -->
       <div v-show="activeTab === 'status'" class="tab-content">
         <div class="status-section">
           <div class="status-card">
@@ -79,7 +79,7 @@
         </div>
       </div>
 
-      <!-- 同步日志标签页 -->
+      <!-- Sync log tab page -->
       <div v-show="activeTab === 'logs'" class="tab-content">
         <div class="sync-logs">
           <div class="logs-header">
@@ -146,7 +146,7 @@
         </div>
       </div>
 
-      <!-- 消息提示 -->
+      <!-- Message prompt -->
       <div v-if="message" class="snackbar" :class="`snackbar-${message.type}`">
         {{ message.text }}
         <button class="snackbar-close" @click="message = null">

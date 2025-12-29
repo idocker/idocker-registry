@@ -99,8 +99,6 @@
                                 <th>{{ $t('audit.time') }}</th>
                                 <th>{{ $t('audit.user') }}</th>
                                 <th>{{ $t('audit.action') }}</th>
-                                <th>{{ $t('audit.resourceType') }}</th>
-                                <th>{{ $t('audit.resourceId') }}</th>
                                 <th>{{ $t('audit.details') }}</th>
                                 <th>{{ $t('audit.ipAddress') }}</th>
                             </tr>
@@ -118,15 +116,13 @@
                                 <td colspan="7" class="empty-cell">{{ $t('audit.noLogsFound') }}</td>
                             </tr>
                             <tr v-for="log in logs" :key="log.id">
-                                <td>{{ formatDateTime(log.created_at) }}</td>
+                                <td>{{ formatDateTime(log.createdAt) }}</td>
                                 <td>{{ log.username || '-' }}</td>
                                 <td>
                                     <span class="action-badge" :class="getActionClass(log.action)">
                                         {{ getActionDisplay(log.action) }}
                                     </span>
                                 </td>
-                                <td>{{ getResourceTypeDisplay(log.resource_type) }}</td>
-                                <td>{{ log.resource_id || '-' }}</td>
                                 <td>
                                     <button class="btn-link" @click="selectedLog = log; showDetailsDialog = true"
                                         v-if="log.details && Object.keys(log.details).length > 0">
@@ -134,7 +130,7 @@
                                     </button>
                                     <span v-else>-</span>
                                 </td>
-                                <td>{{ log.ip_address || '-' }}</td>
+                                <td>{{ log.ipAddress || '-' }}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -169,7 +165,7 @@
                         <div class="log-details">
                             <div class="detail-item">
                                 <label>{{ $t('audit.time') }}:</label>
-                                <span>{{ formatDateTime(selectedLog.created_at) }}</span>
+                                <span>{{ formatDateTime(selectedLog.createdAt) }}</span>
                             </div>
                             <div class="detail-item">
                                 <label>{{ $t('audit.user') }}:</label>
@@ -181,15 +177,15 @@
                             </div>
                             <div class="detail-item">
                                 <label>{{ $t('audit.resourceType') }}:</label>
-                                <span>{{ getResourceTypeDisplay(selectedLog.resource_type) }}</span>
+                                <span>{{ getResourceTypeDisplay(selectedLog.resourceType) }}</span>
                             </div>
                             <div class="detail-item">
                                 <label>{{ $t('audit.resourceId') }}:</label>
-                                <span>{{ selectedLog.resource_id || '-' }}</span>
+                                <span>{{ selectedLog.resourceId || '-' }}</span>
                             </div>
                             <div class="detail-item">
                                 <label>{{ $t('audit.ipAddress') }}:</label>
-                                <span>{{ selectedLog.ip_address || '-' }}</span>
+                                <span>{{ selectedLog.ipAddress || '-' }}</span>
                             </div>
                             <div v-if="selectedLog.details" class="detail-item full-width">
                                 <label>{{ $t('audit.details') }}:</label>
@@ -251,7 +247,7 @@
             <!-- 消息提示 -->
             <div v-if="message" class="snackbar" :class="`snackbar-${message.type}`">
                 {{ message.text }}
-                <button class="snackbar-close" @click="message = ''">
+                <button class="snackbar-close" @click="message.text = ''">
                     <span class="material-icons">close</span>
                 </button>
             </div>
@@ -265,44 +261,44 @@ import { useI18n } from 'vue-i18n'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
 import auditService from '@/services/audit.service'
 import userService from '@/services/user.service'
-import type { AuditLog } from '@/types'
+import type { AuditLog, Message, User, UserPaginatedResponse } from '@/types'
 import axios from 'axios'
-
 const { t, locale } = useI18n()
 
-// 状态
+// State
 const isLoading = ref(false)
 const isDeleting = ref(false)
-const message = ref('')
+const message = ref<Message | null>(null)
 const showFilters = ref(false)
 const showDetailsDialog = ref(false)
 const showDeleteDialog = ref(false)
 
-// 数据
+// Data
 const logs = ref<AuditLog[]>([])
-const users = ref([])
-const selectedLog = ref(null)
+const users = ref<User[]>([])
+const selectedLog = ref<AuditLog | null>(null)
 const currentPage = ref(1)
 const pageSize = ref(4)
 const totalLogs = ref(0)
 
-// 过滤条件
+// Filter conditions
 const filters = reactive({
     userId: '',
     action: '',
+    search: '',
     resourceType: '',
     startDate: '',
     endDate: ''
 })
 
-// 删除选项
+// Delete options
 const deleteOption = ref('by-date')
 const daysOld = ref(30)
 
-// 计算总页数
+// Calculate total pages
 const totalPages = ref(1)
 
-// 获取操作显示类
+// Get action display class
 const getActionClass = (action: string) => {
     switch (action) {
         case 'login':
@@ -318,7 +314,7 @@ const getActionClass = (action: string) => {
     }
 }
 
-// 获取操作显示文本
+// Get action display text
 const getActionDisplay = (action: string) => {
     switch (action) {
         case 'login':
@@ -354,7 +350,7 @@ const getActionDisplay = (action: string) => {
     }
 }
 
-// 获取资源类型显示文本
+// Get resource type display text
 const getResourceTypeDisplay = (resourceType: string) => {
     switch (resourceType) {
         case 'user':
@@ -372,7 +368,7 @@ const getResourceTypeDisplay = (resourceType: string) => {
     }
 }
 
-// 格式化日期时间
+// Format date time
 const formatDateTime = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleString(locale.value, {
@@ -385,7 +381,7 @@ const formatDateTime = (dateString: string) => {
     })
 }
 
-// 加载日志
+// Load logs
 const loadLogs = async () => {
     try {
         isLoading.value = true
@@ -400,13 +396,9 @@ const loadLogs = async () => {
             startDate: filters.startDate,
             endDate: filters.endDate
         }).then(response => {
-            console.log('response', response)
             logs.value = response.data || []
-
-            totalLogs.value = response.pagination.total
-
-            totalPages.value = response.pagination.totalPages
-
+            totalLogs.value = response.pagination?.total || 0
+            totalPages.value = response.pagination?.totalPages || 1
         })
         
     } catch (error) {
@@ -417,34 +409,35 @@ const loadLogs = async () => {
     }
 }
 
-// 加载用户列表
+// Load user list
 const loadUsers = async () => {
     try {
         const response = await userService.getUsers({ limit: 1000 })
-        users.value = response.users || []
+        // 根据 UserPaginatedResponse 类型定义，数据在 data 字段中
+        users.value = response.data || []
     } catch (error) {
         console.error('Failed to load users:', error)
     }
 }
 
-// 刷新日志
+// Refresh logs
 const refreshLogs = () => {
     showMessage(t('audit.logsRefreshed'), 'info')
     loadLogs()
 }
 
-// 切换过滤条件显示
+// Toggle filter display
 const toggleFilters = () => {
     showFilters.value = !showFilters.value
 }
 
-// 应用过滤条件
+// Apply filter conditions
 const applyFilters = () => {
     currentPage.value = 1
     loadLogs()
 }
 
-// 重置过滤条件
+// Reset filter conditions
 const resetFilters = () => {
     Object.assign(filters, {
         userId: '',
@@ -457,7 +450,7 @@ const resetFilters = () => {
     loadLogs()
 }
 
-// 确认删除日志
+// Confirm delete logs
 const confirmDelete = async () => {
     try {
         isDeleting.value = true
@@ -490,12 +483,12 @@ const confirmDelete = async () => {
     }
 }
 
-// 显示消息
+// Show message
 const showMessage = (text: string, type: 'success' | 'error' | 'info' = 'info') => {
-    message.value = { text, type }
+    message.value = { text, type } as Message
 }
 
-// 组件挂载时加载数据
+// Load data on component mount
 onMounted(() => {
     loadLogs()
     loadUsers()
@@ -724,7 +717,7 @@ onMounted(() => {
     }
 }
 
-// 对话框样式
+// Dialog styles
 .dialog-overlay {
     position: fixed;
     top: 0;
@@ -920,7 +913,7 @@ onMounted(() => {
     }
 }
 
-// 响应式设计
+// Responsive design
 @media (max-width: 768px) {
     .audit-container {
         padding: 16px;

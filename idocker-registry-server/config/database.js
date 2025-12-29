@@ -1,7 +1,7 @@
 /**
- * 数据库配置模块
+ * Database Module
  * 
- * 负责sqlite3数据库的连接、初始化和基础表结构创建
+ * Provides database connection and initialization functionality
  * 
  * @author IDocker Registry Team
  * @version 2.0.0
@@ -13,33 +13,35 @@ import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
 import { promises as fs } from 'fs';
 import bcrypt from 'bcryptjs';
+import * as constants from './constant.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '../');
 const DB_PATH = process.env.DB_PATH || path.join(projectRoot, 'data', 'registry.db');
+//const DB_PATH = path.join(projectRoot, '../data', 'registry.db');
 
 let db = null;
 
 /**
- * 获取数据库连接
- * @returns {Object} 数据库连接对象
+ * get db
+ * @returns {Object} database connection object
  */
 export function getDb() {
   if (!db) {
-    throw new Error('数据库未初始化，请先调用 initDatabase()');
+    throw new Error('Database not init，initDatabase()');
   }
   return db;
 }
 
 /**
- * 初始化数据库，创建所有必要的表
- * @returns {Promise<Object>} 数据库连接对象
+ * init database
+ * @returns {Promise<Object>} database connection object
  */
 export async function initDatabase() {
   return new Promise(async (resolve, reject) => {
     try {
-      // 创建数据目录（如果不存在）
+      // create data dir(if not exist)
       const dataDir = path.dirname(DB_PATH);
       try {
         await fs.access(dataDir);
@@ -47,17 +49,17 @@ export async function initDatabase() {
         await fs.mkdir(dataDir, { recursive: true });
       }
 
-      // 打开数据库连接
+      // open database connection
       db = new sqlite3.Database(DB_PATH, (err) => {
         if (err) {
-          logger.error('数据库连接错误:', err);
+          logger.error('database connect error:', err);
           reject(err);
           return;
         }
         
-        logger.info('数据库连接成功');
+        logger.info('database connect success');
         
-        // 启用外键约束和性能优化
+        // enable foreign key constraints
         db.serialize(() => {
           db.run('PRAGMA foreign_keys = ON');
           db.run('PRAGMA journal_mode = WAL');
@@ -65,7 +67,7 @@ export async function initDatabase() {
           db.run('PRAGMA cache_size = 1000');
           db.run('PRAGMA temp_store = MEMORY');
 
-          // 创建用户表
+          // create users table
           db.run(`
             CREATE TABLE IF NOT EXISTS users (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -80,7 +82,7 @@ export async function initDatabase() {
             )
           `);
 
-          // 创建项目表
+          // create projects table
           db.run(`
             CREATE TABLE IF NOT EXISTS projects (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -95,7 +97,7 @@ export async function initDatabase() {
             )
           `);
 
-          // 创建项目成员表（多对多关系）
+          // create project_members table
           db.run(`
             CREATE TABLE IF NOT EXISTS project_members (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -109,7 +111,7 @@ export async function initDatabase() {
             )
           `);
 
-          // 创建镜像仓库表
+          // create repositories table
           db.run(`
             CREATE TABLE IF NOT EXISTS repositories (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -117,6 +119,7 @@ export async function initDatabase() {
               project_id INTEGER NOT NULL,
               description TEXT,
               is_public BOOLEAN DEFAULT 0,
+              is_active BOOLEAN DEFAULT 1,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               UNIQUE(name, project_id),
@@ -124,7 +127,7 @@ export async function initDatabase() {
             )
           `);
 
-          // 创建镜像标签表
+          // create image_tags table
           db.run(`
             CREATE TABLE IF NOT EXISTS image_tags (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -141,7 +144,7 @@ export async function initDatabase() {
             )
           `);
 
-          // 创建审计日志表
+          // create audit_logs table
           db.run(`
             CREATE TABLE IF NOT EXISTS audit_logs (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -157,7 +160,7 @@ export async function initDatabase() {
             )
           `);
 
-          // 创建Docker Registry配置表
+          // create registry_configs table
           db.run(`
             CREATE TABLE IF NOT EXISTS registry_configs (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -172,7 +175,7 @@ export async function initDatabase() {
             )
           `);
 
-          // 创建同步日志表
+          // create sync_logs table
           db.run(`
             CREATE TABLE IF NOT EXISTS sync_logs (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -190,7 +193,7 @@ export async function initDatabase() {
             )
           `);
 
-          // 创建索引以提高查询性能
+          // create indexes
           db.run('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)');
           db.run('CREATE INDEX IF NOT EXISTS idx_projects_name ON projects(name)');
           db.run('CREATE INDEX IF NOT EXISTS idx_project_members_project_id ON project_members(project_id)');
@@ -201,66 +204,66 @@ export async function initDatabase() {
           db.run('CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action)');
           db.run('CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at)');
 
-          // 检查并创建默认管理员用户
+          // check and create default admin user
           db.get('SELECT COUNT(*) as count FROM users WHERE role = "admin"', [], async (err, row) => {
             if (err) {
-              logger.error('查询管理员用户错误:', err);
+              logger.error('check default admin user error:', err);
               reject(err);
               return;
             }
             
             if (row.count === 0) {
-              const defaultPassword = process.env.DEFAULT_ADMIN_PASSWORD || 'admin123';
+              const defaultPassword = process.env.DEFAULT_ADMIN_PASSWORD || constants.DEFAULT_ADMIN_PASSWORD;
               const hashedPassword = await bcrypt.hash(defaultPassword, 10);
               
               db.run('INSERT INTO users (username, password, email, full_name, role) VALUES (?, ?, ?, ?, ?)', 
-                ['admin', hashedPassword, 'admin@idocker.registry', '系统管理员', 'admin'], 
+                ['admin', hashedPassword, 'admin@idocker.vip', 'administrator', 'admin'], 
                 (err) => {
                   if (err) {
-                    logger.error('创建默认管理员用户错误:', err);
+                    logger.error('create default admin user error:', err);
                   } else {
-                    logger.info('默认管理员账户已创建: admin/admin123');
+                    logger.info('default admin user created: admin/' + defaultPassword);
                   }
                 }
               );
             }
 
-            // 检查并创建默认Docker Registry配置
+            // Docker Registry setting
             db.get('SELECT COUNT(*) as count FROM registry_configs', [], (err, row) => {
               if (err) {
-                logger.error('查询Registry配置错误:', err);
+                logger.error('check default docker registry config error:', err);
                 reject(err);
                 return;
               }
               
               if (row.count === 0) {
                 db.run('INSERT INTO registry_configs (name, url, is_default, is_active) VALUES (?, ?, ?, ?)', 
-                  ['默认Registry', process.env.REGISTRY_URL || 'http://localhost:5000', 1, 1], 
+                  ['Default Docker Registry', process.env.DOCKER_REGISTRY_URL || constants.DOCKER_REGISTRY_URL, 1, 1], 
                   (err) => {
                     if (err) {
-                      logger.error('创建默认Registry配置错误:', err);
+                      logger.error('Create Default Registry config error:', err);
                     } else {
-                      logger.info(`默认Docker Registry配置已创建: ${process.env.REGISTRY_URL || 'http://localhost:5000'}`);
+                      logger.info(`Default Docker Registry created: ${process.env.DOCKER_REGISTRY_URL || constants.DOCKER_REGISTRY_URL}`);
                     }
                   }
                 );
               }
 
-              logger.info('数据库初始化完成');
+              logger.info('Database initialized');
               resolve(db);
             });
           });
         });
       });
     } catch (error) {
-      logger.error('数据库初始化失败:', error);
+      logger.error('Database initialization error:', error);
       reject(error);
     }
   });
 }
 
 /**
- * 关闭数据库连接
+ * Close database connection
  * @returns {Promise<void>}
  */
 export async function closeDatabase() {
@@ -268,11 +271,11 @@ export async function closeDatabase() {
     if (db) {
       db.close((err) => {
         if (err) {
-          logger.error('关闭数据库连接错误:', err);
+          logger.error('Close database connection error:', err);
           reject(err);
         } else {
           db = null;
-          logger.info('数据库连接已关闭');
+          logger.info('Database connection closed');
           resolve();
         }
       });

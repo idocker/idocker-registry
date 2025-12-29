@@ -47,13 +47,13 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const redirectToLogin = () => {
-  // 设置重定向路径
+  // Set redirect path
   authStore.loginRedirectPath = router.currentRoute.value.fullPath
   
-  // 关闭提示
+  // Close prompt
   emit('close')
   
-  // 跳转到登录页面
+  // Navigate to login page
   router.push({
     path: '/admin/login',
     query: { redirect: router.currentRoute.value.fullPath }
@@ -62,7 +62,7 @@ const redirectToLogin = () => {
 
 const cancel = () => {
   emit('close')
-  // 返回上一页
+  // Go back
   router.back()
 }
 </script>

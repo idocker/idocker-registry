@@ -1,19 +1,20 @@
-version: '3.8'
 
 services:
   idocker-registry:
-    build: .
+    #build: .
+    image: idocker-registry:0.9.9
     container_name: idocker-registry
     ports:
-      - "8080:8080"
+      - "7588:7518"
+      - "7519:7519"
     volumes:
-      - registry-data:/var/lib/registry
-      - app-data:/app/data
-      - app-logs:/app/logs
+      - ./test/registry-data:/var/lib/registry
+      - ./test/app-data:/app/data
+      - ./test/app-logs:/app/logs
     environment:
       - NODE_ENV=production
-      - PORT=8080
-      - REGISTRY_URL=http://localhost:5000
+      - PORT=7518
+      - REGISTRY_URL=http://192.168.2.8:5000
       - DB_PATH=/app/data/registry.db
       - LOG_DIR=/app/logs
       - LOG_LEVEL=info
@@ -23,16 +24,9 @@ services:
       - ALLOW_USER_REGISTRATION=false
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:7518/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
 
-volumes:
-  registry-data:
-    driver: local
-  app-data:
-    driver: local
-  app-logs:
-    driver: local

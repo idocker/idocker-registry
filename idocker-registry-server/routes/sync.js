@@ -150,7 +150,6 @@ router.get('/logs', asyncHandler(async (req, res) => {
   try {
     const { page = 1, limit = 20, type = '' } = req.query;
 
-    // 使用authModel的all方法获取同步日志
     let query = `
       SELECT
         sl.*,

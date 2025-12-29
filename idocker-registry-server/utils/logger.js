@@ -14,7 +14,10 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '../');
-const logsDir = path.join(projectRoot, 'logs');
+
+
+const logsLevel = process.env.LOG_LEVEL || 'info';
+const logsDir = process.env.LOG_DIR || path.join(projectRoot, '../logs');
 
 // 日志级别
 const levels = {
@@ -56,7 +59,7 @@ const transports = [
   // 控制台输出
   new winston.transports.Console({
     format: format,
-    level: process.env.LOG_LEVEL || 'info'
+    level: logsLevel
   }),
   
   // 错误日志文件
@@ -79,7 +82,7 @@ const transports = [
 
 // 创建日志器
 export const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL || 'info',
+  level: logsLevel,
   levels,
   format: winston.format.json(),
   defaultMeta: { service: 'idocker-registry' },

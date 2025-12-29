@@ -73,7 +73,7 @@ const setLanguage = (lang: string) => {
   closeMenu()
 }
 
-// 点击外部关闭菜单
+// Click outside to close menu
 const handleClickOutside = (event: MouseEvent) => {
   if (menuRef.value && !menuRef.value.contains(event.target as Node)) {
     closeMenu()

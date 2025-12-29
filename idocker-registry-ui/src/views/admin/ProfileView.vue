@@ -53,10 +53,10 @@
                             <div class="project-info">
                                 <h3>{{ project.name }}</h3>
                                 <p v-if="project.description">{{ project.description }}</p>
-                                <div class="project-meta">
-                                    <span class="project-role">{{ $t('profile.projectRole') }}: {{ getRoleDisplay(project.member_role) }}</span>
-                                    <span class="project-date">{{ $t('profile.joinTime') }}: {{ formatDate(project.created_at) }}</span>
-                                </div>
+            <div class="project-meta">
+                <span class="project-role">{{ $t('profile.projectRole') }}: {{ getRoleDisplay(project.memberRole) }}</span>
+                <span class="project-date">{{ $t('profile.joinTime') }}: {{ formatDate(project.memberSince) }}</span>
+            </div>
                             </div>
                             <div class="project-actions">
                                 <router-link :to="`/admin/projects/${project.id}`" class="btn btn-ghost">
@@ -114,7 +114,7 @@
             <!-- 消息提示 -->
             <div v-if="message" class="snackbar" :class="`snackbar-${message.type}`">
                 {{ message.text }}
-                <button class="snackbar-close" @click="message = ''">
+                <button class="snackbar-close" @click="message.text = ''">
                     <span class="material-icons">close</span>
                 </button>
             </div>
@@ -127,22 +127,21 @@ import { ref, reactive, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import userService from '@/services/user.service'
-import axios from 'axios'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
-import type { SnackbarMessage } from '@/types'
+import type { SnackbarMessage,Message, Project, User ,UserProjects} from '@/types'
 
 const { t, locale } = useI18n()
 const authStore = useAuthStore()
 
-// 表单状态
+// Form state
 const isUpdatingProfile = ref(false)
 const isUploadingAvatar = ref(false)
-const message = ref('')
+const message = ref<Message | null>(null)
 const showAvatarUpload = ref(false)
 const avatarPreview = ref('')
 const avatarInput = ref(null)
 
-// 用户表单
+// User form
 const profileForm = reactive({
     username: '',
     email: '',
@@ -150,10 +149,11 @@ const profileForm = reactive({
     avatar: ''
 })
 
-// 用户项目
-const userProjects = ref([])
 
-// 获取用户角色显示
+// User projects
+const userProjects = ref<Project[]>([])
+
+// Get user role display
 const getRoleDisplay = (role: string) => {
     switch (role) {
         case 'admin':
@@ -167,7 +167,7 @@ const getRoleDisplay = (role: string) => {
     }
 }
 
-// 格式化日期
+// Format date
 const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleDateString(locale.value, {
@@ -177,29 +177,29 @@ const formatDate = (dateString: string) => {
     })
 }
 
-// 加载用户信息
+// Load user profile
 const loadUserProfile = async () => {
     try {
         const response = await userService.getUser(authStore.user.id.toString())
         
         if (response.success) {
-            // 更新表单数据
+            // Update form data
             Object.assign(profileForm, response.data)
 
-            // 加载用户项目
+            // Load user projects
             if (response.data.role !== 'admin') {
                 await loadUserProjects()
             }
         } else {
-            showMessage(t('profile.loadProfileFailed'), 'error')
+            showMessage({ text: t('profile.loadProfileFailed'), type: 'error' })
         }
     } catch (error) {
         console.error('Failed to load user profile:', error)
-        showMessage(t('profile.loadProfileFailed'), 'error')
+        showMessage({ text: t('profile.loadProfileFailed'), type: 'error' })
     }
 }
 
-// 加载用户项目
+// Load user projects
 const loadUserProjects = async () => {
     try {
         const response = await userService.getUserProjects(authStore.user.id.toString())
@@ -207,35 +207,34 @@ const loadUserProjects = async () => {
         if (response.success) {
             userProjects.value = response.data.projects || []
         } else {
-            showMessage(t('profile.loadProjectsFailed'), 'error')
+            showMessage({ text: t('profile.loadProjectsFailed'), type: 'error' })
         }
     } catch (error) {
         console.error('Failed to load user projects:', error)
-        showMessage(t('profile.loadProjectsFailed'), 'error')
+        showMessage({ text: t('profile.loadProjectsFailed'), type: 'error' })
     }
 }
 
-// 更新用户信息
+// Update user profile
 const updateProfile = async () => {
     try {
         isUpdatingProfile.value = true
 
         const response = await userService.updateUser(authStore.user.id.toString(), {
-            username: profileForm.username,
             email: profileForm.email
         })
 
         if (response.success) {
-            // 更新存储的用户信息
+            // Update stored user info
             authStore.user = response.data
             localStorage.setItem('user_data', JSON.stringify(response.data))
-            showMessage(t('profile.profileUpdated'), 'success')
+            showMessage({ text: t('profile.profileUpdated'), type: 'success' })
         } else {
-            showMessage(response.message || t('profile.updateProfileFailed'), 'error')
+            showMessage({ text: response.message || t('profile.updateProfileFailed'), type: 'error' })
         }
-    } catch (error: any) {
-        console.error('Failed to update profile:', error)
-        showMessage(error.response?.data?.error || t('profile.updateProfileFailed'), 'error')
+        } catch (error: any) {
+            console.error('Failed to update profile:', error)
+            showMessage({ text: error.response?.data?.error || t('profile.updateProfileFailed'), type: 'error' })
     } finally {
         isUpdatingProfile.value = false
     }
@@ -243,13 +242,13 @@ const updateProfile = async () => {
 
 
 
-// 处理头像选择
+// Handle avatar selection
 const handleAvatarChange = (event: Event) => {
     const target = event.target as HTMLInputElement
     const file = target.files?.[0]
 
     if (file) {
-        // 简单的客户端预览
+        // Simple client-side preview
         const reader = new FileReader()
         reader.onload = (e) => {
             avatarPreview.value = e.target?.result as string
@@ -258,48 +257,48 @@ const handleAvatarChange = (event: Event) => {
     }
 }
 
-// 上传头像
+// Upload avatar
 const uploadAvatar = async () => {
     if (!avatarPreview.value) return
 
     try {
         isUploadingAvatar.value = true
 
-        // 将base64转换为File对象
+        // Convert base64 to File object
         const response = await fetch(avatarPreview.value)
         const blob = await response.blob()
         const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' })
 
-        // 使用userService上传头像
+        // Use userService to upload avatar
         const uploadResponse = await userService.uploadAvatar(file)
 
         if (uploadResponse.success) {
-            // 更新头像URL
+            // Update avatar URL
             profileForm.avatar = uploadResponse.data.avatarUrl
 
-            // 重新加载用户信息
+            // Reload user profile
             await loadUserProfile()
 
-            showMessage(t('profile.avatarUploaded'), 'success')
+            showMessage({ text: t('profile.avatarUploaded'), type: 'success' })
             showAvatarUpload.value = false
             avatarPreview.value = ''
         } else {
-            throw new Error(uploadResponse.message || t('profile.uploadAvatarFailed'))
+            throw new Error( t('profile.uploadAvatarFailed'))
         }
     } catch (error: any) {
         console.error('Failed to upload avatar:', error)
-        showMessage(error.message || t('profile.uploadAvatarFailed'), 'error')
+        showMessage({ text: error.message || t('profile.uploadAvatarFailed'), type: 'error' })
     } finally {
         isUploadingAvatar.value = false
     }
 }
 
-// 显示消息
-const showMessage = (text: string, type: 'success' | 'error' | 'info' = 'info') => {
-    message.value = { text, type } as SnackbarMessage
+// Show message
+const showMessage = (msg: Message) => {
+    message.value = msg
 }
 
-// 组件挂载时加载用户信息
+// Load user profile on component mount
 onMounted(() => {
     loadUserProfile()
 })
@@ -513,8 +512,8 @@ onMounted(() => {
     }
 }
 
-// 响应式设计
-// 对话框样式
+// Responsive design
+// Dialog styles
 .dialog-overlay {
     position: fixed;
     top: 0;
@@ -567,7 +566,7 @@ onMounted(() => {
     padding: 16px;
 }
 
-// 提示框样式
+// Snackbar styles
 .snackbar {
     position: fixed;
     bottom: 20px;
@@ -605,7 +604,7 @@ onMounted(() => {
     }
 }
 
-// 响应式设计
+// Responsive design
 @media (max-width: 768px) {
     .profile-container {
         padding: 16px;

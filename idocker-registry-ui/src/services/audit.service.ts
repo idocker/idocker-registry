@@ -104,6 +104,13 @@ class AuditService {
       responseType: 'blob'
     });
   }
+
+  /**
+   * 清理审计日志
+   */
+  async cleanupAuditLogs(daysOld: number): Promise<{ success: boolean; message: string }> {
+    return http.delete(`/api/audit/cleanup?daysOld=${daysOld}`);
+  }
 }
 
 export default new AuditService()

@@ -1,3 +1,5 @@
+import type { P } from "vue-router/dist/router-CWoNjPRp.mjs"
+
 // Registry configuration types
 export interface RegistryConfig {
   url: string
@@ -117,6 +119,11 @@ export interface RegistryErrorResponse {
   errors: RegistryError[]
 }
 
+export interface Message{
+  text: string
+  type: 'success' | 'error' | 'info' | 'warning'
+}
+
 // UI component types
 export interface SnackbarMessage {
   message: string
@@ -222,6 +229,11 @@ export interface UserDetail extends User {
   }>
 }
 
+export interface UserProjects {
+  user: User;
+  projects: Project[]
+}
+
 export interface CreateUser {
   username: string
   password: string
@@ -297,6 +309,10 @@ export interface Image {
   namespace?: string
   project: string
   description?: string
+  isPublic: boolean
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
   tags: ImageTag[]
 }
 
@@ -477,7 +493,7 @@ export interface ApiError {
 }
 
 // 分页数据类型
-export interface PaginationMeta {
+export interface PageInfo {
   page: number
   limit: number
   total: number
@@ -492,45 +508,29 @@ export interface PaginationParams {
   search?: string
 }
 
+// 通用分页响应
+export interface PaginatedApiResponse<T>  {
+  success: boolean
+  message?: string
+  data?: T[];
+  pagination?: PageInfo;
+}
+
 // 项目分页响应（保持向后兼容）
-export interface ProjectPaginatedResponse extends ApiResponse<{
-  datas: Project[]; pagination: PaginationMeta 
-}> {}
+export interface ProjectPaginatedResponse extends PaginatedApiResponse<Project> {}
 
 // 镜像分页响应
-export interface ImagePaginatedResponse extends ApiResponse<{ datas: Image[]; pagination: PaginationMeta }> {}
+export interface ImagePaginatedResponse extends PaginatedApiResponse<Image> {}
 
 // 用户分页响应
-export interface UserPaginatedResponse extends ApiResponse<{ datas: User[]; pagination: PaginationMeta }> {}
+export interface UserPaginatedResponse extends PaginatedApiResponse<User> {}
 
 // 审计日志分页响应
-export interface AuditLogPaginatedResponse extends ApiResponse<{ datas: AuditLog[]; pagination: PaginationMeta }> {}
+export interface AuditLogPaginatedResponse extends PaginatedApiResponse<AuditLog> {}
 
-// 通用分页响应
-export interface PaginatedResponse<T = any> extends ApiResponse<{ 
-  datas?: T[]; 
-  data?: T[]; 
-  pagination?: PaginationMeta 
-}> {
-  // 保持向后兼容
-  // 优先使用data字段，如果不存在则使用datas字段
-}
+
 
 // 特定类型的分页响应
-export interface ImageRepositoryPaginatedResponse extends ApiResponse<{ 
-  images: Image[]; 
-  pagination: { page: number; limit: number; total: number; totalPages: number } 
-}> {
-  // 保持向后兼容
-  images?: Image[]
-  pagination?: { page: number; limit: number; total: number; totalPages: number }
-}
+export interface ImageRepositoryPaginatedResponse extends PaginatedApiResponse<Image> {}
 
-export interface ProjectRepositoryPaginatedResponse extends ApiResponse<{ 
-  projects: Project[]; 
-  pagination: { page: number; limit: number; total: number; totalPages: number } 
-}> {
-  // 保持向后兼容
-  projects?: Project[]
-  pagination?: { page: number; limit: number; total: number; totalPages: number }
-}
+export interface ProjectRepositoryPaginatedResponse extends PaginatedApiResponse<Project> {}

@@ -1,9 +1,9 @@
 import { defineStore } from 'pinia'
 import type { 
-  RepositoryConfig, 
+  RegistryConfig, 
   AuthenticationInfo, 
   BearerToken,
-  RepositoryError,
+  RegistryError,
   SnackbarMessage 
 } from '@/types'
 import { 
@@ -52,7 +52,7 @@ export const useRepositoryStore = defineStore('repository', {
     // UI state
     isLoading: false,
     snackbarMessage: '' as string | SnackbarMessage,
-    pageError: null as RepositoryError | null,
+    pageError: '' as string,
     filter: ''
   }),
   
@@ -240,7 +240,7 @@ export const useRepositoryStore = defineStore('repository', {
       this.snackbarMessage = ''
     },
     
-    showError(error: RepositoryError) {
+    showError(error: string) {
       this.pageError = error
     },
     

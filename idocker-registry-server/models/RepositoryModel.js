@@ -1,6 +1,6 @@
 /**
- * 仓库数据模型类
- * 处理所有与仓库相关的数据库操作
+ * Repository data model class
+ * Handles all database operations related to repositories
  */
 import { BaseModel } from './BaseModel.js';
 import { logger } from '../utils/logger.js';
@@ -11,7 +11,7 @@ export class RepositoryModel extends BaseModel {
   }
 
   /**
-   * 根据项目ID和仓库名称查找仓库
+   * Find repository by project ID and repository name
    */
   async findByProjectIdAndName(projectId, name) {
     try {
@@ -20,13 +20,13 @@ export class RepositoryModel extends BaseModel {
         [projectId, name]
       );
     } catch (error) {
-      logger.error('根据项目ID和名称查找仓库失败:', error);
+      logger.error('Failed to find repository by project ID and name:', error);
       throw error;
     }
   }
 
   /**
-   * 创建新仓库
+   * Create new repository
    */
   async createRepository(repositoryData) {
     //logger.info(`createRepository:${JSON.stringify(repositoryData)}`)
@@ -40,13 +40,13 @@ export class RepositoryModel extends BaseModel {
       const result = await this.create(data);
       return result;
     } catch (error) {
-      logger.error('创建仓库失败:', error);
+      logger.error('Failed to create repository:', error);
       throw error;
     }
   }
 
   /**
-   * 更新仓库信息
+   * Update repository information
    */
   async updateRepository(repositoryId, updateData) {
     try {
@@ -58,13 +58,13 @@ export class RepositoryModel extends BaseModel {
       const result = await this.update(repositoryId, data);
       return result;
     } catch (error) {
-      logger.error('更新仓库失败:', error);
+      logger.error('Failed to update repository:', error);
       throw error;
     }
   }
 
   /**
-   * 获取项目下的镜像列表
+   * Get image list under project
    */
   async getProjectRepositories(projectId, { page = 1, limit = 20, search = '' } = {}) {
     try {
@@ -86,13 +86,13 @@ export class RepositoryModel extends BaseModel {
       const result = await this.paginate(query, params, page, limit);
       return result;
     } catch (error) {
-      logger.error('获取项目仓库列表失败:', error);
+      logger.error('Failed to get project repository list:', error);
       throw error;
     }
   }
 
   /**
-   * 删除仓库（软删除）
+   * Delete repository (soft delete)
    */
   async deleteRepository(repositoryId) {
     try {
@@ -101,19 +101,19 @@ export class RepositoryModel extends BaseModel {
         updated_at: new Date().toISOString() 
       });
       
-      // 同时删除相关的镜像标签
+      // Also delete related image tags
       const db = await this.getDb();
       await db.run('DELETE FROM image_tags WHERE repository_id = ?', [repositoryId]);
       
       return result;
     } catch (error) {
-      logger.error('删除仓库失败:', error);
+      logger.error('Failed to delete repository:', error);
       throw error;
     }
   }
 
   /**
-   * 获取仓库统计信息
+   * Get repository statistics
    */
   async getRepositoryStats(projectId = null) {
     try {
@@ -137,13 +137,13 @@ export class RepositoryModel extends BaseModel {
         totalTags: result.total_tags || 0
       };
     } catch (error) {
-      logger.error('获取仓库统计信息失败:', error);
+      logger.error('Failed to get repository statistics:', error);
       throw error;
     }
   }
 
   /**
-   * 根据ID获取仓库详细信息（包含项目信息）
+   * Get repository details by ID (including project information)
    */
   async getRepositoryWithProject(repositoryId) {
     try {
@@ -162,13 +162,13 @@ export class RepositoryModel extends BaseModel {
 
       return repository;
     } catch (error) {
-      logger.error('获取仓库详细信息失败:', error);
+      logger.error('Failed to get repository details:', error);
       throw error;
     }
   }
 
   /**
-   * 根据ID获取仓库基本信息（包含项目信息）
+   * Get repository basic information by ID (including project information)
    */
   async getRepositoryBasicInfo(repositoryId) {
     try {
@@ -186,13 +186,13 @@ export class RepositoryModel extends BaseModel {
 
       return repository;
     } catch (error) {
-      logger.error('获取仓库基本信息失败:', error);
+      logger.error('Failed to get repository basic information:', error);
       throw error;
     }
   }
 
   /**
-   * 根据项目ID和仓库名称查找仓库ID
+   * Find repository ID by project ID and repository name
    */
   async findRepositoryId(projectId, name) {
     try {
@@ -207,18 +207,18 @@ export class RepositoryModel extends BaseModel {
 
       return repository ? repository.id : null;
     } catch (error) {
-      logger.error('查找仓库ID失败:', error);
+      logger.error('Failed to find repository ID:', error);
       throw error;
     }
   }
 
   /**
-   * 简单创建仓库（用于同步功能）
+   * Simple repository creation (for sync functionality)
    */
   async createSimpleRepository(projectId, name, description, isPublic = 0) {
     try {
       if (!projectId || !name) {
-        throw new Error('项目ID和仓库名称不能为空');
+        throw new Error('Project ID and repository name cannot be empty');
       }
 
       const result = await this.run(
@@ -228,13 +228,13 @@ export class RepositoryModel extends BaseModel {
 
       return { id: result.lastID };
     } catch (error) {
-      logger.error('创建仓库失败:', error);
+      logger.error('Failed to create repository:', error);
       throw error;
     }
   }
 
   /**
-   * 根据仓库名称查找（用于权限检查）
+   * Find repository by name (for permission checks)
    */
   async findByRepositoryName(repositoryName, projectId) {
     try {
@@ -249,20 +249,20 @@ export class RepositoryModel extends BaseModel {
 
       return repository;
     } catch (error) {
-      logger.error('根据仓库名称查找失败:', error);
+      logger.error('Failed to find repository by name:', error);
       throw error;
     }
   }
 
   /**
-   * 获取活跃仓库数量
+   * Get active repository count
    */
   async getActiveRepositoryCount() {
     try {
       const result = await this.get('SELECT COUNT(*) as count FROM repositories WHERE is_active = 1');
       return result ? result.count : 0;
     } catch (error) {
-      logger.error('获取活跃仓库数量失败:', error);
+      logger.error('Failed to get active repository count:', error);
       throw error;
     }
   }

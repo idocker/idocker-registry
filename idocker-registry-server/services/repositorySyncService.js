@@ -1,8 +1,7 @@
 /**
- * Docker Repository 同步服务
+ * Docker Repository Sync Service
  * 
- * 负责从Docker Repository同步仓库和镜像信息到数据库
- * 提供完整的数据同步和更新功能
+ * Provides functionality to sync repository and image information from Docker Registry to database
  * 
  * @author IDocker Repository Team
  * @version 2.0.0
@@ -26,7 +25,7 @@ class RepositorySyncService {
     }
 
     /**
-     * 获取默认的Registry配置
+     * Get default registry config
      */
     async getDefaultRegistryConfig() {
         try {
@@ -48,9 +47,9 @@ class RepositorySyncService {
     }
 
     /**
-     * 同步所有仓库数据
-     * @param {Object} options - 同步选项
-     * @returns {Promise<Object>} 同步结果
+     * Sync all repositories
+     * @param {Object} options - Options object (optional)
+     * @returns {Promise<Object>} Result object
      */
     async syncAllRepositories(options = {}) {
         const startTime = Date.now();
@@ -109,9 +108,9 @@ class RepositorySyncService {
     }
 
     /**
-     * 处理单个仓库
-     * @param {Object} repo - 仓库信息
-     * @param {Object} registryConfig - Registry配置
+     * Process a repository
+     * @param {Object} repo - Repository Object
+     * @param {Object} registryConfig - RegistryConfig
      */
     async processRepository(repo, registryConfig) {
         try {
@@ -196,10 +195,10 @@ class RepositorySyncService {
     }
 
     /**
-     * 同步仓库的标签信息
-     * @param {Object} repository - 仓库对象
-     * @param {string} repoName - 仓库名称
-     * @param {Object} repositoryConfig - Repository配置
+     * Sync repository tags
+     * @param {Object} repository - Repository Object
+     * @param {string} repoName - Repository Name
+     * @param {Object} repositoryConfig - RepositoryConfig Object
      */
     async syncRepositoryTags(repository, repoName, repositoryConfig) {
         try {
@@ -287,19 +286,19 @@ class RepositorySyncService {
     }
 
     /**
-     * 更新标签信息
-     * @param {number} tagId - 标签ID
-     * @param {Object} updateData - 更新数据
+     * Update a tag
+     * @param {number} tagId - Tag ID
+     * @param {Object} updateData - Data to update
      */
     async updateTag(tagId, updateData) {
         return await this.imageTagModel.updateTag(tagId, updateData);
     }
 
     /**
-     * 同步指定项目的仓库数据
-     * @param {number} projectId - 项目ID
-     * @param {Object} options - 同步选项
-     * @returns {Promise<Object>} 同步结果
+     * Sync one project's repositories
+     * @param {number} projectId - Project ID
+     * @param {Object} options - Options for sync
+     * @returns {Promise<Object>} Result of sync
      */
     async syncProjectRepositories(projectId, options = {}) {
         const startTime = Date.now();
@@ -372,8 +371,8 @@ class RepositorySyncService {
     }
 
     /**
-     * 获取同步状态统计
-     * @returns {Promise<Object>} 同步状态
+     * Get sync status
+     * @returns {Promise<Object>} Statistics
      */
     async getSyncStatus() {
         try {
@@ -413,35 +412,35 @@ class RepositorySyncService {
     }
 
     /**
-     * 获取活跃项目数量
+     * Get active project count
      */
     async getProjectCount() {
         return await this.projectModel.getActiveProjectCount();
     }
 
     /**
-     * 获取活跃仓库数量
+     * Get active repository count
      */
     async getRepositoryCount() {
         return await this.repositoryModel.getActiveRepositoryCount();
     }
 
     /**
-     * 获取标签总数
+     * Get tag count
      */
     async getTagCount() {
         return await this.imageTagModel.getTagCount();
     }
 
     /**
-     * 记录同步日志
-     * @param {Object} syncData - 同步数据
+     * Record sync log
+     * @param {Object} syncData - Log data
      */
     async logSync(syncData) {
         try {
             await this.syncLogModel.createSyncLog(syncData);
         } catch (error) {
-            logger.error('记录同步日志失败:', error);
+            logger.error('Failed to log sync:', error);
         }
     }
 }

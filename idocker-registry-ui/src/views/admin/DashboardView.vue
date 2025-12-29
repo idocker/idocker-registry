@@ -117,19 +117,19 @@ const recentRepositories = ref<RecentRepository[]>([])
 
 const fetchDashboardData = async () => {
   try {
-    // 获取统计数据
+    // Get statistics data
     const statsResponse = await dashboardService.getStats()
     if (statsResponse.success && statsResponse.data) {
       stats.value = statsResponse.data
     }
 
-    // 获取最近的项目列表
+    // Get recent projects list
     const projectsResponse = await dashboardService.getRecentProjects(5)
     if (projectsResponse.success && projectsResponse.data) {
       recentProjects.value = projectsResponse.data
     }
 
-    // 获取最近的仓库列表
+    // Get recent repositories list
     const repositoriesResponse = await dashboardService.getRecentRepositories(5)
     if (repositoriesResponse.success && repositoriesResponse.data) {
       recentRepositories.value = repositoriesResponse.data

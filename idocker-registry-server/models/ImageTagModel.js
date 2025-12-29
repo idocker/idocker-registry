@@ -1,6 +1,6 @@
 /**
- * ImageTag 数据模型类
- * 处理镜像标签相关的数据库操作
+ * ImageTag data model class
+ * Handles database operations related to image tags
  */
 import { BaseModel } from './BaseModel.js';
 import { logger } from '../utils/logger.js';
@@ -11,7 +11,7 @@ export class ImageTagModel extends BaseModel {
   }
 
   /**
-   * 根据仓库ID获取所有标签
+   * Get all tags by repository ID
    */
   async getTagsByRepositoryId(repositoryId) {
     try {
@@ -29,13 +29,13 @@ export class ImageTagModel extends BaseModel {
 
       return tags || [];
     } catch (error) {
-      logger.error('获取仓库标签失败:', error);
+      logger.error('Failed to get repository tags:', error);
       throw error;
     }
   }
 
   /**
-   * 根据ID和仓库ID获取单个标签
+   * Get a single tag by ID and repository ID
    */
   async getTagById(tagId, repositoryId) {
     try {
@@ -52,13 +52,13 @@ export class ImageTagModel extends BaseModel {
 
       return tag;
     } catch (error) {
-      logger.error('获取标签信息失败:', error);
+      logger.error('Failed to get tag information:', error);
       throw error;
     }
   }
 
   /**
-   * 检查标签是否存在（根据仓库名和标签名）
+   * Check if tag exists (by repository name and tag name)
    */
   async tagExists(repositoryId, tagName) {
     try {
@@ -73,18 +73,18 @@ export class ImageTagModel extends BaseModel {
 
       return !!existing;
     } catch (error) {
-      logger.error('检查标签是否存在失败:', error);
+      logger.error('Failed to check if tag exists:', error);
       throw error;
     }
   }
 
   /**
-   * 创建新标签
+   * Create new tag
    */
   async createTag(tagData) {
     try {
       if (!tagData || !tagData.repository_id || !tagData.tag) {
-        throw new Error('标签数据不完整');
+        throw new Error('Tag data is incomplete');
       }
 
       const sql = `
@@ -105,18 +105,18 @@ export class ImageTagModel extends BaseModel {
       const result = await this.run(sql, params);
       return { id: result.lastID };
     } catch (error) {
-      logger.error('创建标签失败:', error);
+      logger.error('Failed to create tag:', error);
       throw error;
     }
   }
 
   /**
-   * 删除标签
+   * Delete tag
    */
   async deleteTag(tagId, repositoryId) {
     try {
       if (!tagId || !repositoryId) {
-        throw new Error('标签ID和仓库ID不能为空');
+        throw new Error('Tag ID and repository ID cannot be empty');
       }
 
       const result = await this.run(
@@ -126,13 +126,13 @@ export class ImageTagModel extends BaseModel {
 
       return result;
     } catch (error) {
-      logger.error('删除标签失败:', error);
+      logger.error('Failed to delete tag:', error);
       throw error;
     }
   }
 
   /**
-   * 批量创建标签
+   * Create multiple tags
    */
   async createTags(tagsArray) {
     try {
@@ -148,13 +148,13 @@ export class ImageTagModel extends BaseModel {
 
       return results;
     } catch (error) {
-      logger.error('批量创建标签失败:', error);
+      logger.error('Failed to create multiple tags:', error);
       throw error;
     }
   }
 
   /**
-   * 根据仓库ID获取标签数量
+   * Get tag count by repository ID
    */
   async getTagCountByRepositoryId(repositoryId) {
     try {
@@ -169,18 +169,18 @@ export class ImageTagModel extends BaseModel {
 
       return result ? result.count : 0;
     } catch (error) {
-      logger.error('获取标签数量失败:', error);
+      logger.error('Failed to get tag count:', error);
       throw error;
     }
   }
 
   /**
-   * 更新标签信息
+   * Update tag information
    */
   async updateTag(tagId, updateData) {
     try {
       if (!tagId || !updateData) {
-        throw new Error('标签ID和更新数据不能为空');
+        throw new Error('Tag ID and update data cannot be empty');
       }
 
       const keys = Object.keys(updateData);
@@ -192,20 +192,20 @@ export class ImageTagModel extends BaseModel {
       
       return { ...updateData, id: tagId, changes: result.changes };
     } catch (error) {
-      logger.error('更新标签失败:', error);
+      logger.error('Failed to update tag:', error);
       throw error;
     }
   }
 
   /**
-   * 获取标签总数
+   * Get total tag count
    */
   async getTagCount() {
     try {
       const result = await this.get('SELECT COUNT(*) as count FROM image_tags');
       return result ? result.count : 0;
     } catch (error) {
-      logger.error('获取标签总数失败:', error);
+      logger.error('Failed to get total tag count:', error);
       throw error;
     }
   }

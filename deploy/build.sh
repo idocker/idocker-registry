@@ -1,7 +1,7 @@
-# 构建镜像
+# build docker image
 docker build -t idocker-registry:latest .
 
-# 运行容器
+# run docker
 docker run -d \
   --name idocker-registry \
   -p 8080:8080 \

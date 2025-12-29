@@ -1,7 +1,7 @@
 /**
- * IDocker Registry 服务端应用程序入口文件
+ * IDocker Registry Server Initialization file
  * 
- * 负责启动Express服务器，配置中间件，路由和错误处理
+ * Starts the Express server and initializes the middleware&routes&errorHandler
  * 
  * @author IDocker Registry Team
  * @version 2.0.0
@@ -14,14 +14,16 @@ import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 
-// 导入自定义模块
+// import database config and middleware
 import { initDatabase } from './config/database.js';
 import { authMiddleware } from './middleware/auth.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { logger } from './utils/logger.js';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
-// 导入路由
+
+// import routes module
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 import projectRoutes from './routes/projects.js';
@@ -29,32 +31,40 @@ import repositoryRoutes from './routes/repository.js';
 import auditRoutes from './routes/audit.js';
 import syncRoutes from './routes/sync.js';
 import dockerRegistryRoutes from './routes/dockerRegistry.js';
+import * as constants from './config/constant.js';
 
-// 加载环境变量
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load environment variables from .env file
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || constants.PORT;
 
-// 配置请求限制（排除 /v2 Docker Registry API 路径）
+// Setting Limit for request (exclude /v2 Docker Registry API path)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15分钟
-  max: 1000, // 提高限制以支持 Docker push 操作
-  skip: (req) => req.path.startsWith('/v2'), // 跳过 Docker Registry API 的请求限制
-  message: { message: '请求过于频繁，请稍后再试' }
+  // 1000 requests per 15 minutes for support Docker push operation
+  max: 1000, 
+  // Ignore requests from Docker Registry API
+  skip: (req) => req.path.startsWith('/v2'), 
+  message: { message: 'Too many requests, please try again later.' }
 });
 
-// 配置中间件
+// Security Settings
 app.use(helmet({
-  contentSecurityPolicy: false, // 禁用CSP以兼容Docker Registry API
+  // Disable contentSecurityPolicy to allow Docker Registry API
+  contentSecurityPolicy: false, 
 }));
 
-// CORS 配置：生产环境（容器内）不需要跨域
+// CORS Setting 
 if (process.env.NODE_ENV === 'production') {
   app.use(cors());
 } else {
   app.use(cors({
-    origin: process.env.UI_URL || 'http://localhost:8030',
+    origin: process.env.IDOCKER_REGISTRY_UI_URL || constants.IDOCKER_REGISTRY_URL,
     credentials: true
   }));
 }
@@ -63,34 +73,69 @@ app.use(limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// 请求日志
+// Logging middleware
 app.use((req, res, next) => {
-  logger.info(`${req.method} ${req.path} - IP: ${req.ip}`);
+  if (res.statusCode !== 200){
+    logger.error(`${req.method} ${req.path} - IP: ${req.ip}`);
+  }
   next();
 });
 
-// 健康检查端点
+// Endpoint for health check
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// API路由
+// Create Docker Registry proxy
+const dockerRegistryProxy = createProxyMiddleware({
+  target: process.env.DOCKER_REGISTRY_URL || constants.DOCKER_REGISTRY_URL,
+  changeOrigin: true,
+  pathRewrite: {
+    '^/v2': '/v2', // Keep /v2 path
+  },
+  onProxyReq: (proxyReq, req, res) => {
+    // Log the proxy request
+    logger.info(`Proxying Docker Registry request: ${req.method} ${req.path}`);
+    
+    // Add authentication for internal registry (if needed)
+    // For internal registry, no authentication is needed
+  },
+  onProxyRes: (proxyRes, req, res) => {
+    // Log the proxy response
+    logger.info(`Docker Registry proxy response: ${req.method} ${req.path} - Status: ${proxyRes.statusCode}`);
+  },
+  onError: (err, req, res) => {
+    logger.error(`Docker Registry proxy error for ${req.method} ${req.path}:`, err);
+    res.status(502).json({
+      errors: [{ code: 'UNAVAILABLE', message: 'Docker Registry service unavailable', detail: null }]
+    });
+  }
+});
+
+// Docker Registry proxy first (will handle most requests)
+app.use('/v2', dockerRegistryProxy); // Docker Registry代理到内部Registry
+
+// Then specific routes that need custom handling
+app.use('/v2', dockerRegistryRoutes); // Docker Repository API兼容端点 (for token service, etc.)
+
+// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', authMiddleware, userRoutes);
 app.use('/api/projects', authMiddleware, projectRoutes);
 app.use('/api/repository', authMiddleware, repositoryRoutes);
 app.use('/api/audit', authMiddleware, auditRoutes);
 app.use('/api/sync', authMiddleware, syncRoutes);
-app.use('/v2', dockerRegistryRoutes); // Docker Repository API兼容端点
 
-// 静态文件服务（Vue UI 构建产物）
+
+// Static file server for Vue UI build output
 const publicPath = path.resolve(__dirname, 'public');
+logger.info('IDocker Registry Server starting ...');
 app.use(express.static(publicPath));
 
-// 错误处理中间件
+// Middleware to handle 404 errors
 app.use(errorHandler);
 
-// SPA fallback - 所有非 API 和 /v2 路由返回 index.html
+// SPA fallback - Allow all non-API and /v2 routes to return index.html
 app.use((req, res, next) => {
   if (!req.path.startsWith('/api') && !req.path.startsWith('/v2')) {
     res.sendFile(path.join(publicPath, 'index.html'));
@@ -99,33 +144,28 @@ app.use((req, res, next) => {
   }
 });
 
-// 初始化数据库并启动服务器
+// Initialize server and start listening
 async function startServer() {
   try {
-    // 初始化数据库
+    // Initialize database
     await initDatabase();
-    logger.info('数据库初始化完成');
 
-    // 启动服务器
+    // Start server
     app.listen(PORT, () => {
-      logger.info(`IDocker Registry 服务器已启动，端口: ${PORT}`);
-      logger.info(`环境: ${process.env.NODE_ENV || 'development'}`);
+      logger.info(`IDocker Registry Server started on port: ${PORT}`);
+      //logger.info(`Environment: ${process.env.NODE_ENV || constants.NODE_ENV}`);
     });
   } catch (error) {
-    logger.error('服务器启动失败:', error);
+    logger.error('Server startup failed:', error);
     process.exit(1);
   }
 }
 
-// 优雅关闭
+// Shut down server gracefully on SIGTERM signal
 process.on('SIGTERM', () => {
-  logger.info('收到SIGTERM信号，开始优雅关闭服务器...');
+  logger.info('Server received SIGTERM signal, shutting down ...');
   process.exit(0);
 });
 
-process.on('SIGINT', () => {
-  logger.info('收到SIGINT信号，开始优雅关闭服务器...');
-  process.exit(0);
-});
 
 startServer();

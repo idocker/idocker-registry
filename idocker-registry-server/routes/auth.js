@@ -9,17 +9,14 @@
  */
 
 import express from 'express';
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
 import { AuthModel } from '../models/AuthModel.js';
-import { AuditModel } from '../models/AuditModel.js';
+import { AuthService } from '../services/authService.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
 import { success, error } from '../utils/apiResponse.js';
 
 const router = express.Router();
 const authModel = new AuthModel();
-const auditModel = new AuditModel();
 
 /**
  * POST /api/auth/login
@@ -34,29 +31,15 @@ router.post('/login', asyncHandler(async (req, res) => {
     }
 
     try {
-        // Get user information from database
-        const user = await authModel.findByUsernameWithPassword(username);
+        // Verify user credentials
+        const user = await AuthService.verifyUser(username, password);
 
         if (!user) {
             return res.status(401).json(error('Invalid username or password', 401));
         }
 
-        if (!user.is_active) {
-            return res.status(401).json(error('User account has been disabled, please contact administrator', 401));
-        }
-
-        // Verify password
-        const passwordMatch = bcrypt.compare(password, user.password);
-        if (!passwordMatch) {
-            return res.status(401).json(error('Invalid username or password', 401));
-        }
-
         // Generate JWT token
-        const token = jwt.sign(
-            { userId: user.id, username: user.username, role: user.role },
-            process.env.JWT_SECRET || 'default_secret_key',
-            { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
-        );
+        const token = AuthService.generateToken(user);
 
         // Log login
         await authModel.logAudit({
@@ -93,25 +76,26 @@ router.post('/login', asyncHandler(async (req, res) => {
  */
 router.post('/logout', asyncHandler(async (req, res) => {
     // Get token from request header
-    const authHeader = req.headers.authorization;
+    const token = AuthService.extractBearerToken(req.headers.authorization);
     let userId = null;
 
-    if (authHeader && authHeader.startsWith('Bearer ')) {
+    if (token) {
         try {
-            const token = authHeader.split(' ')[1];
-            const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_secret_key');
-            userId = decoded.userId;
+            const user = await AuthService.validateToken(token);
+            if (user) {
+                userId = user.id;
 
-            // Log logout
-            await authModel.logAudit({
-                user_id: userId,
-                action: 'LOGOUT',
-                resource_type: 'user',
-                resource_id: userId?.toString(),
-                details: {},
-                ip_address: req.ip,
-                user_agent: req.headers['user-agent']
-            });
+                // Log logout
+                await authModel.logAudit({
+                    user_id: userId,
+                    action: 'LOGOUT',
+                    resource_type: 'user',
+                    resource_id: userId?.toString(),
+                    details: {},
+                    ip_address: req.ip,
+                    user_agent: req.headers['user-agent']
+                });
+            }
         } catch (error) {
             // Token invalid, ignore error
         }
@@ -145,14 +129,14 @@ router.post('/register', asyncHandler(async (req, res) => {
 
     try {
         // Check if username already exists
-        const usernameExists = await authModel.isUsernameExists(username);
+        const usernameExists = await AuthService.usernameExists(username);
 
         if (usernameExists) {
             return res.status(409).json(error('Username already exists', 409, 'UNIQUE_VIOLATION'));
         }
 
         // Hash password
-        const hashedPassword = await bcrypt.hash(password, 10);
+        const hashedPassword = await AuthService.hashPassword(password);
 
         // Create user
         const result = await authModel.createUser({
@@ -191,24 +175,17 @@ router.post('/register', asyncHandler(async (req, res) => {
  */
 router.get('/profile', asyncHandler(async (req, res) => {
     // Get token from request header
-    const authHeader = req.headers.authorization;
+    const token = AuthService.extractBearerToken(req.headers.authorization);
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!token) {
         return res.status(401).json(error('Authentication token missing', 401));
     }
 
     try {
-        const token = authHeader.split(' ')[1];
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_secret_key');
-
-        const user = await authModel.getUserById(decoded.userId);
+        const user = await AuthService.validateToken(token);
 
         if (!user) {
-            return res.status(401).json(error('User not found', 401));
-        }
-
-        if (!user.is_active) {
-            return res.status(401).json(error('User account has been disabled', 401));
+            return res.status(401).json(error('Invalid authentication token', 401));
         }
 
         res.status(200).json(success({
@@ -221,14 +198,8 @@ router.get('/profile', asyncHandler(async (req, res) => {
             createdAt: user.created_at
         }));
     } catch (error) {
-        if (error.name === 'JsonWebTokenError') {
-            return res.status(401).json(error('Invalid authentication token', 401));
-        } else if (error.name === 'TokenExpiredError') {
-            return res.status(401).json(error('Authentication token has expired', 401));
-        } else {
-            logger.error('Error getting user information:', error);
-            res.status(500).json(error('Internal server error'));
-        }
+        logger.error('Error getting user information:', error);
+        return res.status(401).json(error('Authentication failed', 401));
     }
 }));
 
@@ -251,33 +222,32 @@ router.put('/change-password', asyncHandler(async (req, res) => {
     }
 
     // Get token from request header
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const token = AuthService.extractBearerToken(req.headers.authorization);
+    if (!token) {
         return res.status(401).json(error('Authentication token missing', 401));
     }
 
     try {
-        const token = authHeader.split(' ')[1];
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_secret_key');
-
-        const user = await authModel.getUserForPasswordUpdate(decoded.userId);
+        const user = await AuthService.validateToken(token);
 
         if (!user) {
+            return res.status(401).json(error('Invalid authentication token', 401));
+        }
+
+        // Get user with password for verification
+        const userWithPassword = await AuthService.getUserByUsername(user.username, true);
+        if (!userWithPassword) {
             return res.status(401).json(error('User not found', 401));
         }
 
-        if (!user.is_active) {
-            return res.status(401).json(error('User account has been disabled', 401));
-        }
-
         // Verify current password
-        const passwordMatch = await bcrypt.compare(currentPassword, user.password);
+        const passwordMatch = await AuthService.comparePassword(currentPassword, userWithPassword.password);
         if (!passwordMatch) {
             return res.status(401).json(error('Current password is incorrect', 401));
         }
 
         // Hash new password
-        const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+        const hashedNewPassword = await AuthService.hashPassword(newPassword);
 
         // Update password
         await authModel.updatePassword(user.id, hashedNewPassword);
@@ -295,14 +265,8 @@ router.put('/change-password', asyncHandler(async (req, res) => {
 
         res.status(200).json(success(null, 'Password changed successfully'));
     } catch (error) {
-        if (error.name === 'JsonWebTokenError') {
-            return res.status(401).json(error('Invalid authentication token', 401));
-        } else if (error.name === 'TokenExpiredError') {
-            return res.status(401).json(error('Authentication token has expired', 401));
-        } else {
-            logger.error('Error changing password:', error);
-            res.status(500).json(error('Internal server error'));
-        }
+        logger.error('Error changing password:', error);
+        return res.status(500).json(error('Internal server error'));
     }
 }));
 
@@ -313,46 +277,29 @@ router.put('/change-password', asyncHandler(async (req, res) => {
  */
 router.get('/refresh', asyncHandler(async (req, res) => {
     // Get token from request header
-    const authHeader = req.headers.authorization;
+    const token = AuthService.extractBearerToken(req.headers.authorization);
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!token) {
         return res.status(401).json(error('Authentication token missing', 401));
     }
 
     try {
-        const token = authHeader.split(' ')[1];
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_secret_key');
-
-        // Check if user is still valid
-        const user = await authModel.getUserBasicInfo(decoded.userId);
+        // Validate current token
+        const user = await AuthService.validateToken(token);
 
         if (!user) {
-            return res.status(401).json(error('User not found', 401));
-        }
-
-        if (!user.is_active) {
-            return res.status(401).json(error('User account has been disabled', 401));
+            return res.status(401).json(error('Invalid authentication token', 401));
         }
 
         // Generate new token
-        const newToken = jwt.sign(
-            { userId: user.id, username: user.username, role: user.role },
-            process.env.JWT_SECRET || 'default_secret_key',
-            { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
-        );
+        const newToken = AuthService.generateToken(user);
 
         res.status(200).json(success({
             token: newToken
         }, 'Token refreshed successfully'));
     } catch (error) {
-        if (error.name === 'JsonWebTokenError') {
-            return res.status(401).json(error('Invalid authentication token', 401));
-        } else if (error.name === 'TokenExpiredError') {
-            return res.status(401).json(error('Authentication token has expired, please login again', 401));
-        } else {
-            logger.error('Error refreshing token:', error);
-            res.status(500).json(error('Internal server error'));
-        }
+        logger.error('Error refreshing token:', error);
+        return res.status(401).json(error('Authentication failed', 401));
     }
 }));
 

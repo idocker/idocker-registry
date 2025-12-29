@@ -1,76 +1,58 @@
 /**
- * 认证中间件
- * 
- * 负责JWT令牌验证、用户认证和权限检查
- * 
+ * Authentication Middleware
+ *
+ * Responsible for JWT token verification, user authentication and permission checks
+ *
  * @author IDocker Registry Team
  * @version 2.0.0
  */
 
-import jwt from 'jsonwebtoken';
-import { dbGet } from '../utils/dbHelper.js';
 import { logger } from '../utils/logger.js';
+import { AuthService } from '../services/authService.js';
 
 /**
- * JWT认证中间件
- * 验证请求头中的JWT令牌，并将用户信息添加到请求对象
+ * JWT Authentication Middleware
+ * Verifies JWT token from request header and adds user info to request object
  */
 export async function authMiddleware(req, res, next) {
   try {
-    // 获取令牌
-    const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer <token>
+    // Get token
+    const token = AuthService.extractBearerToken(req.headers.authorization);
 
     if (!token) {
-      return res.status(401).json({ message: '认证令牌缺失，请重新登录' });
+      return res.status(401).json({ message: 'Authentication token missing, please login again' });
     }
 
-    // 验证令牌
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_secret_key');
-    
-    // 从数据库获取用户信息
-    const user = await dbGet(
-      'SELECT id, username, email, full_name, role, is_active FROM users WHERE id = ?',
-      [decoded.userId]
-    );
+    // Validate token and get user
+    const user = await AuthService.validateToken(token);
 
     if (!user) {
-      return res.status(401).json({ message: '用户不存在，请重新登录' });
+      return res.status(401).json({ message: 'Authentication failed, please login again' });
     }
 
-    if (!user.is_active) {
-      return res.status(401).json({ message: '用户账户已被禁用' });
-    }
-
-    // 将用户信息添加到请求对象
+    // Add user info to request object
     req.user = user;
     next();
   } catch (error) {
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ message: '认证令牌已过期，请重新登录' });
-    } else if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ message: '无效的认证令牌' });
-    } else {
-      logger.error('认证中间件错误:', error);
-      return res.status(500).json({ message: '服务器认证错误' });
-    }
+    logger.error('Authentication middleware error:', error);
+    return res.status(500).json({ message: 'Server authentication error' });
   }
 }
 
 /**
- * 角色权限检查中间件
- * @param {string|Array} allowedRoles - 允许的角色或角色数组
+ * Role Permission Check Middleware
+ * @param {string|Array} allowedRoles - Allowed role or role array
  */
 export function requireRole(allowedRoles) {
   const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
-  
+
   return (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ message: '未认证，请先登录' });
+      return res.status(401).json({ message: 'Not authenticated, please login' });
     }
 
     if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ message: '权限不足，无法访问该资源' });
+      return res.status(403).json({ message: 'Insufficient permission to access this resource' });
     }
 
     next();
@@ -78,101 +60,73 @@ export function requireRole(allowedRoles) {
 }
 
 /**
- * 管理员权限检查中间件
+ * Admin Permission Check Middleware
  */
 //export const requireAdmin = requireRole('admin');
 
 /**
- * Docker Registry API认证中间件
- * 用于处理Docker客户端的认证请求，支持Basic认证和令牌认证
+ * Docker Registry API Authentication Middleware
+ * Handles Docker client authentication requests, supports Basic and Token authentication
  */
 export async function dockerAuthMiddleware(req, res, next) {
-  // Docker Registry API的特殊认证逻辑
-  // 根据Docker Registry API规范处理认证
+  // Docker Registry API special authentication logic
+  // Process authentication according to Docker Registry API specification
 
   logger.info(`Docker registry authentication request ${req.path} ${req.originalUrl}`);
 
-  // 如果是令牌服务请求
+  // If token service request
   if (req.path === '/token') {
     return handleTokenService(req, res);
   }
 
-  // 其他Docker Registry API的认证处理
+  // Other Docker Registry API authentication handling
   const authHeader = req.headers.authorization;
 
   if (!authHeader) {
     res.set('WWW-Authenticate', 'Basic realm="IDocker Registry"');
     return res.status(401).json({
-      errors: [{ code: 'UNAUTHORIZED', message: '认证信息缺失', detail: null }]
+      errors: [{ code: 'UNAUTHORIZED', message: 'Authentication information missing', detail: null }]
     });
   }
 
-  // Basic认证处理
-  if (authHeader.startsWith('Basic ')) {
-      try {
-        const credentials = Buffer.from(authHeader.slice(6), 'base64').toString();
-        const [username, password] = credentials.split(':');
-
-        // 验证用户凭据
-        const user = await dbGet(
-          'SELECT id, username, password, role, is_active FROM users WHERE username = ?',
-          [username]
-        );
+  // Basic authentication handling
+  const basicAuth = AuthService.extractBasicAuth(authHeader);
+  if (basicAuth) {
+    try {
+      // Verify user credentials
+      const user = await AuthService.verifyUser(basicAuth.username, basicAuth.password);
 
       if (!user) {
         res.set('WWW-Authenticate', 'Basic realm="IDocker Registry"');
         return res.status(401).json({
-          errors: [{ code: 'UNAUTHORIZED', message: '用户名或密码错误', detail: null }]
+          errors: [{ code: 'UNAUTHORIZED', message: 'Username or password incorrect', detail: null }]
         });
       }
 
-      if (!user.is_active) {
-        res.set('WWW-Authenticate', 'Basic realm="IDocker Registry"');
-        return res.status(401).json({
-          errors: [{ code: 'UNAUTHORIZED', message: '账户已被禁用', detail: null }]
-        });
-      }
-
-      // 验证密码
-      const bcrypt = await import('bcryptjs');
-      const passwordMatch = await bcrypt.compare(password, user.password);
-
-      if (!passwordMatch) {
-        res.set('WWW-Authenticate', 'Basic realm="IDocker Registry"');
-        return res.status(401).json({
-          errors: [{ code: 'UNAUTHORIZED', message: '用户名或密码错误', detail: null }]
-        });
-      }
-
-      // 将用户信息添加到请求对象
+      // Add user info to request object
       req.user = user;
       req.dockerAuth = { type: 'basic', user };
 
       return next();
     } catch (error) {
-      logger.error('Docker Basic认证错误:', error);
+      logger.error('Docker Basic authentication error:', error);
       res.set('WWW-Authenticate', 'Basic realm="IDocker Registry"');
       return res.status(401).json({
-        errors: [{ code: 'UNAUTHORIZED', message: '认证处理失败', detail: null }]
+        errors: [{ code: 'UNAUTHORIZED', message: 'Authentication processing failed', detail: null }]
       });
     }
   }
 
-  // Bearer令牌认证处理
-  if (authHeader.startsWith('Bearer ')) {
-    const token = authHeader.slice(7);
+  // Bearer token authentication handling
+  const token = AuthService.extractBearerToken(authHeader);
+  if (token) {
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_secret_key');
+      const user = await AuthService.validateToken(token);
 
-      const user = await dbGet(
-        'SELECT id, username, role, is_active FROM users WHERE id = ?',
-        [decoded.userId]
-      );
-
-      if (!user || !user.is_active) {
+      if (!user) {
         res.set('WWW-Authenticate', 'Basic realm="IDocker Registry"');
         return res.status(401).json({
-          errors: [{ code: 'UNAUTHORIZED', message: '无效的认证令牌', detail: null }]
+          errors: [{ code: 'UNAUTHORIZED', message: 'Invalid authentication token', detail: null }]
         });
       }
 
@@ -181,17 +135,18 @@ export async function dockerAuthMiddleware(req, res, next) {
 
       return next();
     } catch (error) {
+      logger.error('Docker Bearer authentication error:', error);
       res.set('WWW-Authenticate', 'Basic realm="IDocker Registry"');
       return res.status(401).json({
-        errors: [{ code: 'UNAUTHORIZED', message: '无效的认证令牌', detail: null }]
+        errors: [{ code: 'UNAUTHORIZED', message: 'Invalid authentication token', detail: null }]
       });
     }
   }
 
-  // 不支持的认证方式
+  // Unsupported authentication method
   res.set('WWW-Authenticate', 'Basic realm="IDocker Registry"');
   return res.status(401).json({
-    errors: [{ code: 'UNAUTHORIZED', message: '不支持的认证方式', detail: null }]
+    errors: [{ code: 'UNAUTHORIZED', message: 'Unsupported authentication method', detail: null }]
   });
 }
 
@@ -209,14 +164,13 @@ async function handleTokenService(req, res) {
       });
     }
 
-    // 这里应该解析scope并检查权限，简化实现
-    
     // 从Basic认证或已有认证获取用户信息
     let user = req.user;
-    if (!user && req.headers.authorization?.startsWith('Basic ')) {
-      const credentials = Buffer.from(req.headers.authorization.slice(6), 'base64').toString();
-      const [username] = credentials.split(':');
-      user = await dbGet('SELECT id, username, role FROM users WHERE username = ?', [username]);
+    if (!user && req.headers.authorization) {
+      const basicAuth = AuthService.extractBasicAuth(req.headers.authorization);
+      if (basicAuth) {
+        user = await AuthService.verifyUser(basicAuth.username, basicAuth.password);
+      }
     }
 
     if (!user) {
@@ -225,16 +179,16 @@ async function handleTokenService(req, res) {
       });
     }
 
-    // 生成访问令牌
-    const token = jwt.sign(
-      { 
-        sub: user.username,
-        iss: 'idocker-registry',
-        exp: Math.floor(Date.now() / 1000) + (60 * 60), // 1小时过期
-        access: [{ type: 'registry', name: service, actions: ['*'] }] // 简化权限
-      },
-      process.env.JWT_SECRET || 'default_secret_key'
-    );
+    // 解析scope并检查权限 (简化实现)
+    let scopes = [];
+    if (scope) {
+      // scope格式: repository:name:action1,action2
+      // 这里简化处理，实际应用中需要解析并验证权限
+      scopes = [{ type: 'repository', name: service, actions: ['push', 'pull'] }];
+    }
+
+    // 生成Docker Registry访问令牌
+    const token = AuthService.generateDockerToken(user, service, scopes);
 
     return res.status(200).json({
       token: token,

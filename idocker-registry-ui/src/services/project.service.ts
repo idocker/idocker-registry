@@ -13,17 +13,18 @@ import type {
   AddMemberData,
   UpdateMemberRoleData,
   PaginationParams,
-  ProjectRepositoryPaginatedResponse
+  ProjectRepositoryPaginatedResponse,
+  ProjectPaginatedResponse
 } from '@/types'
 class ProjectService {
   /**
    * 获取项目列表
    */
-  async getProjects(isActive:string ,params: PaginationParams): Promise<ProjectRepositoryPaginatedResponse> {
+  async getProjects(isActive:string ,params: PaginationParams): Promise<ProjectPaginatedResponse> {
     const queryParams = new URLSearchParams()
     //console.log('isActive', isActive)
     if (isActive) queryParams.append('isActive', isActive.toString())
-    if (params.page) queryParams.append('page', params.page.toString())
+    if (params.page) queryParams.append('page', params.page.toString()) 
     if (params.limit) queryParams.append('limit', params.limit.toString())
     if (params.search) queryParams.append('search', params.search)
     

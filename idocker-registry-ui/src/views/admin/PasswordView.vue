@@ -73,7 +73,7 @@
         <!-- 消息提示 -->
         <div v-if="message" class="snackbar" :class="`snackbar-${message.type}`">
             {{ message.text }}
-            <button class="snackbar-close" @click="message = ''">
+            <button class="snackbar-close" @click="message.text = ''">
                 <span class="material-icons">close</span>
             </button>
         </div>
@@ -84,24 +84,24 @@
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import axios from 'axios'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
 import userService from '@/services/user.service'
+import type { Message } from '@/types'
 
 const { t } = useI18n()
 
-// 状态
+// State
 const isChangingPassword = ref(false)
-const message = ref('')
+const message = ref<Message | null>(null)
 
-// 密码表单
+// Password form
 const passwordForm = reactive({
     currentPassword: '',
     newPassword: '',
     confirmPassword: ''
 })
 
-// 计算属性
+// Computed properties
 const isPasswordMatch = computed(() => {
     return passwordForm.newPassword === passwordForm.confirmPassword
 })
@@ -161,7 +161,7 @@ const changePassword = async () => {
         })
         
         if (response.success) {
-            // 清空密码表单
+            // Clear password form
             resetForm()
             showMessage(t('password.passwordChanged'), 'success')
         } else {
@@ -175,16 +175,16 @@ const changePassword = async () => {
     }
 }
 
-// 重置表单
+// Reset form
 const resetForm = () => {
     passwordForm.currentPassword = ''
     passwordForm.newPassword = ''
     passwordForm.confirmPassword = ''
 }
 
-// 显示消息
+// Show message
 const showMessage = (text: string, type: 'success' | 'error' | 'info' = 'info') => {
-    message.value = { text, type }
+    message.value = { text, type } as Message
 }
 </script>
 
@@ -328,7 +328,7 @@ const showMessage = (text: string, type: 'success' | 'error' | 'info' = 'info') 
     }
 }
 
-// 提示框样式
+// Snackbar styles
 .snackbar {
     position: fixed;
     bottom: 20px;
@@ -366,7 +366,7 @@ const showMessage = (text: string, type: 'success' | 'error' | 'info' = 'info') 
     }
 }
 
-// 响应式设计
+// Responsive design
 @media (max-width: 768px) {
     .password-container {
         padding: 16px;

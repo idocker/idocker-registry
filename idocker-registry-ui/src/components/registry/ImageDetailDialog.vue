@@ -98,14 +98,14 @@ const internalValue = computed({
 const imageDetails = ref<ImageDetail | null>(null)
 const isLoading = ref(false)
 
-// 监听 imageId 变化
+// Watch imageId changes
 watch(() => props.imageId, async (newId) => {
   if (newId && props.modelValue) {
     await loadImageDetails()
   }
 })
 
-// 监听对话框打开状态
+// Watch dialog open state
 watch(() => props.modelValue, async (isOpen) => {
   if (isOpen && props.imageId) {
     await loadImageDetails()
@@ -115,12 +115,12 @@ watch(() => props.modelValue, async (isOpen) => {
 const loadImageDetails = async () => {
   isLoading.value = true
   try {
-    // 使用真实API获取镜像详情
+    // Use real API to get image details
     const response = await repositoryService.getImageDetails(props.imageId)
     if (response.success) {
       const { repository, tags } = response.data
       
-      // 转换为组件期望的格式
+      // Convert to component expected format
       imageDetails.value = {
         name: repository.fullName || repository.name,
         tagCount: tags.length,
@@ -132,11 +132,11 @@ const loadImageDetails = async () => {
         }))
       }
     } else {
-      throw new Error(response.message || t('error.loadFailed'))
+      throw new Error( t('error.loadFailed'))
     }
   } catch (error) {
-    console.error('加载镜像详情失败:', error)
-    // 如果API失败，显示错误信息
+    console.error('Failed to load image details:', error)
+    // If API fails, display error message
     imageDetails.value = {
       name: t('dialogs.imageDetails.loadingFailed'),
       tagCount: 0,

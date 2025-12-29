@@ -1,6 +1,6 @@
 /**
- * 认证数据模型类
- * 处理所有与认证相关的数据库操作
+ * Authentication data model class
+ * Handles all database operations related to authentication
  */
 import { BaseModel } from './BaseModel.js';
 import { logger } from '../utils/logger.js';
@@ -11,7 +11,7 @@ export class AuthModel extends BaseModel {
   }
 
   /**
-   * 验证用户登录
+   * Validate user login
    */
   async validateLogin(username, password) {
     try {
@@ -21,10 +21,10 @@ export class AuthModel extends BaseModel {
       );
 
       if (!user) {
-        return { success: false, message: '用户不存在或已被禁用' };
+        return { success: false, message: 'User does not exist or has been disabled' };
       }
 
-      // 密码验证将在控制器层进行，这里只返回用户信息
+      // Password validation will be done in the controller layer, here we only return user information
       return { 
         success: true, 
         user: {
@@ -37,13 +37,13 @@ export class AuthModel extends BaseModel {
         }
       };
     } catch (error) {
-      logger.error('验证用户登录失败:', error);
+      logger.error('Failed to validate user login:', error);
       throw error;
     }
   }
 
   /**
-   * 更新用户最后登录时间
+   * Update user's last login time
    */
   async updateLastLogin(userId) {
     try {
@@ -53,13 +53,13 @@ export class AuthModel extends BaseModel {
       });
       return result;
     } catch (error) {
-      logger.error('更新用户最后登录时间失败:', error);
+      logger.error('Failed to update user last login time:', error);
       throw error;
     }
   }
 
   /**
-   * 记录登录日志
+   * Record login attempt
    */
   async logLoginAttempt(userId, username, ipAddress, userAgent, success, reason = '') {
     try {
@@ -72,13 +72,13 @@ export class AuthModel extends BaseModel {
       const result = await this.run(sql, params);
       return { id: result.lastID };
     } catch (error) {
-      logger.error('记录登录日志失败:', error);
+      logger.error('Failed to record login attempt:', error);
       throw error;
     }
   }
 
   /**
-   * 获取用户登录日志
+   * Get user login logs
    */
   async getLoginLogs(userId, { page = 1, limit = 20 } = {}) {
     try {
@@ -91,17 +91,17 @@ export class AuthModel extends BaseModel {
       const result = await this.paginate(query, [userId], page, limit);
       return result;
     } catch (error) {
-      logger.error('获取用户登录日志失败:', error);
+      logger.error('Failed to get user login logs:', error);
       throw error;
     }
   }
 
   /**
-   * 检查用户是否被锁定
+   * Check if user is locked
    */
   async isUserLocked(userId) {
     try {
-      // 检查最近5分钟内的失败登录次数
+      // Check failed login attempts in the last 5 minutes
       const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
       
       const result = await this.get(
@@ -110,16 +110,16 @@ export class AuthModel extends BaseModel {
         [userId, fiveMinutesAgo]
       );
 
-      // 如果5分钟内失败次数超过5次，则锁定用户
+      // Lock user if failed attempts exceed 5 times within 5 minutes
       return result.count >= 5;
     } catch (error) {
-      logger.error('检查用户锁定状态失败:', error);
+      logger.error('Failed to check user lock status:', error);
       throw error;
     }
   }
 
   /**
-   * 重置用户密码
+   * Reset user password
    */
   async resetPassword(userId, newHashedPassword) {
     try {
@@ -129,31 +129,31 @@ export class AuthModel extends BaseModel {
       });
       return result;
     } catch (error) {
-      logger.error('重置用户密码失败:', error);
+      logger.error('Failed to reset user password:', error);
       throw error;
     }
   }
 
   /**
-   * 验证令牌有效性
+   * Validate token validity
    */
   async validateToken(userId) {
     try {
       const user = await this.findById(userId);
       
       if (!user || user.is_active === 0) {
-        return { valid: false, message: '用户不存在或已被禁用' };
+        return { valid: false, message: 'User does not exist or has been disabled' };
       }
 
       return { valid: true, user };
     } catch (error) {
-      logger.error('验证令牌失败:', error);
+      logger.error('Failed to validate token:', error);
       throw error;
     }
   }
 
 /**
- * 获取用户权限信息
+ * Get user permission information
  */
   async getUserPermissions(userId) {
     try {
@@ -163,7 +163,7 @@ export class AuthModel extends BaseModel {
         return { hasAccess: false, permissions: [] };
       }
 
-      // 管理员拥有所有权限
+      // Administrators have all permissions
       if (user.role === 'admin') {
         return {
           hasAccess: true,
@@ -176,7 +176,7 @@ export class AuthModel extends BaseModel {
         };
       }
 
-      // 普通用户权限（可根据需要扩展）
+      // Regular user permissions (can be extended as needed)
       const permissions = ['read:projects', 'read:repositories'];
 
       return {
@@ -189,13 +189,13 @@ export class AuthModel extends BaseModel {
         }
       };
     } catch (error) {
-      logger.error('获取用户权限失败:', error);
+      logger.error('Failed to get user permissions:', error);
       throw error;
     }
   }
 
   /**
-   * 根据用户名查找用户（包含密码）
+   * Find user by username (including password)
    */
   async findByUsernameWithPassword(username) {
     try {
@@ -208,13 +208,13 @@ export class AuthModel extends BaseModel {
       );
       return user;
     } catch (error) {
-      logger.error('根据用户名查找用户失败:', error);
+      logger.error('Failed to find user by username:', error);
       throw error;
     }
   }
 
   /**
-   * 检查用户名是否已存在
+   * Check if username already exists
    */
   async isUsernameExists(username) {
     try {
@@ -227,18 +227,18 @@ export class AuthModel extends BaseModel {
       );
       return !!existing;
     } catch (error) {
-      logger.error('检查用户名是否存在失败:', error);
+      logger.error('Failed to check if username exists:', error);
       throw error;
     }
   }
 
   /**
-   * 创建新用户
+   * Create new user
    */
   async createUser(userData) {
     try {
       if (!userData || !userData.username || !userData.password) {
-        throw new Error('用户名和密码不能为空');
+        throw new Error('Username and password cannot be empty');
       }
 
       const result = await this.run(
@@ -256,13 +256,13 @@ export class AuthModel extends BaseModel {
 
       return { id: result.lastID };
     } catch (error) {
-      logger.error('创建用户失败:', error);
+      logger.error('Failed to create user:', error);
       throw error;
     }
   }
 
   /**
-   * 获取用户详细信息（不包含密码）
+   * Get user detailed information (excluding password)
    */
   async getUserById(userId) {
     try {
@@ -276,13 +276,13 @@ export class AuthModel extends BaseModel {
       );
       return user;
     } catch (error) {
-      logger.error('获取用户详细信息失败:', error);
+      logger.error('Failed to get user detailed information:', error);
       throw error;
     }
   }
 
   /**
-   * 获取用户基本信息（用于验证和密码更新）
+   * Get user basic information (for validation and password update)
    */
   async getUserForPasswordUpdate(userId) {
     try {
@@ -295,13 +295,13 @@ export class AuthModel extends BaseModel {
       );
       return user;
     } catch (error) {
-      logger.error('获取用户密码信息失败:', error);
+      logger.error('Failed to get user password information:', error);
       throw error;
     }
   }
 
   /**
-   * 获取用户基本信息（用于令牌刷新）
+   * Get user basic information (for token refresh)
    */
   async getUserBasicInfo(userId) {
     try {
@@ -314,18 +314,18 @@ export class AuthModel extends BaseModel {
       );
       return user;
     } catch (error) {
-      logger.error('获取用户基本信息失败:', error);
+      logger.error('Failed to get user basic information:', error);
       throw error;
     }
   }
 
   /**
-   * 更新用户密码
+   * Update user password
    */
   async updatePassword(userId, hashedPassword) {
     try {
       if (!userId || !hashedPassword) {
-        throw new Error('用户ID和密码不能为空');
+        throw new Error('User ID and password cannot be empty');
       }
       const result = await this.run(
         'UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
@@ -333,18 +333,18 @@ export class AuthModel extends BaseModel {
       );
       return result;
     } catch (error) {
-      logger.error('更新用户密码失败:', error);
+      logger.error('Failed to update user password:', error);
       throw error;
     }
   }
 
   /**
-   * 记录审计日志
+   * Record audit log
    */
   async logAudit(auditData) {
     try {
       if (!auditData || !auditData.user_id || !auditData.action) {
-        throw new Error('审计日志数据不完整');
+        throw new Error('Audit log data is incomplete');
       }
 
       const sql = `
@@ -364,7 +364,7 @@ export class AuthModel extends BaseModel {
 
       await this.run(sql, params);
     } catch (error) {
-      logger.error('记录审计日志失败:', error);
+      logger.error('Failed to record audit log:', error);
       throw error;
     }
   }

@@ -89,15 +89,10 @@
                       </div>
                     </td>
                     <td>{{ repository.description || '-' }}</td>
-                    <td>
-                      <div class="stat">
-                        <span class="material-icons">dns</span>
-                        <span>{{ repository.type }}</span>
-                      </div>
-                    </td>
-                    <td>{{ formatDate(repository.created_at) }}</td>
+
+                    <td>{{ formatDate(repository.createdAt || new Date().toISOString()) }}</td>
                     <td class="action-buttons">
-                      <button class="btn-icon btn-ghost" @click="editRepository(repository)" :title="$t('projectDetail.editRegistry')">
+                      <button class="btn-icon btn-ghost" @click="editRepository(repository)" :title="$t('projectDetail.editRegistry')" disabled>
                         <span class="material-icons">edit</span>
                       </button>
                       <button class="btn-icon btn-ghost" @click="deleteRepository(repository)" :title="$t('common.delete')">
@@ -133,12 +128,12 @@
                 {{ member.username.charAt(0).toUpperCase() }}
               </div>
               <div class="member-info">
-                <div class="member-name">{{ member.username }} <div class="member-role">{{ member.role }}</div></div>
+                <div class="member-name">{{ member.username }} <div class="member-role">{{ member.memberRole }}</div></div>
                 <div class="member-email">{{ member.email }}</div>
                 
               </div>
               <div class="member-actions">
-                <select v-model="member.role" @change="updateMemberRole(member)" class="role-select">
+                <select v-model="member.memberRole" @change="updateMemberRole(member)" class="role-select">
                   <option value="member">{{ $t('projectDetail.memberRole') }}</option>
                   <option value="maintainer">{{ $t('projects.roleMaintainer') }}</option>
                   <option value="owner">{{ $t('projects.roleOwner') }}</option>
@@ -149,130 +144,6 @@
               </div>
             </div>
           </div>
-        </div>
-
-        <!-- Replication Policies Tab -->
-        <div v-if="activeTab === 'replication'" class="tab-content">
-          <div class="section-header">
-            <h2>{{ $t('projectDetail.replicationPolicies') }}</h2>
-            <button class="btn btn-primary" @click="showReplicationModal = true">
-              <span class="material-icons">sync</span>
-              {{ $t('projectDetail.createPolicy') }}
-            </button>
-          </div>
-
-          <div v-if="replicationPolicies.length === 0" class="empty-state">
-            <span class="material-icons">sync_disabled</span>
-            <h3>{{ $t('projectDetail.noPoliciesYet') }}</h3>
-            <p>{{ $t('projectDetail.createPoliciesReplicate') }}</p>
-          </div>
-
-          <div v-else class="policies-list">
-            <div v-for="policy in replicationPolicies" :key="policy.id" class="policy-item">
-              <div class="policy-header">
-                <div class="policy-name">
-                  <h3>{{ policy.name }}</h3>
-                  <span :class="['policy-status', policy.enabled ? 'enabled' : 'disabled']">
-                    {{ policy.enabled ? $t('projectDetail.enabled') : $t('projectDetail.disabled') }}
-                  </span>
-                </div>
-                <div class="policy-actions">
-                  <button class="btn btn-ghost btn-icon" @click="togglePolicyStatus(policy)">
-                    <span class="material-icons">
-                      {{ policy.enabled ? 'pause' : 'play_arrow' }}
-                    </span>
-                  </button>
-                  <button class="btn btn-ghost btn-icon" @click="editReplicationPolicy(policy)">
-                    <span class="material-icons">edit</span>
-                  </button>
-                  <button class="btn btn-ghost btn-icon" @click="deleteReplicationPolicy(policy)">
-                    <span class="material-icons">delete</span>
-                  </button>
-                </div>
-              </div>
-
-              <div class="policy-details">
-                <div class="policy-detail">
-                  <span class="detail-label">{{ $t('projectDetail.source') }}:</span>
-                  <span>{{ policy.source_registry_name }}</span>
-                </div>
-                <div class="policy-detail">
-                  <span class="detail-label">{{ $t('projectDetail.target') }}:</span>
-                  <span>{{ policy.target_registry_name }}</span>
-                </div>
-                <div class="policy-detail">
-                  <span class="detail-label">{{ $t('projectDetail.schedule') }}:</span>
-                  <span>{{ policy.schedule }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Registry Modal -->
-      <div v-if="showRegistryModal" class="modal-overlay" @click.self="closeRegistryModal">
-        <div class="modal">
-          <div class="modal-header">
-            <h2>{{ editingRegistry ? $t('projectDetail.editRegistry') : $t('projectDetail.addRegistry') }}</h2>
-            <button class="btn btn-ghost btn-icon" @click="closeRegistryModal">
-              <span class="material-icons">close</span>
-            </button>
-          </div>
-
-          <form @submit.prevent="saveRegistry" class="modal-content">
-            <div class="form-group">
-              <label for="registry-name">{{ $t('projectDetail.registryName') }} *</label>
-              <input id="registry-name" type="text" v-model="registryForm.name"
-                :placeholder="$t('projectDetail.registryNamePlaceholder')" required />
-            </div>
-
-            <div class="form-group">
-              <label for="registry-url">{{ $t('projectDetail.registryUrl') }} *</label>
-              <input id="registry-url" type="url" v-model="registryForm.url"
-                :placeholder="$t('projectDetail.registryUrlPlaceholder')" required />
-            </div>
-
-            <div class="form-group">
-              <label for="registry-type">{{ $t('projectDetail.registryType') }}</label>
-              <select id="registry-type" v-model="registryForm.type">
-                <option value="docker">{{ $t('projectDetail.dockerRegistry') }}</option>
-                <option value="harbor">{{ $t('projectDetail.harbor') }}</option>
-                <option value="nexus">{{ $t('projectDetail.nexus') }}</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label>
-                <input type="checkbox" v-model="registryForm.hasAuth" />
-                {{ $t('projectDetail.requiresAuth') }}
-              </label>
-            </div>
-
-            <div v-if="registryForm.hasAuth" class="auth-fields">
-              <div class="form-group">
-                <label for="auth-username">{{ $t('projectDetail.authUsername') }}</label>
-                <input id="auth-username" type="text" v-model="registryForm.authConfig.username"
-                  :placeholder="$t('auth.username')" />
-              </div>
-
-              <div class="form-group">
-                <label for="auth-password">{{ $t('projectDetail.authPassword') }}</label>
-                <input id="auth-password" type="password" v-model="registryForm.authConfig.password"
-                  :placeholder="$t('auth.password')" />
-              </div>
-            </div>
-
-            <div class="modal-actions">
-              <button type="button" class="btn btn-ghost" @click="closeRegistryModal">
-                {{ $t('common.cancel') }}
-              </button>
-              <button type="submit" class="btn btn-primary" :disabled="isSubmitting">
-                {{ isSubmitting ? $t('projectList.saving') + '...' : (editingRegistry ? $t('projectDetail.editRegistry')
-                  : $t('projectDetail.addRegistry')) }}
-              </button>
-            </div>
-          </form>
         </div>
       </div>
 
@@ -318,66 +189,6 @@
         </div>
       </div>
 
-      <!-- Replication Policy Modal -->
-      <div v-if="showReplicationModal" class="modal-overlay" @click.self="closeReplicationModal">
-        <div class="modal">
-          <div class="modal-header">
-            <h2>{{ editingReplication ? $t('projectDetail.editReplicationPolicy') :
-              $t('projectDetail.createReplicationPolicy') }}</h2>
-            <button class="btn btn-ghost btn-icon" @click="closeReplicationModal">
-              <span class="material-icons">close</span>
-            </button>
-          </div>
-
-          <form @submit.prevent="saveReplicationPolicy" class="modal-content">
-            <div class="form-group">
-              <label for="policy-name">{{ $t('projectDetail.policyName') }} *</label>
-              <input id="policy-name" type="text" v-model="replicationForm.name"
-                :placeholder="$t('projectDetail.policyNamePlaceholder')" required />
-            </div>
-
-            <div class="form-group">
-              <label for="source-registry">{{ $t('projectDetail.sourceRegistry') }} *</label>
-              <select id="source-registry" v-model="replicationForm.sourceRegistryId" required>
-                <option value="">{{ $t('projectDetail.selectSourceRegistry') }}</option>
-                <option v-for="registry in registries" :key="registry.id" :value="registry.id">
-                  {{ registry.name }}
-                </option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="target-registry">{{ $t('projectDetail.targetRegistry') }} *</label>
-              <select id="target-registry" v-model="replicationForm.targetRegistryId" required>
-                <option value="">{{ $t('projectDetail.selectTargetRegistry') }}</option>
-                <option v-for="registry in registries" :key="registry.id" :value="registry.id">
-                  {{ registry.name }}
-                </option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="policy-schedule">{{ $t('projectDetail.schedule') }}</label>
-              <select id="policy-schedule" v-model="replicationForm.schedule">
-                <option value="manual">{{ $t('projectDetail.manual') }}</option>
-                <option value="daily">{{ $t('projectDetail.daily') }}</option>
-                <option value="weekly">{{ $t('projectDetail.weekly') }}</option>
-                <option value="hourly">{{ $t('projectDetail.hourly') }}</option>
-              </select>
-            </div>
-
-            <div class="modal-actions">
-              <button type="button" class="btn btn-ghost" @click="closeReplicationModal">
-                {{ $t('common.cancel') }}
-              </button>
-              <button type="submit" class="btn btn-primary" :disabled="isSubmitting">
-                {{ isSubmitting ? $t('projectList.saving') + '...' : (editingReplication ?
-                  $t('projectDetail.updatePolicy') : $t('projectDetail.createPolicy')) }}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
     </div>
   </ManagementLayout>
 </template>
@@ -390,14 +201,16 @@ import ManagementLayout from '@/components/admin/ManagementLayout.vue'
 import projectService from '@/services/project.service'
 import repositoryService from '@/services/repository.service'
 import userService from '@/services/user.service'
-import type { ProjectDetails, ProjectMember, AddMemberData, User } from '@/types'
+import { useNotifications } from '@/composables/useNotifications'
+import type { ProjectDetails, ProjectMember, AddMemberData, User, Repository ,Image} from '@/types'
 
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
+const { showError } = useNotifications()
 
 const project = ref<ProjectDetails>({} as ProjectDetails)
-const repositories = ref([])
+const repositories = ref<Image[]>([])
 const members = ref<ProjectMember[]>([])
 const replicationPolicies = ref([])
 const availableUsers = ref<User[]>([])
@@ -475,8 +288,9 @@ const fetchProjectData = async () => {
 const fetchUsers = async () => {
   try {
     await userService.getUsers({}).then(response => {
-      if (response.success && response.data) {
-        availableUsers.value = response.data || []
+      if (response.success && (response.data )) {
+      // 兼容两种数据结构：data 和 datas
+      availableUsers.value = response.data || []
       } else {
         availableUsers.value = []
       }
@@ -493,7 +307,10 @@ const addMember = async () => {
 
     const response = await projectService.addMember(
       project.value.id.toString(),
-      memberForm as AddMemberData
+      {
+        userId: Number(memberForm.userId),
+        role: memberForm.role as 'owner' | 'maintainer' | 'viewer'
+      }
     )
 
     if (response.success) {
@@ -503,9 +320,9 @@ const addMember = async () => {
     } else {
       throw new Error(response.message || 'Failed to add member')
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error adding member:', error)
-    alert(`${t('projectDetail.togglePolicyStatusFailed')}: ${error.message}`)
+    showError(t('projectDetail.togglePolicyStatusFailed'), error.message)
   } finally {
     isSubmitting.value = false
   }
@@ -516,18 +333,23 @@ const updateMemberRole = async (member: ProjectMember) => {
     const response = await projectService.updateMemberRole(
       project.value.id.toString(),
       member.id.toString(),
-      { role: member.role }
+      { role: member.memberRole }
     )
 
     if (!response.success) {
       throw new Error(response.message || 'Failed to update member role')
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating member role:', error)
-    alert(`${t('projectDetail.togglePolicyStatusFailed')}: ${error.message}`)
+    showError(t('projectDetail.togglePolicyStatusFailed'), error.message)
     // Revert the change if it failed
     await fetchProjectData()
   }
+}
+
+const editRepository = (repository: Image) => {
+  // TODO: Implement edit repository functionality
+  console.log('Edit repository:', repository)
 }
 
 const removeMember = async (member: ProjectMember) => {
@@ -543,163 +365,22 @@ const removeMember = async (member: ProjectMember) => {
       } else {
         throw new Error(response.message || 'Failed to remove member')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error removing member:', error)
-      alert(`${t('projectDetail.deletePolicyFailed')}: ${error.message}`)
+      showError(t('projectDetail.deletePolicyFailed'), error.message)
     }
   }
 }
 
-const saveReplicationPolicy = async () => {
-  try {
-    isSubmitting.value = true
-
-    // 复制策略保存功能暂时注释，因为项目服务中没有这个方法
-    // TODO: 在服务中添加保存复制策略的方法
-
-    // 临时解决方案：使用 fetch 调用
-    const policyData = {
-      ...replicationForm,
-      projectId: project.value.id
-    }
-
-    const url = editingReplication.value
-      ? `/api/registries/replication-policies/${editingReplication.value.id}`
-      : '/api/registries/replication-policies'
-
-    const method = editingReplication.value ? 'PUT' : 'POST'
-
-    const response = await fetch(url, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-      },
-      body: JSON.stringify(policyData)
-    })
-
-    if (response.ok) {
-      await fetchProjectData()
-      closeReplicationModal()
-    } else {
-      const errorData = await response.json()
-      throw new Error(errorData.error || 'Failed to save replication policy')
-    }
-  } catch (error) {
-    console.error('Error saving replication policy:', error)
-    alert(`${t('projectDetail.togglePolicyStatusFailed')}: ${error.message}`)
-  } finally {
-    isSubmitting.value = false
-  }
-}
-
-const editReplicationPolicy = (policy) => {
-  editingReplication.value = policy
-  replicationForm.name = policy.name
-  replicationForm.sourceRegistryId = policy.source_registry_id
-  replicationForm.targetRegistryId = policy.target_registry_id
-  replicationForm.schedule = policy.schedule
-  replicationForm.enabled = policy.enabled
-
-  showReplicationModal.value = true
-}
-
-const togglePolicyStatus = async (policy: any) => {
-  try {
-    // 复制策略功能暂时注释，因为项目服务中没有这个方法
-    // TODO: 在服务中添加复制策略的方法
-
-    // 临时解决方案：使用 fetch 调用
-    const response = await fetch(`/api/registries/replication-policies/${policy.id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-      },
-      body: JSON.stringify({
-        ...policy,
-        enabled: !policy.enabled
-      })
-    })
-
-    if (response.ok) {
-      await fetchProjectData()
-    } else {
-      const errorData = await response.json()
-      throw new Error(errorData.error || 'Failed to update policy status')
-    }
-  } catch (error) {
-    console.error('Error toggling policy status:', error)
-    alert(`${t('projectDetail.togglePolicyStatusFailed')}: ${error.message}`)
-  }
-}
-
-const deleteReplicationPolicy = async (policy: any) => {
-  if (confirm(t('projectDetail.confirmDeletePolicy', { name: policy.name }))) {
-    try {
-      // 删除复制策略功能暂时注释，因为项目服务中没有这个方法
-      // TODO: 在服务中添加删除复制策略的方法
-
-      // 临时解决方案：使用 fetch 调用
-      const response = await fetch(`/api/registries/replication-policies/${policy.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        }
-      })
-
-      if (response.ok) {
-        await fetchProjectData()
-      } else {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to delete replication policy')
-      }
-    } catch (error) {
-      console.error('Error deleting replication policy:', error)
-      alert(`${t('projectDetail.deletePolicyFailed')}: ${error.message}`)
-    }
-  }
-}
-
-const closeRegistryModal = () => {
-  showRegistryModal.value = false
-  editingRegistry.value = null
-  resetRegistryForm()
-}
-
-const closeReplicationModal = () => {
-  showReplicationModal.value = false
-  editingReplication.value = null
-  resetReplicationForm()
-}
 
 const editProject = () => {
   // TODO: Implement edit project functionality
   console.log('Edit project:', project.value)
 }
 
-const resetRegistryForm = () => {
-  registryForm.name = ''
-  registryForm.url = ''
-  registryForm.type = 'docker'
-  registryForm.hasAuth = false
-  registryForm.authConfig = {
-    username: '',
-    password: ''
-  }
-}
-
 const resetMemberForm = () => {
   memberForm.userId = ''
   memberForm.role = 'member'
-}
-
-const resetReplicationForm = () => {
-  replicationForm.name = ''
-  replicationForm.sourceRegistryId = ''
-  replicationForm.targetRegistryId = ''
-  replicationForm.schedule = 'manual'
-  replicationForm.enabled = true
 }
 
 // 格式化日期
@@ -712,20 +393,7 @@ const formatDate = (dateString: string) => {
   })
 }
 
-const editRepository = (repository) => {
-  editingRepository.value = repository
-  repositoryForm.name = repository.name
-  repositoryForm.url = repository.url
-  repositoryForm.type = repository.type
-  repositoryForm.hasAuth = repository.hasAuth || false
-  if (repository.authConfig) {
-    repositoryForm.authConfig.username = repository.authConfig.username || ''
-    repositoryForm.authConfig.password = repository.authConfig.password || ''
-  }
-  showRegistryModal.value = true
-}
-
-const deleteRepository = (repository) => {
+const deleteRepository = (repository: Image) => {
   if (confirm(t('projectDetail.confirmDeleteRepository', { name: repository.name }))) {
     // TODO: Implement delete repository functionality
     console.log('Delete repository:', repository)

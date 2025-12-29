@@ -2,7 +2,7 @@
   <footer class="app-footer">
     <ul class="footer-links">
       <li class="foot-left">
-        iDocker Registry v{{ version }}.
+        {{ $t('footer.versionPrefix') }}{{ version }}.
       </li>
       <li class="foot-right">
         {{ $t('footer.copyright') }}
