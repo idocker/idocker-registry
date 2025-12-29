@@ -99,24 +99,145 @@ const dockerRegistryProxy = createProxyMiddleware({
     
     // Add authentication for internal registry (if needed)
     // For internal registry, no authentication is needed
+    
+    // Store start time for logging
+    req.startTime = Date.now();
   },
   onProxyRes: (proxyRes, req, res) => {
     // Log the proxy response
-    logger.info(`Docker Registry proxy response: ${req.method} ${req.path} - Status: ${proxyRes.statusCode}`);
+    const responseTime = Date.now() - (req.startTime || Date.now());
+    logger.info(`Docker Registry proxy response: ${req.method} ${req.path} - Status: ${proxyRes.statusCode} - Time: ${responseTime}ms`);
+    
+    // If we have user information and permission info, log the operation result
+    if (req.user && req.dockerPermission) {
+      // Extract action and repository from request
+      const { repositoryName, action } = extractDockerOperationInfo(req);
+      
+      if (repositoryName && action) {
+        // Log the operation result
+        const status = proxyRes.statusCode >= 200 && proxyRes.statusCode < 300 ? 'success' : 'error';
+        
+        // Import asynchronously but don't use await here
+        import('./services/dockerLogService.js').then(({ DockerLogService }) => {
+          DockerLogService.logOperation({
+            userId: req.user.id,
+            username: req.user.username,
+            action,
+            repository: repositoryName,
+            status,
+            ipAddress: req.ip,
+            userAgent: req.headers['user-agent'],
+            additionalData: {
+              responseTime,
+              statusCode: proxyRes.statusCode
+            }
+          }).catch(error => {
+            logger.error('Failed to log Docker operation result:', error);
+          });
+        }).catch(error => {
+          logger.error('Failed to import DockerLogService:', error);
+        });
+      }
+    }
   },
   onError: (err, req, res) => {
     logger.error(`Docker Registry proxy error for ${req.method} ${req.path}:`, err);
+    
+    // If we have user information and permission info, log the error
+    if (req.user && req.dockerPermission) {
+      const { repositoryName, action } = extractDockerOperationInfo(req);
+      
+      if (repositoryName && action) {
+        // Import asynchronously but don't use await here
+        import('./services/dockerLogService.js').then(({ DockerLogService }) => {
+          DockerLogService.logOperation({
+            userId: req.user.id,
+            username: req.user.username,
+            action,
+            repository: repositoryName,
+            status: 'error',
+            ipAddress: req.ip,
+            userAgent: req.headers['user-agent'],
+            errorMessage: err.message
+          }).catch(error => {
+            logger.error('Failed to log Docker operation error:', error);
+          });
+        }).catch(error => {
+          logger.error('Failed to import DockerLogService:', error);
+        });
+      }
+    }
+    
     res.status(502).json({
       errors: [{ code: 'UNAVAILABLE', message: 'Docker Registry service unavailable', detail: null }]
     });
   }
 });
 
-// Docker Registry proxy first (will handle most requests)
-app.use('/v2', dockerRegistryProxy); // Docker Registry代理到内部Registry
+// Extract Docker operation info from request
+function extractDockerOperationInfo(req) {
+  try {
+    const pathParts = req.path.split('/').filter(part => part.length > 0);
+    
+    if (pathParts.length < 2 || pathParts[0] !== 'v2') {
+      return { repositoryName: null, action: null };
+    }
+    
+    // Find API segment to determine the end of repository name
+    let nameEndIndex = 1;
+    for (let i = 1; i < pathParts.length; i++) {
+      if (['manifests', 'blobs', 'tags'].includes(pathParts[i])) {
+        nameEndIndex = i;
+        break;
+      }
+    }
+    
+    if (nameEndIndex > 1) {
+      const repositoryName = pathParts.slice(1, nameEndIndex).join('/');
+      
+      // Determine action based on HTTP method and API segment
+      const apiSegment = pathParts[nameEndIndex];
+      let action = null;
+      
+      if (apiSegment === 'manifests') {
+        if (req.method === 'GET') {
+          action = 'pull';
+        } else if (req.method === 'PUT') {
+          action = 'push';
+        } else if (req.method === 'DELETE') {
+          action = 'delete';
+        }
+      } else if (apiSegment === 'blobs') {
+        if (pathParts[nameEndIndex + 1] === 'uploads') {
+          if (['POST', 'PATCH', 'PUT'].includes(req.method)) {
+            action = 'push';
+          }
+        } else {
+          if (req.method === 'GET') {
+            action = 'pull';
+          }
+        }
+      } else if (apiSegment === 'tags') {
+        if (req.method === 'GET') {
+          action = 'pull';
+        }
+      }
+      
+      return { repositoryName, action };
+    }
+    
+    return { repositoryName: null, action: null };
+  } catch (error) {
+    logger.error('Error extracting Docker operation info:', error);
+    return { repositoryName: null, action: null };
+  }
+}
 
-// Then specific routes that need custom handling
+// First, specific routes that need custom handling
 app.use('/v2', dockerRegistryRoutes); // Docker Repository API兼容端点 (for token service, etc.)
+
+// Then Docker Registry proxy (will handle requests not handled by custom routes)
+app.use('/v2', dockerRegistryProxy); // Docker Registry代理到内部Registry
 
 // API Routes
 app.use('/api/auth', authRoutes);

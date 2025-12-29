@@ -12,10 +12,13 @@ import axios from 'axios';
 import { logger } from '../utils/logger.js';
 import { dbGet, dbAll, dbRun, dbPaginate } from '../utils/dbHelper.js';
 import { AppError } from '../middleware/errorHandler.js';
+import * as constants from '@/config/constant.js';
+import { DockerAuthzService } from './dockerAuthzService.js';
+import { DockerLogService } from './dockerLogService.js';
 
 class DockerRegistryService {
   constructor() {
-    this.baseURL = process.env.DOCKER_REGISTRY_URL || 'http://localhost:7519';
+    this.baseURL = process.env.DOCKER_REGISTRY_URL || constants.DEFAULT_REGISTRY_URL;
     //this.username = process.env.DOCKER_REGISTRY_USERNAME || null;
     //this.password = process.env.DOCKER_REGISTRY_PASSWORD || null;
     this.timeout = parseInt(process.env.DOCKER_REGISTRY_TIMEOUT) || 30000;
@@ -385,6 +388,68 @@ class DockerRegistryService {
     const registryUrl = registryConfig?.url || this.baseURL;
     const registryHost = new URL(registryUrl).host;
     return `docker push ${registryHost}/${repository}:${tag}`;
+  }
+
+  /**
+   * Create repository if it doesn't exist
+   * @param {string} repositoryName - Repository name
+   * @param {Object} user - User object
+   * @returns {Promise<Object>} Repository information
+   */
+  async createRepositoryIfNotExists(repositoryName, user) {
+    try {
+      // Parse repository name to extract project and repository name
+      const repoParts = repositoryName.split('/');
+      
+      if (repoParts.length < 2) {
+        throw new AppError('Invalid repository name format. Expected: project-name/repo-name or namespace/project-name/repo-name', 400, 'INVALID_REPOSITORY_NAME');
+      }
+      
+      let projectName, repoName;
+      
+      if (repoParts.length === 2) {
+        // Format: project-name/repo-name
+        projectName = repoParts[0];
+        repoName = repoParts[1];
+      } else {
+        // Format: namespace/project-name/repo-name
+        projectName = repoParts[1];
+        repoName = repoParts.slice(2).join('/');
+      }
+      
+      // Find project by name
+      const project = await dbGet(
+        'SELECT id, name FROM projects WHERE name = ? AND is_active = 1',
+        [projectName]
+      );
+      
+      if (!project) {
+        throw new AppError(`Project '${projectName}' not found or is inactive`, 404, 'PROJECT_NOT_FOUND');
+      }
+      
+      // Check if repository already exists
+      let repository = await dbGet(
+        'SELECT id FROM repositories WHERE project_id = ? AND name = ? AND is_active = 1',
+        [project.id, repoName]
+      );
+      
+      // If repository doesn't exist, create it
+      if (!repository) {
+        const result = await dbRun(
+          'INSERT INTO repositories (name, project_id, description, is_public, is_active, created_at, updated_at) VALUES (?, ?, ?, 0, 1, ?, ?)',
+          [repoName, project.id, `Docker image repository for ${repoName}`, new Date().toISOString(), new Date().toISOString()]
+        );
+        
+        repository = { id: result.lastID };
+        
+        logger.info(`Created new repository: ${repoName} in project ${projectName}`);
+      }
+      
+      return repository;
+    } catch (error) {
+      logger.error('Failed to create repository:', error);
+      throw error;
+    }
   }
 
   /**
