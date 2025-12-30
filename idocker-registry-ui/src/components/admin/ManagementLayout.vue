@@ -51,6 +51,10 @@ const setPageTitle = () => {
       pageTitle.value = t('pageTitles.dashboard')
       pageSubtitle.value = t('pageTitles.dashboardSubtitle')
       break
+    case '/admin/namespaces':
+      pageTitle.value = t('namespaces.namespaceManagement')
+      pageSubtitle.value = t('namespaces.namespaceManagementDesc')
+      break
     case '/admin/projects':
       pageTitle.value = t('pageTitles.projectManagement')
       pageSubtitle.value = t('pageTitles.projectManagementSubtitle')

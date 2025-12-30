@@ -11,9 +11,11 @@
 import express from 'express';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { logDockerApiRequest, logger } from '../utils/logger.js';
-import * as constants from '../config/constant.js';
 import { DockerAuthzService } from '../services/dockerAuthzService.js';
 import { DockerLogService } from '../services/dockerLogService.js';
+import dockerRegistryService from '../services/dockerRegistryService.js';
+import { AuthService } from '../services/authService.js';
+import { extractRepositoryAndAction, generateAuthChallenge, generateDockerError } from '../utils/dockerUtils.js';
 
 const router = express.Router();
 
@@ -39,10 +41,7 @@ router.use(async (req, res, next) => {
     
     if (!authHeader) {
       // For push/pull operations, return auth challenge
-      res.set('WWW-Authenticate', 'Basic realm="IDocker Registry"');
-      return res.status(401).json({
-        errors: [{ code: 'UNAUTHORIZED', message: 'Authentication information missing', detail: null }]
-      });
+      return generateAuthChallenge(res, 'Authentication information missing');
     }
     
     // Handle Basic authentication
@@ -55,10 +54,7 @@ router.use(async (req, res, next) => {
       const user = await AuthService.verifyUser(username, password);
       
       if (!user) {
-        res.set('WWW-Authenticate', 'Basic realm="IDocker Registry"');
-        return res.status(401).json({
-          errors: [{ code: 'UNAUTHORIZED', message: 'Invalid username or password', detail: null }]
-        });
+        return generateAuthChallenge(res, 'Invalid username or password');
       }
       
       req.user = user;
@@ -75,10 +71,7 @@ router.use(async (req, res, next) => {
       const user = await AuthService.validateToken(token);
       
       if (!user) {
-        res.set('WWW-Authenticate', 'Basic realm="IDocker Registry"');
-        return res.status(401).json({
-          errors: [{ code: 'UNAUTHORIZED', message: 'Invalid authentication token', detail: null }]
-        });
+        return generateAuthChallenge(res, 'Invalid authentication token');
       }
       
       req.user = user;
@@ -89,15 +82,10 @@ router.use(async (req, res, next) => {
     }
     
     // For unsupported auth methods
-    res.set('WWW-Authenticate', 'Basic realm="IDocker Registry"');
-    return res.status(401).json({
-      errors: [{ code: 'UNAUTHORIZED', message: 'Unsupported authentication method', detail: null }]
-    });
+    return generateAuthChallenge(res, 'Unsupported authentication method');
   } catch (error) {
     logger.error('Docker Registry authentication error:', error);
-    return res.status(500).json({
-      errors: [{ code: 'INTERNAL_ERROR', message: 'Authentication processing failed', detail: null }]
-    });
+    return generateDockerError(res, 500, 'INTERNAL_ERROR', 'Authentication processing failed');
   }
 });
 
@@ -143,9 +131,7 @@ router.use(async (req, res, next) => {
         errorMessage: authResult.reason
       });
       
-      return res.status(403).json({
-        errors: [{ code: 'DENIED', message: authResult.reason, detail: null }]
-      });
+      return generateDockerError(res, 403, 'DENIED', authResult.reason);
     }
     
     // Store permission info in the request for later use
@@ -171,84 +157,11 @@ router.use(async (req, res, next) => {
     next();
   } catch (error) {
     logger.error('Error checking Docker permissions:', error);
-    return res.status(500).json({
-      errors: [{ code: 'INTERNAL_ERROR', message: 'Permission check failed', detail: null }]
-    });
+    return generateDockerError(res, 500, 'INTERNAL_ERROR', 'Permission check failed');
   }
 });
 
-// Extract repository name and action from Docker Registry request
-function extractRepositoryAndAction(req) {
-  try {
-    const pathParts = req.path.split('/').filter(part => part.length > 0);
-    
-    // Docker Registry API v2 paths:
-    // /v2/<name>/manifests/<reference>
-    // /v2/<name>/blobs/uploads/<uuid>
-    // /v2/<name>/blobs/uploads/
-    // /v2/<name>/blobs/<digest>
-    // /v2/<name>/tags/list
-    
-    if (pathParts.length < 2) {
-      return { repositoryName: null, action: null };
-    }
-    
-    // Get repository name (everything after /v2/ and before the next API segment)
-    let repositoryName = null;
-    let action = null;
-    
-    if (pathParts[0] === 'v2') {
-      // Find the API segment to determine the end of the repository name
-      let nameEndIndex = 1;
-      for (let i = 1; i < pathParts.length; i++) {
-        if (['manifests', 'blobs', 'tags'].includes(pathParts[i])) {
-          nameEndIndex = i;
-          break;
-        }
-      }
-      
-      if (nameEndIndex > 1) {
-        repositoryName = pathParts.slice(1, nameEndIndex).join('/');
-        
-        // Determine action based on HTTP method and API segment
-        const apiSegment = pathParts[nameEndIndex];
-        
-        if (apiSegment === 'manifests') {
-          if (req.method === 'GET') {
-            action = 'pull';
-          } else if (req.method === 'PUT') {
-            action = 'push';
-          } else if (req.method === 'DELETE') {
-            action = 'delete';
-          }
-        } else if (apiSegment === 'blobs') {
-          if (pathParts[nameEndIndex + 1] === 'uploads') {
-            if (req.method === 'POST') {
-              action = 'push';  // Initiate upload
-            } else if (req.method === 'PATCH') {
-              action = 'push';  // Upload chunk
-            } else if (req.method === 'PUT') {
-              action = 'push';  // Complete upload
-            }
-          } else {
-            if (req.method === 'GET') {
-              action = 'pull';  // Get blob
-            }
-          }
-        } else if (apiSegment === 'tags') {
-          if (req.method === 'GET') {
-            action = 'pull';
-          }
-        }
-      }
-    }
-    
-    return { repositoryName, action };
-  } catch (error) {
-    logger.error('Error extracting repository and action:', error);
-    return { repositoryName: null, action: null };
-  }
-}
+// Extract repository name and action from Docker Registry request is now in utils/dockerUtils.js
 
 // Response time logging middleware
 router.use((req, res, next) => {
@@ -281,8 +194,7 @@ router.post('/:name/blobs/uploads/', asyncHandler(async (req, res, next) => {
     // Check if this is a new repository creation
     if (req.dockerPermission && req.dockerPermission.isNewRepository) {
       // Create repository in database
-      const { DockerRegistryService } = await import('../services/dockerRegistryService.js');
-      await DockerRegistryService.createRepositoryIfNotExists(repositoryName, req.user);
+      await dockerRegistryService.createRepositoryIfNotExists(repositoryName, req.user);
     }
     
     // Let the proxy handle the actual request
@@ -290,9 +202,7 @@ router.post('/:name/blobs/uploads/', asyncHandler(async (req, res, next) => {
     next();
   } catch (error) {
     logger.error('Error initiating blob upload:', error);
-    return res.status(500).json({
-      errors: [{ code: 'INTERNAL_ERROR', message: 'Failed to initiate blob upload', detail: null }]
-    });
+    return generateDockerError(res, 500, 'INTERNAL_ERROR', 'Failed to initiate blob upload');
   }
 }));
 
@@ -308,17 +218,14 @@ router.put('/:name/manifests/:reference', asyncHandler(async (req, res, next) =>
     // Check if this is a new repository creation
     if (req.dockerPermission && req.dockerPermission.isNewRepository) {
       // Create repository in database
-      const { DockerRegistryService } = await import('../services/dockerRegistryService.js');
-      await DockerRegistryService.createRepositoryIfNotExists(repositoryName, req.user);
+      await dockerRegistryService.createRepositoryIfNotExists(repositoryName, req.user);
     }
     
     // Let the proxy handle the actual request
     next();
   } catch (error) {
     logger.error('Error pushing manifest:', error);
-    return res.status(500).json({
-      errors: [{ code: 'INTERNAL_ERROR', message: 'Failed to push manifest', detail: null }]
-    });
+    return generateDockerError(res, 500, 'INTERNAL_ERROR', 'Failed to push manifest');
   }
 }));
 
@@ -333,7 +240,6 @@ async function handleTokenService(req, res) {
     let user = null;
     
     if (req.headers.authorization?.startsWith('Basic ')) {
-      const { AuthService } = await import('../services/authService.js');
       const basicAuth = AuthService.extractBasicAuth(req.headers.authorization);
       if (basicAuth) {
         user = await AuthService.verifyUser(basicAuth.username, basicAuth.password);
@@ -341,9 +247,7 @@ async function handleTokenService(req, res) {
     }
     
     if (!user) {
-      return res.status(401).json({
-        errors: [{ code: 'UNAUTHORIZED', message: 'Authentication required', detail: null }]
-      });
+      return generateAuthChallenge(res, 'Authentication required');
     }
     
     // Parse scope if provided
@@ -396,9 +300,7 @@ async function handleTokenService(req, res) {
     });
   } catch (error) {
     logger.error('Token service error:', error);
-    return res.status(500).json({
-      errors: [{ code: 'INTERNAL_ERROR', message: 'Token service error', detail: null }]
-    });
+    return generateDockerError(res, 500, 'INTERNAL_ERROR', 'Token service error');
   }
 }
 

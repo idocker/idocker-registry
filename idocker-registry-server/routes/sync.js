@@ -12,7 +12,7 @@ import express from 'express';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { requireAdmin } from '../middleware/auth.js';
 import { logger } from '../utils/logger.js';
-import repositorySyncService from '../services/repositorySyncService.js';
+import dockerSyncService from '../services/dockerSyncService.js';
 import { AuthModel } from '../models/AuthModel.js';
 import { success, error } from '../utils/apiResponse.js';
 
@@ -28,7 +28,7 @@ router.use(requireAdmin);
  */
 router.get('/status', asyncHandler(async (req, res) => {
   try {
-    const status = await repositorySyncService.getSyncStatus();
+    const status = await dockerSyncService.getSyncStatus();
     
     res.status(200).json(success(status));
   } catch (error) {
@@ -48,7 +48,7 @@ router.post('/all', asyncHandler(async (req, res) => {
     logger.info(`Admin ${req.user.username} starting full sync...`);
     
     // Log sync start
-    // await repositorySyncService.logSync({
+    // await dockerSyncService.logSync({
     //   type: 'full',
     //   status: 'started',
     //   userId: req.user.id,
@@ -56,10 +56,10 @@ router.post('/all', asyncHandler(async (req, res) => {
     // });
     
     // Start syncing all repositories
-    const result = await repositorySyncService.syncAllRepositories({ stopOnError });
+    const result = await dockerSyncService.syncAllRepositories({ stopOnError });
     
     // Log sync completion
-    await repositorySyncService.logSync({
+    await dockerSyncService.logSync({
       type: 'full',
       status: result.success ? 'completed' : 'failed',
       userId: req.user.id,
@@ -76,7 +76,7 @@ router.post('/all', asyncHandler(async (req, res) => {
     logger.error('Full sync failed:', error);
     
     // Log sync failure
-    await repositorySyncService.logSync({
+    await dockerSyncService.logSync({
       type: 'full',
       status: 'failed',
       userId: req.user.id,
@@ -100,7 +100,7 @@ router.post('/project/:projectId', asyncHandler(async (req, res) => {
     logger.info(`Admin ${req.user.username} starting sync for project ${projectId}...`);
     
     // Log sync start
-    await repositorySyncService.logSync({
+    await dockerSyncService.logSync({
       type: 'project',
       projectId: parseInt(projectId),
       status: 'started',
@@ -108,10 +108,10 @@ router.post('/project/:projectId', asyncHandler(async (req, res) => {
       details: { stopOnError }
     });
     
-    const result = await repositorySyncService.syncProjectRepositories(parseInt(projectId), { stopOnError });
+    const result = await dockerSyncService.syncProjectRepositories(parseInt(projectId), { stopOnError });
     
     // Log sync completion
-    await repositorySyncService.logSync({
+    await dockerSyncService.logSync({
       type: 'project',
       projectId: parseInt(projectId),
       status: result.success ? 'completed' : 'failed',
@@ -129,7 +129,7 @@ router.post('/project/:projectId', asyncHandler(async (req, res) => {
     logger.error('Project sync failed:', error);
     
     // Log sync failure
-    await repositorySyncService.logSync({
+    await dockerSyncService.logSync({
       type: 'project',
       projectId: parseInt(req.params.projectId),
       status: 'failed',

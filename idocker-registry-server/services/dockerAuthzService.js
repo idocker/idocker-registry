@@ -8,9 +8,11 @@
  * @version 2.0.0
  */
 
-import { dbGet, dbAll } from '../utils/dbHelper.js';
 import { logger } from '../utils/logger.js';
 import { AuthService } from './authService.js';
+import { ProjectModel } from '../models/ProjectModel.js';
+import { RepositoryModel } from '../models/RepositoryModel.js';
+import { AuthModel } from '../models/AuthModel.js';
 
 export class DockerAuthzService {
   /**
@@ -48,12 +50,10 @@ export class DockerAuthzService {
       }
       
       // Find project by name
-      const project = await dbGet(
-        'SELECT id, name, namespace FROM projects WHERE name = ? AND is_active = 1',
-        [projectName]
-      );
+      const projectModel = new ProjectModel();
+      const project = await projectModel.findByName(projectName);
       
-      if (!project) {
+      if (!project || !project.is_active) {
         return {
           allowed: false,
           reason: `Project '${projectName}' not found or is inactive`
@@ -70,13 +70,8 @@ export class DockerAuthzService {
         };
       }
       
-      // Check if user is a member of the project
-      const membership = await dbGet(
-        `SELECT pm.role as member_role
-         FROM project_members pm
-         WHERE pm.project_id = ? AND pm.user_id = ?`,
-        [project.id, user.id]
-      );
+      // Check if user is a member of project
+      const membership = await projectModel.getUserMembership(project.id, user.id);
       
       if (!membership) {
         return {
@@ -85,17 +80,15 @@ export class DockerAuthzService {
         };
       }
       
-      // Find repository by name within the project
-      const repository = await dbGet(
-        'SELECT id, is_public FROM repositories WHERE project_id = ? AND name = ? AND is_active = 1',
-        [project.id, repoName]
-      );
+      // Find repository by name within project
+      const repositoryModel = new RepositoryModel();
+      const repository = await repositoryModel.findByProjectIdAndName(project.id, repoName);
       
       if (!repository) {
-        // If repository doesn't exist, we need to check if the user can create it
+        // If repository doesn't exist, we need to check if user can create it
         // For push operations, creating a new repository should be allowed if user has write permissions
         if (action === 'push') {
-          // Check if user has write permission in the project
+          // Check if user has write permission in project
           if (membership.member_role === 'owner' || membership.member_role === 'maintainer') {
             return {
               allowed: true,
@@ -194,8 +187,7 @@ export class DockerAuthzService {
         user_agent: userAgent
       };
       
-      // Import AuthModel to use logAudit method
-      const { AuthModel } = await import('../models/AuthModel.js');
+      // Use AuthModel to log audit
       const authModel = new AuthModel();
       await authModel.logAudit(auditData);
       
@@ -229,7 +221,7 @@ export class DockerAuthzService {
           // Parse scope format: repository:name:action1,action2
           if (scope.type === 'repository') {
             // For this implementation, we'll validate later during actual operation
-            // This is to keep the token generation fast and check permissions at request time
+            // This is to keep token generation fast and check permissions at request time
             validScopes.push({
               type: 'repository',
               name: scope.name,

@@ -7,14 +7,16 @@ import { http } from '@/utils/http'
 import type {
   SyncStatus,
   SyncLog,
-  SyncResult
+  SyncResult,
+  ApiResponse
 } from '@/types'
+import type { A } from 'vue-router/dist/router-CWoNjPRp.mjs';
 
 class SyncService {
   /**
    * 获取同步状态
    */
-  async getSyncStatus(): Promise<{ success: boolean; data: SyncStatus }> {
+  async getSyncStatus(): Promise<ApiResponse<SyncStatus>> {
     return http.get('/api/sync/status');
   }
 
@@ -51,21 +53,21 @@ class SyncService {
   /**
    * 手动触发同步
    */
-  async triggerSync(syncType: 'full' | 'incremental' = 'incremental'): Promise<{ success: boolean; message: string }> {
+  async triggerSync(syncType: 'full' | 'incremental' = 'incremental'): Promise<ApiResponse<void>> {
     return http.post('/api/sync/all', { type: syncType });
   }
 
   /**
    * 获取同步结果
    */
-  async getSyncResult(syncId: string): Promise<{ success: boolean; data: SyncResult }> {
+  async getSyncResult(syncId: string): Promise<ApiResponse<SyncResult>> {
     return http.get(`/api/sync/result/${syncId}`);
   }
 
   /**
    * 取消正在进行的同步
    */
-  async cancelSync(syncId: string): Promise<{ success: boolean; message: string }> {
+  async cancelSync(syncId: string): Promise<ApiResponse<void>> {
     return http.post(`/api/sync/cancel/${syncId}`);
   }
 
@@ -77,7 +79,7 @@ class SyncService {
     syncInterval: number;  // 间隔分钟数
     syncType: 'full' | 'incremental';
     repositoryUrl?: string;
-  }): Promise<{ success: boolean; message: string }> {
+  }): Promise<ApiResponse<void>> {
     return http.post('/api/sync/configure', settings);
   }
 

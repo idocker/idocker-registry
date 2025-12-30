@@ -5,7 +5,7 @@
       </div>
 
       <div class="projects-table-container">
-        <div class="table-controls">
+        <div class="table-controls" v-if="filteredProjects.length > 0">
           <input type="text" :placeholder="$t('projectList.searchProjects')" v-model="searchQuery"
             class="search-input" />
           <div class="table-actions">
@@ -19,7 +19,7 @@
         <div class="table-container">
           <table class="projects-table">
             <thead>
-              <tr>
+              <tr v-if="filteredProjects.length > 0">
                 <th>{{ $t('projects.projectName') }}</th>
                 <th>{{ $t('projects.namespace') }}</th>
                 <th>{{ $t('projects.description') }}</th>

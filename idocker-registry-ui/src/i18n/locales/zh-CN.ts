@@ -9,6 +9,8 @@ export default {
   common: {
     welcome: '欢迎使用',
     loading: '加载中...',
+    active: '激活',
+    inactive: '未激活',
     save: '保存',
     cancel: '取消',
     delete: '删除',
@@ -78,12 +80,40 @@ export default {
     systemManagement: '系统管理',
     basicInfo: '基本信息',
     changePassword: '修改密码',
+    namespaceManagement: '命名空间管理',
     projectManagement: '项目管理',
     userManagement: '用户管理',
     warehouseSync: '仓库同步',
     toggleSidebar: '切换侧边栏'
   },
 
+  // 命名空间管理
+  namespaces: {
+    namespaceManagement: '命名空间管理',
+    namespaceManagementDesc: '管理Docker注册表的组织命名空间',
+    createNamespace: '创建命名空间',
+    createNewNamespace: '创建新命名空间',
+    editNamespace: '编辑命名空间',
+    deleteNamespace: '删除命名空间',
+    namespaceName: '名称',
+    namespaceNamePlaceholder: '输入命名空间名称',
+    description: '描述',
+    descriptionPlaceholder: '输入命名空间描述',
+    projectCount: '项目数量',
+    isActive: '是否启用',
+    status: '状态',
+    createdAt: '创建时间',
+    createdBy: '创建者',
+    searchNamespaces: '搜索命名空间',
+    loadingNamespaces: '加载命名空间列表...',
+    noNamespacesYet: '暂无命名空间',
+    startManagingNamespaces: '开始管理您的命名空间',
+    createFirstNamespace: '创建第一个命名空间',
+    noSearchResults: '未找到匹配的命名空间',
+    tryDifferentSearchTerms: '请尝试不同的搜索词',
+    deleteConfirm: '您确定要删除命名空间 "{name}" 吗？',
+    deleteWithProjectsWarning: '该命名空间下有 {count} 个活跃项目，无法删除。请先删除或移动这些项目。'
+  },
   // 页面标题
   pageTitles: {
     basicInfo: '基本信息',
@@ -94,6 +124,7 @@ export default {
     dashboardSubtitle: '系统概览和统计信息',
     projectManagement: '项目管理',
     projectManagementSubtitle: '管理系统中的所有项目和权限',
+    namespaceManagement: '命名空间管理',
     userManagement: '用户管理',
     userManagementSubtitle: '管理系统中的所有用户和角色',
     auditLog: '审计日志',

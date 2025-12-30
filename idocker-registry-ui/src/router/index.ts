@@ -132,6 +132,15 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: '/admin/namespaces',
+    name: 'admin-namespaces',
+    component: () => import('@/views/admin/NamespacesView.vue'),
+    meta: {
+      title: 'Namespaces',
+      requiresAuth: true
+    }
+  },
+  {
     path: '/admin/projects',
     name: 'admin-projects',
     component: () => import('@/views/admin/ProjectsView.vue'),

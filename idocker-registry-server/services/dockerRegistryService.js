@@ -10,18 +10,18 @@
 
 import axios from 'axios';
 import { logger } from '../utils/logger.js';
-import { dbGet, dbAll, dbRun, dbPaginate } from '../utils/dbHelper.js';
 import { AppError } from '../middleware/errorHandler.js';
-import * as constants from '@/config/constant.js';
-import { DockerAuthzService } from './dockerAuthzService.js';
-import { DockerLogService } from './dockerLogService.js';
+import { ProjectModel } from '../models/ProjectModel.js';
+import { RepositoryModel } from '../models/RepositoryModel.js';
+import * as env from '../config/env.js';
+import { parseRepositoryName } from '../utils/dockerUtils.js';
 
 class DockerRegistryService {
   constructor() {
-    this.baseURL = process.env.DOCKER_REGISTRY_URL || constants.DEFAULT_REGISTRY_URL;
-    //this.username = process.env.DOCKER_REGISTRY_USERNAME || null;
-    //this.password = process.env.DOCKER_REGISTRY_PASSWORD || null;
-    this.timeout = parseInt(process.env.DOCKER_REGISTRY_TIMEOUT) || 30000;
+    this.baseURL = env.DEFAULT_REGISTRY_URL;
+    this.username = env.DOCKER_REGISTRY_USERNAME;
+    this.password = env.DOCKER_REGISTRY_PASSWORD;
+    this.timeout = parseInt(env.DOCKER_REGISTRY_TIMEOUT);
   }
 
   /**
@@ -37,7 +37,7 @@ class DockerRegistryService {
 
     // In development environment, add authentication header (for external Registry)
     // Production environment, no authentication header is required
-    if (process.env.NODE_ENV !== 'production') {
+    if (env.NODE_ENV !== 'production') {
       if (registryConfig?.username && registryConfig?.password) {
         const credentials = Buffer.from(`${registryConfig.username}:${registryConfig.password}`).toString('base64');
         headers['Authorization'] = `Basic ${credentials}`;
@@ -47,7 +47,25 @@ class DockerRegistryService {
       }
     }
 
+    logger.debug("headers:", JSON.stringify(headers));
+
     return headers;
+  }
+
+  /**
+   * Get Registry Config
+   * @returns {Object} Registry Config
+  */
+  getRegistryConfig() {
+    const registryConfig = {
+      url: env.DEFAULT_REGISTRY_URL,
+      username: env.DOCKER_REGISTRY_USERNAME || null,
+      password: env.DOCKER_REGISTRY_PASSWORD || null
+    };
+
+    logger.debug(`Registry config: ${JSON.stringify(registryConfig)}`);
+
+    return registryConfig;
   }
 
   /**
@@ -58,8 +76,10 @@ class DockerRegistryService {
   async checkConnection(registryConfig = null) {
     try {
       const registryUrl = registryConfig?.url || this.baseURL;
-      logger.info(`Checking registry connection: ${registryUrl}`);
-      const response = await axios.get(`${registryUrl}/v2/`, {
+      const checkUrl = `${registryUrl}/v2/`;
+      logger.info(`log level :${env.LOG_LEVEL}`);
+      logger.info(`Checking registry connection: ${checkUrl}`);
+      const response = await axios.get(`${checkUrl}/v2/`, {
         headers: this.getAuthHeaders(registryConfig),
         timeout: 5000
       })
@@ -82,11 +102,11 @@ class DockerRegistryService {
     try {
       const registryUrl = registryConfig?.url || this.baseURL;
       const url = new URL(`${registryUrl}/v2/_catalog`);
-      
+
       if (last) {
         url.searchParams.append('last', last);
       }
-      
+
       if (limit) {
         url.searchParams.append('n', limit);
       }
@@ -139,11 +159,11 @@ class DockerRegistryService {
     try {
       const registryUrl = registryConfig?.url || this.baseURL;
       const url = new URL(`${registryUrl}/v2/${repository}/tags/list`);
-      
+
       if (last) {
         url.searchParams.append('last', last);
       }
-      
+
       if (limit) {
         url.searchParams.append('n', limit);
       }
@@ -202,7 +222,7 @@ class DockerRegistryService {
     try {
       const registryUrl = registryConfig?.url || this.baseURL;
       const headers = this.getAuthHeaders(registryConfig);
-      
+
       // Remove the Accept header to get the manifest in both v1 and v2 formats
       headers['Accept'] = 'application/vnd.docker.distribution.manifest.v2+json,application/vnd.docker.distribution.manifest.v1+json';
 
@@ -223,7 +243,7 @@ class DockerRegistryService {
       };
 
 
-      if(response.data.layers) {
+      if (response.data.layers) {
         imageInfo.size = response.data.layers.reduce((acc, layer) => acc + (layer.size || 0), 0);
       }
 
@@ -262,35 +282,35 @@ class DockerRegistryService {
   async getBuildHistory(repository, tag, registryConfig = null) {
     try {
       const manifest = await this.getManifest(repository, tag, registryConfig);
-      
+
       if (!manifest.manifest.history) {
         return [];
       }
 
       // Get build history from manifest
-      const history = manifest.manifest.history && Array.isArray(manifest.manifest.history) 
+      const history = manifest.manifest.history && Array.isArray(manifest.manifest.history)
         ? manifest.manifest.history.map((item, index) => {
-            let created = null;
-            let createdBy = '';
-            let emptyLayer = false;
-            let comment = '';
+          let created = null;
+          let createdBy = '';
+          let emptyLayer = false;
+          let comment = '';
 
-            if (typeof item === 'object') {
-              created = item.created;
-              createdBy = item.created_by || '';
-              emptyLayer = item.empty_layer || false;
-              comment = item.comment || '';
-            }
+          if (typeof item === 'object') {
+            created = item.created;
+            createdBy = item.created_by || '';
+            emptyLayer = item.empty_layer || false;
+            comment = item.comment || '';
+          }
 
-            return {
-              id: index + 1,
-              created,
-              createdBy,
-              emptyLayer,
-              comment,
-              size: emptyLayer ? 0 : manifest.manifest.layers?.[index]?.size || 0
-            };
-          }).reverse() 
+          return {
+            id: index + 1,
+            created,
+            createdBy,
+            emptyLayer,
+            comment,
+            size: emptyLayer ? 0 : manifest.manifest.layers?.[index]?.size || 0
+          };
+        }).reverse()
         : [];
 
       return history;
@@ -311,7 +331,7 @@ class DockerRegistryService {
     try {
       // get digest
       const manifest = await this.getManifest(repository, tag, registryConfig);
-      
+
       const registryUrl = registryConfig?.url || this.baseURL;
       const response = await axios.delete(`${registryUrl}/v2/${repository}/manifests/${manifest.digest}`, {
         headers: this.getAuthHeaders(registryConfig),
@@ -399,52 +419,36 @@ class DockerRegistryService {
   async createRepositoryIfNotExists(repositoryName, user) {
     try {
       // Parse repository name to extract project and repository name
-      const repoParts = repositoryName.split('/');
-      
-      if (repoParts.length < 2) {
-        throw new AppError('Invalid repository name format. Expected: project-name/repo-name or namespace/project-name/repo-name', 400, 'INVALID_REPOSITORY_NAME');
-      }
-      
-      let projectName, repoName;
-      
-      if (repoParts.length === 2) {
-        // Format: project-name/repo-name
-        projectName = repoParts[0];
-        repoName = repoParts[1];
-      } else {
-        // Format: namespace/project-name/repo-name
-        projectName = repoParts[1];
-        repoName = repoParts.slice(2).join('/');
-      }
-      
+      const { projectName, repoName } = parseRepositoryName(repositoryName);
+
       // Find project by name
-      const project = await dbGet(
-        'SELECT id, name FROM projects WHERE name = ? AND is_active = 1',
-        [projectName]
-      );
-      
-      if (!project) {
+      const projectModel = new ProjectModel();
+      const project = await projectModel.findByName(projectName);
+
+      if (!project || !project.is_active) {
         throw new AppError(`Project '${projectName}' not found or is inactive`, 404, 'PROJECT_NOT_FOUND');
       }
-      
+
       // Check if repository already exists
-      let repository = await dbGet(
-        'SELECT id FROM repositories WHERE project_id = ? AND name = ? AND is_active = 1',
-        [project.id, repoName]
-      );
-      
+      const repositoryModel = new RepositoryModel();
+      let repository = await repositoryModel.findByProjectIdAndName(project.id, repoName);
+
       // If repository doesn't exist, create it
       if (!repository) {
-        const result = await dbRun(
-          'INSERT INTO repositories (name, project_id, description, is_public, is_active, created_at, updated_at) VALUES (?, ?, ?, 0, 1, ?, ?)',
-          [repoName, project.id, `Docker image repository for ${repoName}`, new Date().toISOString(), new Date().toISOString()]
-        );
-        
-        repository = { id: result.lastID };
-        
+        const repositoryData = {
+          name: repoName,
+          project_id: project.id,
+          description: `Docker image repository for ${repoName}`,
+          is_public: 0,
+          is_active: 1
+        };
+
+        const result = await repositoryModel.createRepository(repositoryData);
+        repository = { id: result.id };
+
         logger.info(`Created new repository: ${repoName} in project ${projectName}`);
       }
-      
+
       return repository;
     } catch (error) {
       logger.error('Failed to create repository:', error);
@@ -462,46 +466,14 @@ class DockerRegistryService {
    */
   async getStoredImages(projectId = null, search = '', page = 1, limit = 20) {
     try {
-      let query = `
-        SELECT 
-          r.id as repo_id,
-          r.name as repo_name,
-          r.description as repo_description,
-          p.name as project_name,
-          p.namespace,
-          t.id as tag_id,
-          t.tag as tag_name,
-          t.digest,
-          t.size,
-          t.architecture,
-          t.os,
-          t.created_at as tag_created_at
-        FROM repositories r
-        JOIN projects p ON r.project_id = p.id
-        LEFT JOIN image_tags t ON r.id = t.repository_id
-        WHERE p.is_active = 1
-      `;
-      
-      const params = [];
-      
-      if (projectId) {
-        query += ' AND r.project_id = ?';
-        params.push(projectId);
-      }
-      
-      if (search) {
-        query += ' AND (r.name LIKE ? OR p.name LIKE ? OR p.namespace LIKE ?)';
-        params.push(`%${search}%`, `%${search}%`, `%${search}%`);
-      }
-      
-      query += ' ORDER BY r.name, t.tag';
-      
-      const imagesResult = await dbPaginate(query, params, page, limit);
-      const images = imagesResult.items;
-      
+      // Use RepositoryModel to get stored images
+      const repositoryModel = new RepositoryModel();
+      const imagesResult = await repositoryModel.getStoredImages(projectId, search, page, limit);
+      const images = imagesResult.data;
+
       // 获取分页信息
       const pagination = imagesResult.pagination;
-      
+
       // 格式化结果
       const result = {};
       images.forEach(image => {
@@ -515,7 +487,7 @@ class DockerRegistryService {
             tags: []
           };
         }
-        
+
         if (image.tag_id) {
           result[image.repo_id].tags.push({
             id: image.tag_id,
@@ -528,7 +500,7 @@ class DockerRegistryService {
           });
         }
       });
-      
+
       return {
         images: Object.values(result),
         pagination: {
@@ -541,8 +513,8 @@ class DockerRegistryService {
         }
       };
     } catch (error) {
-      logger.error('获取存储的镜像信息失败:', error);
-      throw new AppError('获取镜像信息失败', 500, 'DATABASE_ERROR');
+      logger.error('Get Stored Images failed:', error);
+      throw new AppError('Get Stored Images failed', 500, 'DATABASE_ERROR');
     }
   }
 }

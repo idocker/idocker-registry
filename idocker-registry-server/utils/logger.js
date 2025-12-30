@@ -25,7 +25,8 @@ const levels = {
   warn: 1,
   info: 2,
   http: 3,
-  debug: 4
+  debug: 4,
+  sysinfo: 5
 };
 
 // 日志颜色
@@ -34,7 +35,8 @@ const colors = {
   warn: 'yellow',
   info: 'green',
   http: 'magenta',
-  debug: 'white'
+  debug: 'white',
+  sysinfo: 'blue'
 };
 
 winston.addColors(colors);

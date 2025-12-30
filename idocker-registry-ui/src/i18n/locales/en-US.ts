@@ -8,6 +8,8 @@ export default {
   common: {
     welcome: 'Welcome',
     loading: 'Loading...',
+    active: 'Active',
+    inactive: 'Inactive',
     save: 'Save',
     cancel: 'Cancel',
     delete: 'Delete',
@@ -70,6 +72,33 @@ export default {
     password: 'Change Password'
   },
 
+  // Namespaces
+  namespaces: {
+    namespaceManagement: 'Namespace Management',
+    namespaceManagementDesc: 'Manage organization namespaces for Docker Registry',
+    createNamespace: 'Create Namespace',
+    createNewNamespace: 'Create New Namespace',
+    editNamespace: 'Edit Namespace',
+    deleteNamespace: 'Delete Namespace',
+    namespaceName: 'Name',
+    namespaceNamePlaceholder: 'Enter namespace name',
+    description: 'Description',
+    descriptionPlaceholder: 'Enter namespace description',
+    projectCount: 'Project Count',
+    isActive: 'Active',
+    status: 'Status',
+    createdAt: 'Created Time',
+    createdBy: 'Created By',
+    searchNamespaces: 'Search Namespaces',
+    loadingNamespaces: 'Loading namespaces...',
+    noNamespacesYet: 'No namespaces yet',
+    startManagingNamespaces: 'Start managing your namespaces',
+    createFirstNamespace: 'Create your first namespace',
+    noSearchResults: 'No matching namespaces found',
+    tryDifferentSearchTerms: 'Please try different search terms',
+    deleteConfirm: 'Are you sure you want to delete the namespace "{name}"?',
+    deleteWithProjectsWarning: 'This namespace contains {count} active projects and cannot be deleted. Please delete or move these projects first.'
+  },
   // Management Layout
   managementLayout: {
     managementCenter: 'Management Center',
@@ -78,6 +107,7 @@ export default {
     basicInfo: 'Profile',
     changePassword: 'Change Password',
     projectManagement: 'Project Management',
+    namespaceManagement: 'Namespace Management',
     userManagement: 'User Management',
     warehouseSync: 'Warehouse Sync',
     toggleSidebar: 'Toggle Sidebar'

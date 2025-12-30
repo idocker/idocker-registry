@@ -9,9 +9,9 @@
 
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { dbGet } from '../utils/dbHelper.js';
+import { AuthModel } from '../models/AuthModel.js';
 import { logger } from '../utils/logger.js';
-import * as constants from '../config/constant.js';
+import * as env from '../config/env.js';
 
 export class AuthService {
   /**
@@ -22,11 +22,9 @@ export class AuthService {
    */
   static async verifyUser(username, password) {
     try {
-      // Get user from database
-      const user = await dbGet(
-        'SELECT id, username, password, email, full_name, role, is_active FROM users WHERE username = ?',
-        [username]
-      );
+      // Get user from database using AuthModel
+      const authModel = new AuthModel();
+      const user = await authModel.getUserByUsernameForAuth(username, true);
 
       if (!user || !user.is_active) {
         return null;
@@ -61,10 +59,10 @@ export class AuthService {
     };
 
     const options = {
-      expiresIn: expiresIn || process.env.JWT_EXPIRES_IN || constants.JWT_EXPIRES_IN
+      expiresIn: env.JWT_EXPIRES_IN
     };
 
-    return jwt.sign(payload, process.env.JWT_SECRET || constants.JWT_SECRET, options);
+    return jwt.sign(payload, env.JWT_SECRET, options);
   }
 
   /**
@@ -82,7 +80,7 @@ export class AuthService {
       access: scopes || [{ type: 'registry', name: service, actions: ['*'] }]
     };
 
-    return jwt.sign(payload, process.env.JWT_SECRET || constants.JWT_SECRET);
+    return jwt.sign(payload, env.JWT_SECRET);
   }
 
   /**
@@ -92,13 +90,11 @@ export class AuthService {
    */
   static async validateToken(token) {
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || constants.JWT_SECRET);
+      const decoded = jwt.verify(token, env.JWT_SECRET);
       
-      // Get user info from database
-      const user = await dbGet(
-        'SELECT id, username, email, full_name, role, is_active FROM users WHERE id = ?',
-        [decoded.userId]
-      );
+      // Get user info from database using AuthModel
+      const authModel = new AuthModel();
+      const user = await authModel.getUserByIdForAuth(decoded.userId);
 
       if (!user || !user.is_active) {
         return null;
@@ -193,14 +189,8 @@ export class AuthService {
    */
   static async getUserById(userId, includePassword = false) {
     try {
-      const fields = includePassword 
-        ? 'id, username, password, email, full_name, role, is_active, created_at'
-        : 'id, username, email, full_name, role, is_active, created_at';
-      
-      return await dbGet(
-        `SELECT ${fields} FROM users WHERE id = ?`,
-        [userId]
-      );
+      const authModel = new AuthModel();
+      return await authModel.getUserByIdForAuth(userId, includePassword);
     } catch (error) {
       logger.error('Error getting user by ID:', error);
       return null;
@@ -215,14 +205,8 @@ export class AuthService {
    */
   static async getUserByUsername(username, includePassword = false) {
     try {
-      const fields = includePassword 
-        ? 'id, username, password, email, full_name, role, is_active, created_at'
-        : 'id, username, email, full_name, role, is_active, created_at';
-      
-      return await dbGet(
-        `SELECT ${fields} FROM users WHERE username = ?`,
-        [username]
-      );
+      const authModel = new AuthModel();
+      return await authModel.getUserByUsernameForAuth(username, includePassword);
     } catch (error) {
       logger.error('Error getting user by username:', error);
       return null;
@@ -236,11 +220,8 @@ export class AuthService {
    */
   static async usernameExists(username) {
     try {
-      const result = await dbGet(
-        'SELECT id FROM users WHERE username = ?',
-        [username]
-      );
-      return !!result;
+      const authModel = new AuthModel();
+      return await authModel.usernameExists(username);
     } catch (error) {
       logger.error('Error checking if username exists:', error);
       return false;

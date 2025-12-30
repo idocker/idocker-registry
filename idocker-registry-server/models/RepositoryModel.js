@@ -266,4 +266,56 @@ export class RepositoryModel extends BaseModel {
       throw error;
     }
   }
+
+  /**
+   * Get stored images with pagination
+   * @param {number} projectId - Project ID (optional)
+   * @param {string} search - Search keyword (optional)
+   * @param {number} page - Page number
+   * @param {number} limit - Items per page
+   * @returns {Promise<Object>} Images with pagination info
+   */
+  async getStoredImages(projectId = null, search = '', page = 1, limit = 20) {
+    try {
+      let query = `
+        SELECT 
+          r.id as repo_id,
+          r.name as repo_name,
+          r.description as repo_description,
+          p.name as project_name,
+          p.namespace,
+          t.id as tag_id,
+          t.tag as tag_name,
+          t.digest,
+          t.size,
+          t.architecture,
+          t.os,
+          t.created_at as tag_created_at
+        FROM repositories r
+        JOIN projects p ON r.project_id = p.id
+        LEFT JOIN image_tags t ON r.id = t.repository_id
+        WHERE p.is_active = 1
+      `;
+      
+      const params = [];
+      
+      if (projectId) {
+        query += ' AND r.project_id = ?';
+        params.push(projectId);
+      }
+      
+      if (search) {
+        query += ' AND (r.name LIKE ? OR p.name LIKE ? OR p.namespace LIKE ?)';
+        params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+      }
+      
+      query += ' ORDER BY r.name, t.tag';
+      
+      const result = await this.paginate(query, params, page, limit);
+      return result;
+    } catch (error) {
+      logger.error('Failed to get stored images:', error);
+      throw error;
+    }
+  }
 }

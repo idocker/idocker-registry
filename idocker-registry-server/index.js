@@ -22,26 +22,22 @@ import { logger } from './utils/logger.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-
 // import routes module
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
+import namespaceRoutes from './routes/namespaces.js';
 import projectRoutes from './routes/projects.js';
 import repositoryRoutes from './routes/repository.js';
 import auditRoutes from './routes/audit.js';
 import syncRoutes from './routes/sync.js';
 import dockerRegistryRoutes from './routes/dockerRegistry.js';
-import * as constants from './config/constant.js';
-
+import * as env from './config/env.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load environment variables from .env file
-dotenv.config();
-
 const app = express();
-const PORT = process.env.PORT || constants.PORT;
+const PORT = env.PORT;
 
 // Setting Limit for request (exclude /v2 Docker Registry API path)
 const limiter = rateLimit({
@@ -60,11 +56,11 @@ app.use(helmet({
 }));
 
 // CORS Setting 
-if (process.env.NODE_ENV === 'production') {
+if (env.NODE_ENV === 'production') {
   app.use(cors());
 } else {
   app.use(cors({
-    origin: process.env.IDOCKER_REGISTRY_UI_URL || constants.IDOCKER_REGISTRY_URL,
+    origin: env.IDOCKER_REGISTRY_URL,
     credentials: true
   }));
 }
@@ -88,7 +84,7 @@ app.get('/health', (req, res) => {
 
 // Create Docker Registry proxy
 const dockerRegistryProxy = createProxyMiddleware({
-  target: process.env.DOCKER_REGISTRY_URL || constants.DOCKER_REGISTRY_URL,
+  target: env.DOCKER_REGISTRY_URL,
   changeOrigin: true,
   pathRewrite: {
     '^/v2': '/v2', // Keep /v2 path
@@ -242,6 +238,7 @@ app.use('/v2', dockerRegistryProxy); // Docker Registry代理到内部Registry
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', authMiddleware, userRoutes);
+app.use('/api/namespaces', authMiddleware, namespaceRoutes);
 app.use('/api/projects', authMiddleware, projectRoutes);
 app.use('/api/repository', authMiddleware, repositoryRoutes);
 app.use('/api/audit', authMiddleware, auditRoutes);
@@ -274,7 +271,6 @@ async function startServer() {
     // Start server
     app.listen(PORT, () => {
       logger.info(`IDocker Registry Server started on port: ${PORT}`);
-      //logger.info(`Environment: ${process.env.NODE_ENV || constants.NODE_ENV}`);
     });
   } catch (error) {
     logger.error('Server startup failed:', error);

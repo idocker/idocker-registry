@@ -6,7 +6,7 @@ services:
     container_name: idocker-registry
     ports:
       - "7588:7518"
-      - "7519:7519"
+      #- "7519:7519"
     volumes:
       - ./test/registry-data:/var/lib/registry
       - ./test/app-data:/app/data
@@ -14,7 +14,8 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=7518
-      - REGISTRY_URL=http://192.168.2.8:5000
+      - DOCKER_REGISTRY_URL=http://localhost:7519
+      - IDOCKER_REGISTRY_URL=http://localhost:7518
       - DB_PATH=/app/data/registry.db
       - LOG_DIR=/app/logs
       - LOG_LEVEL=info

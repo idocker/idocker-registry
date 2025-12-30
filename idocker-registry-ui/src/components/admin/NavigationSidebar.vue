@@ -23,6 +23,10 @@
       
       <div class="nav-section">
         <div class="nav-section-title">{{ $t('managementLayout.systemManagement') }}</div>
+        <router-link to="/admin/namespaces" class="nav-item" :class="{ active: isActive('/admin/namespaces') }">
+          <span class="material-icons">dns</span>
+          <span>{{ $t('managementLayout.namespaceManagement') }}</span>
+        </router-link>
         <router-link to="/admin/projects" class="nav-item" :class="{ active: isActive('/admin/projects') }">
           <span class="material-icons">folder</span>
           <span>{{ $t('managementLayout.projectManagement') }}</span>

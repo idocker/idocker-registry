@@ -43,6 +43,68 @@ export class AuthModel extends BaseModel {
   }
 
   /**
+   * Get user by username for authentication
+   * @param {string} username - Username
+   * @param {boolean} includePassword - Whether to include password in result
+   * @returns {Promise<Object|null>} User object if found, null otherwise
+   */
+  async getUserByUsernameForAuth(username, includePassword = false) {
+    try {
+      const fields = includePassword 
+        ? 'id, username, password, email, full_name, role, is_active'
+        : 'id, username, email, full_name, role, is_active';
+      
+      return await this.get(
+        `SELECT ${fields} FROM users WHERE username = ?`,
+        [username]
+      );
+    } catch (error) {
+      logger.error('Error getting user by username for auth:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get user by ID for authentication
+   * @param {number} userId - User ID
+   * @param {boolean} includePassword - Whether to include password in result
+   * @returns {Promise<Object|null>} User object if found, null otherwise
+   */
+  async getUserByIdForAuth(userId, includePassword = false) {
+    try {
+      const fields = includePassword 
+        ? 'id, username, password, email, full_name, role, is_active'
+        : 'id, username, email, full_name, role, is_active';
+      
+      return await this.get(
+        `SELECT ${fields} FROM users WHERE id = ?`,
+        [userId]
+      );
+    } catch (error) {
+      logger.error('Error getting user by ID for auth:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if username exists
+   * @param {string} username - Username to check
+   * @returns {Promise<boolean>} True if username exists
+   */
+  async usernameExists(username) {
+    try {
+      const result = await this.get(
+        'SELECT id FROM users WHERE username = ?',
+        [username]
+      );
+      return !!result;
+    } catch (error) {
+      logger.error('Error checking if username exists:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Update user's last login time
    */
   async updateLastLogin(userId) {

@@ -23,6 +23,21 @@ export class ProjectModel extends BaseModel {
   }
 
   /**
+   * Check if user is a member of project
+   * @param {number} projectId - Project ID
+   * @param {number} userId - User ID
+   * @returns {Promise<Object|null>} User membership information
+   */
+  async getUserMembership(projectId, userId) {
+    return await this.get(
+      `SELECT pm.role as member_role
+       FROM project_members pm
+       WHERE pm.project_id = ? AND pm.user_id = ?`,
+      [projectId, userId]
+    );
+  }
+
+  /**
    * Get all projects list (for admin management, without permission filtering)
    * @param {*} isActive Whether active 
    * @returns 

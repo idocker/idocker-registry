@@ -4,6 +4,7 @@
  */
 import { BaseModel } from './BaseModel.js';
 import { logger } from '../utils/logger.js';
+import { AppError } from '../middleware/errorHandler.js';
 
 export class DockerRegistryModel extends BaseModel {
   constructor() {
@@ -39,6 +40,25 @@ export class DockerRegistryModel extends BaseModel {
       return project;
     } catch (error) {
       logger.error('Failed to get project by repository name:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get default registry config
+   */
+  async getDefaultRegistryConfig() {
+    try {
+      const registryConfig = await this.get(
+        'SELECT * FROM registry_configs WHERE is_default = 1'
+      );
+      if (!registryConfig) {
+        throw new AppError('No default registry config found', 500, 'REGISTRY_CONFIG_NOT_FOUND');
+      }
+      logger.info(`registryConfig:${JSON.stringify(registryConfig)}`);
+      return registryConfig;
+    } catch (error) {
+      logger.error('Failed to get default registry config:', error);
       throw error;
     }
   }

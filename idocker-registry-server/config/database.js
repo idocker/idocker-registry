@@ -13,12 +13,12 @@ import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
 import { promises as fs } from 'fs';
 import bcrypt from 'bcryptjs';
-import * as constants from './constant.js';
+import * as env from './env.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const projectRoot = path.resolve(__dirname, '../');
-const DB_PATH = process.env.DB_PATH || path.join(projectRoot, 'data', 'registry.db');
+const projectRoot = path.resolve(__dirname, '../../');
+const DB_PATH = env.DB_PATH || path.join(projectRoot, 'data', 'registry.db');
 //const DB_PATH = path.join(projectRoot, '../data', 'registry.db');
 
 let db = null;
@@ -193,6 +193,20 @@ export async function initDatabase() {
             )
           `);
 
+          // create namespaces table
+          db.run(`
+            CREATE TABLE IF NOT EXISTS namespaces (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              name VARCHAR(255) NOT NULL UNIQUE,
+              description TEXT,
+              is_active INTEGER DEFAULT 1,
+              created_by INTEGER,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+            )
+          `);
+
           // create indexes
           db.run('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)');
           db.run('CREATE INDEX IF NOT EXISTS idx_projects_name ON projects(name)');
@@ -203,6 +217,25 @@ export async function initDatabase() {
           db.run('CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id)');
           db.run('CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action)');
           db.run('CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at)');
+          db.run('CREATE INDEX IF NOT EXISTS idx_namespaces_name ON namespaces(name)');
+          db.run('CREATE INDEX IF NOT EXISTS idx_namespaces_is_active ON namespaces(is_active)');
+          db.run('CREATE INDEX IF NOT EXISTS idx_namespaces_created_by ON namespaces(created_by)');
+
+          // Add namespace_id column to projects table if it doesn't exist
+          db.all("PRAGMA table_info(projects)", [], (err, columns) => {
+            if (!err && columns) {
+              const hasNamespaceColumn = columns.some(col => col.name === 'namespace_id');
+              if (!hasNamespaceColumn) {
+                db.run(`ALTER TABLE projects ADD COLUMN namespace_id INTEGER DEFAULT 1`, (alterErr) => {
+                  if (alterErr) {
+                    logger.error('Error adding namespace_id column to projects table:', alterErr);
+                  } else {
+                    db.run('CREATE INDEX IF NOT EXISTS idx_projects_namespace_id ON projects(namespace_id)');
+                  }
+                });
+              }
+            }
+          });
 
           // check and create default admin user
           db.get('SELECT COUNT(*) as count FROM users WHERE role = "admin"', [], async (err, row) => {
@@ -213,7 +246,7 @@ export async function initDatabase() {
             }
             
             if (row.count === 0) {
-              const defaultPassword = process.env.DEFAULT_ADMIN_PASSWORD || constants.DEFAULT_ADMIN_PASSWORD;
+              const defaultPassword = env.DEFAULT_ADMIN_PASSWORD;
               const hashedPassword = await bcrypt.hash(defaultPassword, 10);
               
               db.run('INSERT INTO users (username, password, email, full_name, role) VALUES (?, ?, ?, ?, ?)', 
@@ -228,29 +261,60 @@ export async function initDatabase() {
               );
             }
 
-            // Docker Registry setting
-            db.get('SELECT COUNT(*) as count FROM registry_configs', [], (err, row) => {
+            // Initialize default namespace
+            db.get('SELECT COUNT(*) as count FROM namespaces', [], (err, row) => {
               if (err) {
-                logger.error('check default docker registry config error:', err);
+                logger.error('check default namespace error:', err);
                 reject(err);
                 return;
               }
               
               if (row.count === 0) {
-                db.run('INSERT INTO registry_configs (name, url, is_default, is_active) VALUES (?, ?, ?, ?)', 
-                  ['Default Docker Registry', process.env.DOCKER_REGISTRY_URL || constants.DOCKER_REGISTRY_URL, 1, 1], 
+                db.run('INSERT INTO namespaces (name, description, is_active, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)', 
+                  ['default', 'Default namespace for organizing Docker repositories', 1, 1], 
                   (err) => {
                     if (err) {
-                      logger.error('Create Default Registry config error:', err);
+                      logger.error('create default namespace error:', err);
                     } else {
-                      logger.info(`Default Docker Registry created: ${process.env.DOCKER_REGISTRY_URL || constants.DOCKER_REGISTRY_URL}`);
+                      logger.info('Default namespace created: default');
                     }
                   }
                 );
               }
 
-              logger.info('Database initialized');
-              resolve(db);
+              // Ensure all projects without a namespace are assigned to the default namespace
+              db.run(`UPDATE projects 
+                      SET namespace_id = (SELECT id FROM namespaces WHERE name = 'default' LIMIT 1)
+                      WHERE namespace_id IS NULL`, (err) => {
+                if (err) {
+                  logger.error('Error updating projects with default namespace:', err);
+                }
+              });
+
+              // Docker Registry setting
+              db.get('SELECT COUNT(*) as count FROM registry_configs', [], (err, row) => {
+                if (err) {
+                  logger.error('check default docker registry config error:', err);
+                  reject(err);
+                  return;
+                }
+                
+                if (row.count === 0) {
+                  db.run('INSERT INTO registry_configs (name, url, is_default, is_active) VALUES (?, ?, ?, ?)', 
+                    ['Default Docker Registry', env.DOCKER_REGISTRY_URL, 1, 1], 
+                    (err) => {
+                      if (err) {
+                        logger.error('Create Default Registry config error:', err);
+                      } else {
+                        logger.info(`Default Docker Registry created: ${env.DOCKER_REGISTRY_URL}`);
+                      }
+                    }
+                  );
+                }
+
+                logger.info('Database initialized');
+                resolve(db);
+              });
             });
           });
         });

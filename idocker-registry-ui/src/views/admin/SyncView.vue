@@ -204,7 +204,7 @@ const fetchSyncStatus = async () => {
       throw new Error(t('sync.fetchSyncStatusFailed'))
     }
   } catch (error) {
-    console.error('获取同步状态失败:', error)
+    console.error('Get sync status failed:', error)
     showMessage(t('sync.fetchSyncStatusFailed'), 'error')
   }
 }
@@ -226,7 +226,7 @@ const fetchSyncLogs = async (page = 1) => {
       throw new Error(t('sync.fetchSyncLogsFailed'))
     }
   } catch (error) {
-    console.error('获取同步日志失败:', error)
+    console.error('Get sync logs failed:', error)
     showMessage(t('sync.fetchSyncLogsFailed'), 'error')
   } finally {
     logsLoading.value = false
@@ -250,7 +250,7 @@ const startFullSync = async () => {
       throw new Error(result.message || t('sync.syncFailed'))
     }
   } catch (error: any) {
-    console.error('全量同步失败:', error)
+    console.error('Full sync failed:', error)
     showMessage(`${t('sync.fullSync')}: ${error.message}`, 'error')
   } finally {
     isSyncing.value = false

@@ -14,9 +14,8 @@ import { ProjectModel } from '../models/ProjectModel.js';
 import { RepositoryModel } from '../models/RepositoryModel.js';
 import { ImageTagModel } from '../models/ImageTagModel.js';
 import { SyncLogModel } from '../models/SyncLogModel.js';
-import { getDb } from '../config/database.js';
 
-class RepositorySyncService {
+class DockerSyncService {
     constructor() {
         this.projectModel = new ProjectModel();
         this.repositoryModel = new RepositoryModel();
@@ -24,27 +23,6 @@ class RepositorySyncService {
         this.syncLogModel = new SyncLogModel();
     }
 
-    /**
-     * Get default registry config
-     */
-    async getDefaultRegistryConfig() {
-        try {
-            // TODO: 使用 RegistryConfigModel 获取配置
-            const db = await getDb();
-            const config = await db.get(
-                'SELECT * FROM registry_configs WHERE is_default = 1 AND is_active = 1'
-            );
-
-            if (!config) {
-                throw new AppError('未找到默认的Registry配置', 500, 'REGISTRY_CONFIG_NOT_FOUND');
-            }
-
-            return config;
-        } catch (error) {
-            logger.error('获取Registry配置失败:', error);
-            throw error;
-        }
-    }
 
     /**
      * Sync all repositories
@@ -57,7 +35,7 @@ class RepositorySyncService {
         let errorCount = 0;
 
         try {
-            const config = await this.getDefaultRegistryConfig();
+            const config = dockerRegistryService.getRegistryConfig();
             logger.info("config:", config);
 
             // 检查Repository连接
@@ -304,7 +282,7 @@ class RepositorySyncService {
         const startTime = Date.now();
 
         try {
-            const repositoryConfig = await this.getDefaultRegistryConfig();
+            const repositoryConfig = dockerRegistryService.getRegistryConfig();
 
             // 检查Repository连接
             const isConnected = await dockerRegistryService.checkConnection(repositoryConfig);
@@ -385,7 +363,8 @@ class RepositorySyncService {
             ]);
 
             // 检查Repository连接状态
-            const repositoryConfig = await this.getDefaultRegistryConfig();
+            const repositoryConfig = dockerRegistryService.getRegistryConfig();
+            logger.debug(`repositoryConfig:${JSON.stringify(repositoryConfig)}`);
             const isConnected = await dockerRegistryService.checkConnection(repositoryConfig);
 
             return {
@@ -445,4 +424,4 @@ class RepositorySyncService {
     }
 }
 
-export default new RepositorySyncService();
+export default new DockerSyncService();

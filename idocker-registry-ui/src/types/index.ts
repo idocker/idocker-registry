@@ -534,3 +534,34 @@ export interface AuditLogPaginatedResponse extends PaginatedApiResponse<AuditLog
 export interface ImageRepositoryPaginatedResponse extends PaginatedApiResponse<Image> {}
 
 export interface ProjectRepositoryPaginatedResponse extends PaginatedApiResponse<Project> {}
+
+// Namespace types
+export interface Namespace {
+  id: number
+  name: string
+  description: string
+  is_active: boolean
+  created_by: number
+  created_at: string
+  updated_at: string
+  creator?: {
+    id: number
+    username: string
+    full_name: string
+  }
+  project_count?: number
+}
+
+export interface CreateNamespaceData {
+  name: string
+  description: string
+}
+
+export interface UpdateNamespaceData {
+  name?: string
+  description?: string
+  is_active?: boolean
+}
+
+// 命名空间分页响应
+export interface NamespacePaginatedResponse extends PaginatedApiResponse<Namespace> {}
