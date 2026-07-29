@@ -1,213 +1,333 @@
-
-<div align="center" style="margin-top: 50px">
-<img src="./idocker-registry-ui/src/assets/logo.png" alt="idocker-registry" width="400" >
+<div align="center">
+<img src="./idocker-registry-ui/src/assets/logo.png" alt="iDocker Registry" width="400">
 </div>
 
 # iDocker Registry
 
-这是一个使用 Vue 3、TypeScript 和 Vite 重写的 Docker Registry Web UI 界面。原项目使用 Riot.js，此版本提供了现代化的 Vue 3 替代方案。
+> Enterprise Docker Registry Management Platform — Namespace / Project / Repository hierarchy, repository-level RBAC, Docker Registry v2 proxy, audit logging.
 
+[中文](#-概述)
 
-## 功能特性
+---
 
-- 📦 浏览 Docker Registry 中的仓库和标签
-- 🔍 搜索和过滤仓库和标签
-- 📊 查看镜像标签的历史记录
-- 🗑️ 删除镜像标签（如果启用）
-- 🌙 支持明暗主题切换
-- 📱 响应式设计，适配各种屏幕尺寸
-- 🔐 支持 Basic 认证
-- 🌐 支持多架构镜像
-- 📋 复制 docker pull 命令
-- 🏷️ 查看镜像标签的摘要和大小
-- 📅 显示镜像创建日期
-- 🎨 Material Design 风格界面
-- 🔒 支持 LDAP 认证
-- 🔒 支持基于角色的访问控制
-- 🔒 支持基于镜像的复制策略
-- 🔒 支持 AD/LDAP 支持
-- 🔒 支持审计管理
-- 🔒 支持图形化用户界面
+## 概述
 
+iDocker Registry 是一款企业级 Docker 镜像仓库管理平台，提供 Web UI 管理 Docker 镜像仓库。包含两个子系统：
 
+- **server** — Node.js/Express REST API + Docker Registry v2 代理
+- **ui** — Vue 3 / TypeScript SPA 前端
 
-## 🏗️ 技术栈
+### 核心特性
 
-- **容器化部署** - 提供完整的Dockerfile支持单容器部署
-- **Vue 3** - 渐进式 JavaScript 框架
-- **TypeScript** - JavaScript 的超集，提供类型支持
-- **Vite** - 现代前端构建工具
-- **Pinia** - Vue 的状态管理库
-- **Vue Router** - Vue 的官方路由管理器
-- **Sass** - CSS 预处理器
-- **Axios** - HTTP 客户端
-- **Express** - Node.js 的 Web 框架
+| 特性 | 说明 |
+|------|------|
+| 三层架构 | 命名空间 → 项目 → 仓库，清晰隔离团队资源 |
+| 细粒度权限 | 4 种角色（admin / project_manager / developer / operator），仓库级权限控制 |
+| Docker 代理 | 对 Docker Registry v2 API 的完整代理，集成鉴权与审计 |
+| 多 Registry | 支持管理多个 Docker Registry 实例 |
+| 镜像同步 | 将 Registry 数据同步到平台数据库 |
+| 审计日志 | 完整的操作记录，支持搜索、筛选、导出 |
+| 国际化 | 中文 / 英文双语界面 |
+| 主题切换 | 浅色 / 深色 / 跟随系统 |
 
-## 🛠️ 技术特点
+---
 
-### 1. **安全设计**
-   - JWT令牌认证
-   - 密码哈希存储
-   - CSRF和CORS保护
-   - 请求频率限制
+## 角色体系
 
-### 2. **高性能架构**
-   - SQLite轻量级数据库
-   - API响应缓存
-   - 懒加载数据
-   - 优化的数据库索引
+| 角色 | 标识 | 权限范围 | Docker 权限 |
+|------|------|----------|-------------|
+| 管理员 | admin | 全部权限：用户、命名空间、项目、审计、同步 | 完全控制 |
+| 项目管理者 | project_manager | 项目下所有仓库的成员管理 | pull / push / delete |
+| 开发者 | developer | 仓库镜像读写 | pull / push / delete |
+| 运维人员 | operator | 仓库镜像只读 | pull |
 
-### 3. **用户体验优化**
-   - 响应式设计
-   - 直观的操作流程
-   - 清晰的权限提示
-   - 实时状态反馈
+---
 
+## 技术栈
 
-## ✨ 实现的功能
+| 层级 | 技术 |
+|------|------|
+| 前端 | Vue 3 (Composition API) + TypeScript + Vite |
+| 状态管理 | Pinia |
+| 路由 | Vue Router |
+| HTTP | Axios (缓存、自动 Token 注入) |
+| 国际化 | vue-i18n (zh-CN / en-US) |
+| 样式 | SCSS (CSS 变量主题系统) |
+| 后端 | Node.js + Express |
+| 数据库 | SQLite (WAL 模式) |
+| 认证 | JWT + bcrypt |
+| 日志 | Winston |
+| Docker 代理 | http-proxy-middleware |
 
-### 1. 基于角色的访问控制
-- 用户和仓库通过"项目"组织管理
-- 三级权限体系：所有者(Owner)、维护者(Maintainer)、成员(Member)
-- 支持LDAP集成认证
+---
 
-### 2. 基于镜像的复制策略
-- 支持多个Registry实例间的镜像复制
-- 灵活的调度策略（手动、每小时、每天、每周）
-- 适用于负载均衡和高可用场景
+## 快速开始
 
-### 3. 图形化用户界面
-- 现代化的项目管理界面
-- 直观的Registry管理功能
-- 清晰的权限分配界面
+### 开发环境
 
-### 4. AD/LDAP支持
-- 完整的LDAP集成模块
-- 自动用户同步
-- 本地和LDAP用户并存
+```bash
+# 安装依赖
+cd idocker-registry-server && npm install
+cd idocker-registry-ui && npm install
 
-### 5. 镜像删除和垃圾回收
-- 镜像生命周期管理
-- 批量删除功能
-- 自动垃圾回收机制
+# 编译前端
+cd idocker-registry-ui && npm run build
 
-### 6. 审计管理
-- 全面的操作日志记录
-- 可追溯的审计跟踪
-- 灵活的日志查询和统计
+# Docker 开发模式（源码热更新）
+cd /workspace/idocker
+docker compose -f docker-compose.yaml -f docker-compose.dev.yaml up -d
+```
 
+开发模式下：
+- 前端：修改 → `npm run build`（~5s）→ 刷新浏览器
+- 后端：nodemon 自动检测文件变更并重启
 
-## 📦 部署方式
+### 生产环境
 
+```bash
+docker compose up -d
+```
 
-### 1. **环境要求**
+### 默认账号
 
-- Node.js >= 22.5
-- npm >= 7 或 yarn >= 1.22
+- 用户名：`admin`
+- 密码：`admin123`
 
-### 2. **开发环境**
-   ```bash
-   npm run dev              # 同时启动前后端开发服务器
-   npm run dev:client       # 仅启动前端开发服务器
-   npm run dev:server       # 仅启动后端开发服务器
-   ```
+---
 
-### 3. **生产环境**
-   ```bash
-   docker build -t idocker-registry .
-   docker run -p 8030:8030 -p 8031:8031 idocker-registry
-   ```
-
-### 4. **配置说明**
-
-- **环境变量配置**：通过`.env`文件配置数据库连接、LDAP设置等
-- **默认管理员账号**：用户名`admin`，密码`admin123`
-- **自动数据库初始化**：首次运行时自动创建表结构和初始数据
-
-### 5. **配置参数**
-
-应用支持通过环境变量进行配置：
-
-| 变量名 | 类型 | 默认值 | 描述 |
-|--------|------|--------|------|
-| `VITE_REGISTRY_URL` | string | - | 默认的 Docker Registry URL |
-| `VITE_REGISTRY_TITLE` | string | - | 自定义注册表标题 |
-| `VITE_PULL_URL` | string | - | docker pull 命令中使用的 URL |
-| `VITE_DELETE_IMAGES` | boolean | false | 是否允许删除镜像 |
-| `VITE_SHOW_CONTENT_DIGEST` | boolean | false | 是否显示内容摘要 |
-| `VITE_CATALOG_ELEMENTS_LIMIT` | number | 1000 | 目录页面显示的最大元素数 |
-| `VITE_SINGLE_REGISTRY` | boolean | false | 是否为单注册表模式 |
-| `VITE_DEFAULT_REGISTRIES` | string[] | [] | 默认注册表列表 |
-| `VITE_READ_ONLY_REGISTRIES` | boolean | false | 是否为只读注册表 |
-| `VITE_SHOW_CATALOG_NB_TAGS` | boolean | false | 是否显示仓库的标签数量 |
-| `VITE_HISTORY_CUSTOM_LABELS` | string[] | [] | 历史页面显示的自定义标签 |
-| `VITE_USE_CONTROL_CACHE_HEADER` | boolean | false | 是否使用缓存控制头 |
-| `VITE_THEME` | string | auto | 主题 (light/dark/auto) |
-| `VITE_TAGLIST_ORDER` | string | alpha-asc;num-desc | 标签列表排序方式 |
-| `VITE_CATALOG_DEFAULT_EXPANDED` | boolean | false | 目录默认是否展开 |
-| `VITE_CATALOG_MIN_BRANCHES` | number | 1 | 目录最小分支数 |
-| `VITE_CATALOG_MAX_BRANCHES` | number | 1 | 目录最大分支数 |
-| `VITE_TAGLIST_PAGE_SIZE` | number | 100 | 标签列表每页显示数 |
-| `VITE_REGISTRY_SECURED` | boolean | false | 注册表是否安全 |
-| `VITE_SHOW_TAG_HISTORY` | boolean | true | 是否显示标签历史 |
-
-
-
-## 贡献
-
-### 开发
-
-欢迎提交 Pull Request 和 Issue请确保:
-
-1. 代码符合项目风格
-2. 提交前通过所有测试
-3. 添加必要的类型注解
-4. 更新相关文档
-
-### 项目结构
+## 项目结构
 
 ```
-vue/
-├── public/                 # 静态资源
-├── server/                 # 后端服务
-│   ├── config/            # 数据库配置
-│   ├── controllers/       # 控制器
-│   ├── middleware/        # 中间件
-│   ├── models/          # 数据模型
-│   ├── routes/          # API路由
-│   └── utils/           # 工具函数
+idocker-registry-server/
+├── index.js                 # 入口
+├── config/
+│   ├── env.js               # 环境变量
+│   └── database.js          # SQLite 初始化 + 迁移
+├── middleware/
+│   ├── auth.js              # JWT 验证 + 角色鉴权
+│   └── errorHandler.js      # 统一错误处理
+├── models/                  # 数据模型 (BaseModel CRUD)
+├── routes/                  # API 路由
+├── services/                # 业务逻辑
+└── utils/                   # 工具函数
+
+idocker-registry-ui/
 ├── src/
-│   ├── assets/           # 资源文件
-│   ├── components/       # Vue 组件
-│   │   ├── catalog/     # 仓库目录组件
-│   │   ├── dialogs/     # 对话框组件
-│   │   ├── tag-list/    # 标签列表组件
-│   │   └── tag-history/ # 标签历史组件
-│   ├── stores/          # Pinia 状态管理
-│   ├── styles/          # 样式文件
-│   ├── types/           # TypeScript 类型定义
-│   ├── utils/           # 工具函数
-│   ├── views/           # 页面视图
-│   │   └── admin/       # 仓库目录组件
-│   ├── App.vue          # 根组件
-│   └── main.ts          # 应用入口
-└── Dockerfile           # 容器化配置
-├── package.json
-├── vite.config.ts
-├── tsconfig.json
-└── README.md
+│   ├── components/          # 组件
+│   ├── views/               # 页面 (admin/ 管理后台)
+│   ├── stores/              # Pinia 状态
+│   ├── services/            # API 封装
+│   ├── composables/         # 组合函数
+│   ├── i18n/                # 国际化
+│   ├── styles/              # 全局样式
+│   ├── types/               # TypeScript 类型
+│   └── utils/               # 工具函数
 ```
 
+---
 
+## 环境变量
 
-## 相关链接
+### 后端 (server/.env)
 
-- [原项目](https://github.com/Joxit/docker-registry-ui)
-- [Vue 3 文档](https://vuejs.org/)
-- [Vite 文档](https://vitejs.dev/)
-- [Pinia 文档](https://pinia.vuejs.org/)
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `PORT` | 7518 | 服务端口 |
+| `DB_PATH` | /app/data/registry.db | 数据库路径 |
+| `JWT_SECRET` | - | JWT 签名密钥 |
+| `JWT_EXPIRES_IN` | 24h | Token 过期时间 |
+| `DOCKER_REGISTRY_URL` | http://localhost:7519 | 内部 Registry 地址 |
+| `LOG_LEVEL` | info | 日志级别 |
 
+### 前端 (UI)
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `VITE_REGISTRY_URL` | - | 默认 Registry URL |
+| `VITE_THEME` | auto | 主题 (light/dark/auto) |
+| `VITE_TAGLIST_ORDER` | alpha-asc;num-desc | 标签排序 |
+| `VITE_DELETE_IMAGES` | false | 是否允许删除 |
+
+---
+
+## API 概览
+
+| 端点 | 说明 |
+|------|------|
+| `/api/auth/*` | 登录、注册、刷新令牌 |
+| `/api/users/*` | 用户管理（仅 admin） |
+| `/api/namespaces/*` | 命名空间 CRUD |
+| `/api/projects/*` | 项目管理 |
+| `/api/repository/*` | 仓库管理、镜像标签 |
+| `/api/audit/*` | 审计日志 |
+| `/api/sync/*` | 镜像同步 |
+| `/v2/*` | Docker Registry API 代理 |
+
+---
 
 ## 许可证
+
+MIT
+
+---
+
+---
+
+## Overview
+
+iDocker Registry is an enterprise Docker image registry management platform with a Web UI. It consists of two subsystems:
+
+- **server** — Node.js/Express REST API + Docker Registry v2 proxy
+- **ui** — Vue 3 / TypeScript SPA frontend
+
+### Key Features
+
+| Feature | Description |
+|---------|-------------|
+| Three-tier hierarchy | Namespace → Project → Repository for team isolation |
+| Fine-grained RBAC | 4 roles (admin / project_manager / developer / operator) at repository level |
+| Docker proxy | Full Docker Registry v2 API proxy with auth and audit |
+| Multi-Registry | Manage multiple Docker Registry instances |
+| Image sync | Sync Registry data to the platform database |
+| Audit logs | Complete operation trail with search, filter, export |
+| i18n | Chinese / English bilingual UI |
+| Theme | Light / Dark / Auto |
+
+---
+
+## Roles
+
+| Role | Scope | Docker Permissions |
+|------|-------|--------------------|
+| admin | Full access: users, namespaces, projects, audit, sync | Full control |
+| project_manager | Member management for all repos under a project | pull / push / delete |
+| developer | Read/write repository images | pull / push / delete |
+| operator | Read-only repository images | pull |
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Vue 3 (Composition API) + TypeScript + Vite |
+| State | Pinia |
+| Router | Vue Router |
+| HTTP | Axios (caching, auto token injection) |
+| i18n | vue-i18n (zh-CN / en-US) |
+| Styling | SCSS (CSS variable theming) |
+| Backend | Node.js + Express |
+| Database | SQLite (WAL mode) |
+| Auth | JWT + bcrypt |
+| Logging | Winston |
+| Docker proxy | http-proxy-middleware |
+
+---
+
+## Quick Start
+
+### Development
+
+```bash
+# Install dependencies
+cd idocker-registry-server && npm install
+cd idocker-registry-ui && npm install
+
+# Build frontend
+cd idocker-registry-ui && npm run build
+
+# Docker dev mode (hot reload)
+cd /workspace/idocker
+docker compose -f docker-compose.yaml -f docker-compose.dev.yaml up -d
+```
+
+Development workflow:
+- Frontend: edit → `npm run build` (~5s) → refresh browser
+- Backend: nodemon auto-restarts on file changes
+
+### Production
+
+```bash
+docker compose up -d
+```
+
+### Default Account
+
+- Username: `admin`
+- Password: `admin123`
+
+---
+
+## Project Structure
+
+```
+idocker-registry-server/
+├── index.js                 # Entry point
+├── config/
+│   ├── env.js               # Environment config
+│   └── database.js          # SQLite init + migration
+├── middleware/
+│   ├── auth.js              # JWT + role auth
+│   └── errorHandler.js      # Error handling
+├── models/                  # Data models (BaseModel CRUD)
+├── routes/                  # API routes
+├── services/                # Business logic
+└── utils/                   # Utilities
+
+idocker-registry-ui/
+├── src/
+│   ├── components/          # Components
+│   ├── views/               # Pages (admin/ admin panel)
+│   ├── stores/              # Pinia stores
+│   ├── services/            # API services
+│   ├── composables/         # Composables
+│   ├── i18n/                # Localization
+│   ├── styles/              # Global styles
+│   ├── types/               # TypeScript types
+│   └── utils/               # Utilities
+```
+
+---
+
+## Environment Variables
+
+### Backend (server/.env)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | 7518 | Server port |
+| `DB_PATH` | /app/data/registry.db | Database path |
+| `JWT_SECRET` | - | JWT signing key |
+| `JWT_EXPIRES_IN` | 24h | Token expiry |
+| `DOCKER_REGISTRY_URL` | http://localhost:7519 | Internal Registry URL |
+| `LOG_LEVEL` | info | Log level |
+
+### Frontend (UI)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VITE_REGISTRY_URL` | - | Default Registry URL |
+| `VITE_THEME` | auto | Theme (light/dark/auto) |
+| `VITE_TAGLIST_ORDER` | alpha-asc;num-desc | Tag sort order |
+| `VITE_DELETE_IMAGES` | false | Allow image deletion |
+
+---
+
+## API Overview
+
+| Endpoint | Description |
+|----------|-------------|
+| `/api/auth/*` | Login, register, refresh token |
+| `/api/users/*` | User management (admin only) |
+| `/api/namespaces/*` | Namespace CRUD |
+| `/api/projects/*` | Project management |
+| `/api/repository/*` | Repository & image tag management |
+| `/api/audit/*` | Audit logs |
+| `/api/sync/*` | Image sync |
+| `/v2/*` | Docker Registry API proxy |
+
+---
+
+## License
 
 MIT
