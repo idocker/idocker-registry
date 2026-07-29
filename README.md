@@ -4,10 +4,6 @@
 
 # iDocker Registry
 
-> Enterprise Docker Registry Management Platform — Namespace / Project / Repository hierarchy, repository-level RBAC, Docker Registry v2 proxy, audit logging.
-
-[中文](#-概述)
-
 ---
 
 ## 概述
