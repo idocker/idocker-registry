@@ -151,11 +151,11 @@ export interface Project {
   name: string
   description?: string
   namespace?: string
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
-  createdByUsername?: string
-  createdByName?: string
+  is_active: boolean | number
+  created_at: string
+  updated_at: string
+  created_by_username?: string
+  created_by_name?: string
   memberRole?: 'owner' | 'maintainer' | 'viewer'
   memberSince?: string
   memberCount?: number
@@ -164,13 +164,15 @@ export interface Project {
 
 export interface ProjectMember {
   id: number
+  user_id: number
+  project_id: number
   username: string
   email?: string
   fullName?: string
-  userRole: 'admin' | 'user'
-  isActive: boolean
-  memberRole: 'owner' | 'maintainer' | 'viewer'
-  memberSince: string
+  user_role: UserRole
+  role: 'project_manager' | 'developer' | 'operator'
+  is_active: boolean | number
+  created_at: string
 }
 
 export interface ProjectDetails extends Project {
@@ -180,8 +182,8 @@ export interface ProjectDetails extends Project {
     name: string
     description?: string
     isPublic: boolean
-    createdAt: string
-    updatedAt: string
+    created_at: string
+    updated_at: string
   }>
 }
 
@@ -200,23 +202,26 @@ export interface UpdateProjectData {
 
 export interface AddMemberData {
   userId: number
-  role: 'owner' | 'maintainer' | 'viewer'
+  role: 'project_manager' | 'developer' | 'operator'
 }
 
 export interface UpdateMemberRoleData {
-  role: 'owner' | 'maintainer' | 'viewer'
+  role: 'project_manager' | 'developer' | 'operator'
 }
 
 // User types
+export type UserRole = 'admin' | 'project_manager' | 'developer' | 'operator'
+
 export interface User {
   id: number
   username: string
   email?: string
   fullName?: string
-  role: 'admin' | 'user'
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
+  role: UserRole
+  is_active: boolean | number
+  last_login?: string
+  created_at: string
+  updated_at: string
 }
 
 export interface UserDetail extends User {
@@ -226,6 +231,7 @@ export interface UserDetail extends User {
     description?: string
     memberRole: 'owner' | 'maintainer' | 'viewer'
     memberSince: string
+    created_at?: string
   }>
 }
 
@@ -239,13 +245,13 @@ export interface CreateUser {
   password: string
   email?: string
   fullName?: string
-  role?: 'admin' | 'user'
+  role?: UserRole
 }
 
 export interface UpdateUser {
   email?: string
   fullName?: string
-  role?: 'admin' | 'user'
+  role?: UserRole
   isActive?: boolean
 }
 
@@ -258,9 +264,9 @@ export interface UserProfile {
   username: string
   email: string
   fullName: string
-  role: 'admin' | 'user'
-  isActive: boolean
-  createdAt: string
+  role: UserRole
+  is_active: boolean | number
+  created_at: string
 }
 
 // Auth types
@@ -310,9 +316,9 @@ export interface Image {
   project: string
   description?: string
   isPublic: boolean
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
+  is_active: boolean | number
+  created_at: string
+  updated_at: string
   tags: ImageTag[]
 }
 
@@ -363,16 +369,16 @@ export interface RecentProject {
   id: number
   name: string
   description: string
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 export interface RecentRepository {
   id: number
   name: string
   url: string
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 // Sync types
@@ -386,10 +392,10 @@ export interface SyncStatus {
     id: number
     type: string
     status: string
-    processedCount: number
-    errorCount: number
+    processed_count: number
+    error_count: number
     duration: number
-    createdAt: string
+    created_at: string
   } | null
 }
 
@@ -417,12 +423,12 @@ export interface SyncResult {
 export interface AuditLog {
   id: number
   action: string
-  resourceType: string
-  resourceId: string
+  resource_type: string
+  resource_id: string
   details: any
-  ipAddress: string
-  userAgent: string
-  createdAt: string
+  ip_address: string
+  user_agent: string
+  created_at: string
   username?: string
   fullName?: string
   email?: string

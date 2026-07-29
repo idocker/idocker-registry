@@ -45,6 +45,8 @@ export default {
     createdBy: '创建者',
     operations: '操作',
     noData: '暂无数据',
+    deleting: '删除中...',
+    reactivate: '重新激活',
     required: '必填',
     optional: '选填',
     language: '语言',
@@ -52,7 +54,8 @@ export default {
     totalRecords: '共 {count} 条记录',
     previousPage: '上一页',
     nextPage: '下一页',
-    more: '更多'
+    more: '更多',
+    comingSoon: '内容筹备中...'
   },
 
   // 导航
@@ -70,7 +73,9 @@ export default {
     register: '注册',
     dashboard: '仪表盘',
     profile: '个人资料',
-    password: '修改密码'
+    password: '修改密码',
+    userGuide: '用户指南',
+    backToRepositories: '返回仓库'
   },
 
   // 管理布局
@@ -80,8 +85,11 @@ export default {
     systemManagement: '系统管理',
     basicInfo: '基本信息',
     changePassword: '修改密码',
+    namespace: '命名空间',
     namespaceManagement: '命名空间管理',
     projectManagement: '项目管理',
+    repositoryManagement: '仓库管理',
+    repositoryManagementDesc: '管理所有仓库的成员、可见性和镜像',
     userManagement: '用户管理',
     warehouseSync: '仓库同步',
     toggleSidebar: '切换侧边栏'
@@ -170,7 +178,9 @@ export default {
     fullName: '姓名',
     role: '角色',
     roleAdmin: '管理员',
-    roleUser: '普通用户',
+    roleProjectManager: '项目管理',
+    roleDeveloper: '开发人员',
+    roleOperator: '运维人员',
     active: '激活',
     inactive: '未激活',
     activateUser: '激活用户',
@@ -183,6 +193,7 @@ export default {
     cannotDeleteLastAdmin: '不能删除最后一个管理员账号',
     usernameRequired: '用户名为必填项',
     emailRequired: '邮箱为必填项',
+    password: '密码',
     passwordRequired: '密码为必填项',
     usernameExists: '用户名已存在',
     emailExists: '邮箱已存在'
@@ -209,6 +220,7 @@ export default {
     updateMember: '更新成员',
     roleOwner: '所有者',
     roleMaintainer: '维护者',
+    role: '角色',
     roleViewer: '观察者',
     projectCreated: '项目创建成功',
     projectUpdated: '项目更新成功',
@@ -612,19 +624,30 @@ export default {
     editProject: '编辑项目',
     // 标签页
     repositories: '仓库',
+    projectRepo: '项目仓库',
     members: '成员',
     replicationPolicies: '复制策略',
     // 仓库
     loadingRepositories: '加载仓库...',
+    searchRepos: '搜索仓库...',
     noRepositoriesYet: '暂无仓库',
+    noRepos: '暂无仓库',
+    repoName: '仓库名称',
+    visibility: '可见性',
+    public: '公开',
+    private: '私有',
+    manageMembers: '成员管理',
     addFirstRepository: '添加您的第一个Docker仓库',
     repositoryType: '仓库类型',
+    type: '类型',
     // 成员
     projectMembers: '项目成员',
+    memberCount: '成员数',
     addMember: '添加成员',
     noMembersYet: '暂无成员',
     addTeamMembers: '添加团队成员协作项目',
     selectUser: '选择用户',
+    projectManager: '项目管理员',
     memberRole: '成员',
     maintainer: '维护者',
     owner: '所有者',
@@ -645,6 +668,17 @@ export default {
     disabled: '已禁用',
     // 仓库对话框
     editRegistry: '编辑仓库',
+    createRegistry: '添加仓库',
+    createNewRegistry: '添加新仓库',
+    belongingProject: '所属项目',
+    selectProject: '选择项目',
+    registryRepositoryName: '仓库名称',
+    registryRepositoryNamePlaceholder: '输入仓库名称',
+    creating: '创建中...',
+    registryCreated: '仓库创建成功',
+    createRegistryFailed: '创建仓库失败',
+    repositoryNameRequired: '仓库名称不能为空',
+    projectRequired: '请选择所属项目',
     registryName: '仓库名称',
     registryNamePlaceholder: '输入仓库名称',
     registryUrl: '仓库URL',
@@ -669,6 +703,7 @@ export default {
     selectTargetRegistry: '选择目标仓库',
     // 消息
     confirmDeleteRegistry: '确定要删除仓库 "{name}" 吗？',
+    togglePolicyStatusFailed: '切换策略状态失败',
     confirmRemoveMember: '确定要移除 {username} 吗？',
     confirmDeletePolicy: '确定要删除复制策略 "{name}" 吗？',
     saveRegistryFailed: '保存仓库失败',
@@ -701,9 +736,10 @@ export default {
     confirmPassword: '确认删除',
     newPasswordPlaceholder: '新密码（留空则不修改）',
     // 角色
-    roleUser: '用户',
-    roleMaintainer: '维护者',
     roleAdmin: '管理员',
+    roleProjectManager: '项目管理',
+    roleDeveloper: '开发人员',
+    roleOperator: '运维人员',
     // 状态
     yes: '是',
     no: '否',
@@ -791,7 +827,7 @@ export default {
   
   // 版本通知
   versionNotification: {
-    newVersionAvailable: '新版本（{{version}}）可用！'
+    newVersionAvailable: '新版本（{version}）可用！'
   },
   
   // 404页面
@@ -924,5 +960,70 @@ export default {
       loadingFailed: '加载失败',
       close: '关闭'
     }
+  },
+  guide: {
+    intro: '项目介绍',
+    introDesc: 'iDocker Registry 是一款企业级 Docker 镜像仓库管理平台，提供 Web UI 来管理 Docker 镜像仓库，支持多命名空间、多项目的层级管理，以及完善的用户角色与权限体系。',
+    feature1Title: '多层级管理',
+    feature1Desc: '命名空间 → 项目 → 仓库三层结构，清晰隔离不同团队和环境的资源',
+    feature2Title: '细粒度权限',
+    feature2Desc: '四种角色（admin / project_manager / developer / operator），从系统管理到仓库级 pull 操作逐级控制',
+    feature3Title: '镜像同步',
+    feature3Desc: '支持将 Docker Registry 中的仓库数据同步到平台数据库，保持信息一致',
+    feature4Title: '审计日志',
+    feature4Desc: '完整的操作审计记录，支持搜索、筛选、导出，满足合规需求',
+    feature5Title: '国际化',
+    feature5Desc: '支持中文 / 英文双语界面，满足多语言团队协作需求',
+    feature6Title: '主题切换',
+    feature6Desc: '支持浅色 / 深色 / 跟随系统三种主题模式，适配不同使用环境',
+    roles: '角色和权限说明',
+    roleOverview: '角色一览',
+    roleCol: '角色',
+    tagCol: '标识',
+    scopeCol: '权限范围',
+    adminRole: '管理员',
+    adminScope: '全部权限：用户管理、命名空间管理、项目管理、审计日志、同步、所有仓库的镜像操作',
+    adminDockerPerm: '完全控制（pull / push / delete / 成员管理）',
+    managerRole: '项目管理者',
+    managerScope: '负责项目下所有仓库的管理：添加/移除仓库成员、修改成员角色',
+    developerRole: '开发者',
+    developerScope: '镜像读写：pull / push / delete 镜像，可查看所属仓库',
+    operatorRole: '运维人员',
+    operatorScope: '镜像只读：pull 镜像，可查看被授予权限的仓库',
+    dockerPermCol: 'Docker 权限',
+    pmDockerPerm: 'pull / push / delete（含成员管理）',
+    devDockerPerm: 'pull / push / delete',
+    opDockerPerm: 'pull 仅拉取',
+    adminNote: '注：admin 系统角色对所有仓库拥有全部 Docker 操作权限，无需额外添加为仓库成员。',
+    hierarchy: '分层管理结构',
+    nsTitle: '命名空间',
+    nsLabel: 'Namespace',
+    nsDesc: '按团队/部门划分，用于资源隔离和权限管理。例如：',
+    projectTitle: '项目',
+    projectLabel: 'Project',
+    projectDesc: '每个项目对应 Docker Registry 中的一个仓库前缀，用于归类一组微服务。例如：',
+    repoTitle: '仓库',
+    repoLabel: 'Repository',
+    repoDesc: '每个微服务在项目下对应一个独立仓库，通过 tag 区分版本。例如：',
+    pathExample: '完整路径示例：',
+    envNoteStrong: '环境区分：',
+    envNoteText: '不在仓库层级区分环境。开发/测试/生产环境通过部署工具（docker-compose / Kubernetes）加载不同配置文件，指向不同的镜像 tag 来控制。同一镜像经过 CI/CD 流水线验证后，通过 tag 提升（如',
+    envNoteTag: ':dev-xxxx',
+    envNoteArrow: ' → ',
+    envNoteTag2: ':v1.2.3',
+    envNoteSuffix: '）来区分发布阶段。',
+    practices: '最佳实践',
+    practice1Title: '按团队划分命名空间',
+    practice1Desc: '建议创建 backend-team、frontend-team 等命名空间，以团队为维度隔离资源。每个团队在各自命名空间下创建项目，避免跨团队资源混淆。',
+    practice2Title: '每个微服务一个仓库',
+    practice2Desc: '在项目下为每个微服务创建独立仓库。例如 backend-team 命名空间下，user-service、order-service 各为一个仓库，通过 tag 管理版本。',
+    practice3Title: 'CI/CD 流水线驱动镜像发布',
+    practice3Desc: '开发者推送代码触发 CI 构建 → 自动打 tag 并推送镜像 → 测试环境通过 docker-compose 配置拉取对应 tag → 验证通过后 tag 提升为正式版本号 → 生产环境部署。',
+    practice4Title: '最小权限原则',
+    practice4Desc: '运维人员使用 operator 角色（仅 pull）；开发者使用 developer 角色（pull + push + delete）；每个仓库指定一位项目管理者负责仓库成员管理。仅管理员拥有全局管理权限。',
+    practice5Title: '环境通过配置区分，不通过仓库区分',
+    practice5Desc: '不使用 prod/app、dev/app 的方式创建重复仓库。开发、测试、生产环境共用同一仓库，通过 docker-compose / K8s 配置文件中的 tag 来区分部署版本。减少仓库数量，简化管理。',
+    practice6Title: '审计追踪与定期维护',
+    practice6Desc: '定期检查审计日志，关注异常的 pull / push 操作和权限变更。清理过期的旧版本 tag，保持仓库整洁。定期同步确保平台镜像列表与实际 Registry 一致。'
   }
 }

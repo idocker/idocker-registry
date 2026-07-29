@@ -28,7 +28,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   isError: false,
-  duration: 4000,
+  duration: 3000,
   closable: true
 })
 

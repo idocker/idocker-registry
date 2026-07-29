@@ -8,11 +8,11 @@
   @include button();
   
   &.btn-primary {
-    background-color: var(--accent-text);
+    background-color: #00B2EE !important;
     color: white;
     
     &:hover {
-      background-color: var(--header-accent-text);
+      background-color: #00BFFF !important;
     }
   }
   
@@ -39,6 +39,7 @@
     
     .material-icons {
       margin-right: 0;
+      font-size: 16px;
     }
   }
 }
@@ -129,6 +130,19 @@
     padding: 0 $spacing-sm;
     color: var(--neutral-text);
   }
+}
+
+.page-size-select {
+  padding: 4px 6px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 13px;
+  background: var(--card-bg);
+  color: var(--primary-text);
+  cursor: pointer;
+  margin-left: 8px;
+  width: auto;
+  min-width: 50px;
 }
 
 // Chip component

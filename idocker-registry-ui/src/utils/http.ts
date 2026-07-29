@@ -177,6 +177,11 @@ class RegistryHttpService {
   }
 
   private formatError(error: any): RegistryError {
+    // Already formatted - return as-is
+    if (error.code && (error.code === 'HTTP_ERROR' || error.code === 'NETWORK_ERROR' || error.code === 'UNKNOWN_ERROR' || error.code === 'MIXED_CONTENT' || error.code === 'INCORRECT_URL')) {
+      return error
+    }
+
     if (error.response) {
       // Server responded with an error
       if (error.response.data && error.response.data.errors) {
@@ -194,14 +199,16 @@ class RegistryHttpService {
         }
       }
       
-      // Other HTTP errors
+      // Extract backend error message if available
+      const data = error.response.data
+      const backendMsg = (data && data.message) ? data.message : null
+      const msg = backendMsg || error.response.statusText || 'Unknown error'
+      
       return {
         code: 'HTTP_ERROR',
-        message: error.response.statusText || 'Unknown error',
+        message: msg,
         status: error.response.status,
-        detail: typeof error.response.data === 'string' 
-          ? error.response.data 
-          : JSON.stringify(error.response.data)
+        detail: typeof data === 'string' ? data : JSON.stringify(data)
       }
     } else if (error.request) {
       // Network error

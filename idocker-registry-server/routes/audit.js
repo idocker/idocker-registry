@@ -51,8 +51,8 @@ router.get('/logs', asyncHandler(async (req, res) => {
     });
 
     res.status(200).json(paginated(result.data,result.pagination));
-  } catch (error) {
-    logger.error('Error getting audit logs:', error);
+  } catch (e) {
+    logger.error('Error getting audit logs:', e);
     res.status(500).json(error('Failed to get audit logs'));
   }
 }));
@@ -72,8 +72,8 @@ router.get('/logs/:id', asyncHandler(async (req, res) => {
     }
 
     res.status(200).json(success(log));
-  } catch (error) {
-    logger.error('Error getting audit log details:', error);
+  } catch (e) {
+    logger.error('Error getting audit log details:', e);
     res.status(500).json(error('Failed to get audit log details'));
   }
 }));
@@ -89,8 +89,8 @@ router.get('/statistics', asyncHandler(async (req, res) => {
     const statistics = await auditModel.getAuditStatistics(parseInt(days));
 
     res.status(200).json(success(statistics));
-  } catch (error) {
-    logger.error('Error getting audit statistics:', error);
+  } catch (e) {
+    logger.error('Error getting audit statistics:', e);
     res.status(500).json(error('Failed to get audit statistics'));
   }
 }));
@@ -125,8 +125,8 @@ router.delete('/logs/cleanup', asyncHandler(async (req, res) => {
     });
 
     res.status(200).json(success(result, 'Audit log cleanup completed'));
-  } catch (error) {
-    logger.error('Error cleaning up audit logs:', error);
+  } catch (e) {
+    logger.error('Error cleaning up audit logs:', e);
     res.status(500).json(error('Failed to clean up audit logs'));
   }
 }));
@@ -140,8 +140,8 @@ router.get('/actions', asyncHandler(async (req, res) => {
     const actions = await auditModel.getAvailableActions();
 
     res.status(200).json(success(actions));
-  } catch (error) {
-    logger.error('Error getting action type list:', error);
+  } catch (e) {
+    logger.error('Error getting action type list:', e);
     res.status(500).json(error('Failed to get action type list'));
   }
 }));
@@ -155,8 +155,8 @@ router.get('/resource-types', asyncHandler(async (req, res) => {
     const resourceTypes = await auditModel.getAvailableResourceTypes();
 
     res.status(200).json(success(resourceTypes));
-  } catch (error) {
-    logger.error('Error getting resource type list:', error);
+  } catch (e) {
+    logger.error('Error getting resource type list:', e);
     res.status(500).json(error('Failed to get resource type list'));
   }
 }));
@@ -221,8 +221,8 @@ router.post('/export', asyncHandler(async (req, res) => {
         }
       }));
     }
-  } catch (error) {
-    logger.error('Error exporting audit logs:', error);
+  } catch (e) {
+    logger.error('Error exporting audit logs:', e);
     res.status(500).json(error('Failed to export audit logs'));
   }
 }));

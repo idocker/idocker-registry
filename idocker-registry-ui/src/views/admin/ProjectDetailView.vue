@@ -1,49 +1,21 @@
 <template>
   <ManagementLayout>
     <div class="project-detail-container">
-      <div class="project-header">
-        <div class="project-info">
-          <div class="project-title">
-            <h1>{{ project.name }}</h1>
-            <p>{{ project.description }}</p>
-          </div>
-
+      <div class="project-actions">
+        <div class="action-btns">
           <router-link to="/admin/projects" class="back-link">
             <span class="material-icons">arrow_back</span>
             {{ $t('projectDetail.backToProjects') }}
           </router-link>
-        </div>
-
-        <div class="project-actions" v-if="false">
           <button class="btn btn-primary" @click="showRepositoryModal = true">
             <span class="material-icons">add</span>
             {{ $t('projectDetail.addRegistry') }}
           </button>
-          <button class="btn btn-ghost" @click="editProject">
-            <span class="material-icons">edit</span>
-            {{ $t('projectDetail.editProject') }}
-          </button>
         </div>
       </div>
 
-      <div class="project-tabs">
-        <button v-for="tab in tabs" :key="tab.id" :class="['tab-button', { active: activeTab === tab.id }]"
-          @click="activeTab = tab.id">
-          {{ tab.name }}
-        </button>
-      </div>
-
       <div class="project-content">
-        <!-- Repositories Tab -->
-        <div v-if="activeTab === 'repositories'" class="tab-content">
-          <div class="section-header">
-            <h2>{{ $t('projectDetail.repositories') }}</h2>
-            <button class="btn btn-primary" @click="showRepositoryModal = true">
-              <span class="material-icons">add</span>
-              {{ $t('projectDetail.addRegistry') }}
-            </button>
-          </div>
-          <div class="repositories-table-container">
+        <div class="repositories-table-container">
 
 
             <div class="table-container">
@@ -90,12 +62,12 @@
                     </td>
                     <td>{{ repository.description || '-' }}</td>
 
-                    <td>{{ formatDate(repository.createdAt || new Date().toISOString()) }}</td>
+                    <td>{{ formatDate(repository.created_at) }}</td>
                     <td class="action-buttons">
-                      <button class="btn-icon btn-ghost" @click="editRepository(repository)" :title="$t('projectDetail.editRegistry')" disabled>
+                      <button class="btn btn-icon btn-ghost" @click="() => {}" :title="$t('projectDetail.editRegistry')" disabled>
                         <span class="material-icons">edit</span>
                       </button>
-                      <button class="btn-icon btn-ghost" @click="deleteRepository(repository)" :title="$t('common.delete')">
+                      <button class="btn btn-icon btn-ghost" @click="deleteRepository(repository)" :title="$t('common.delete')">
                         <span class="material-icons">delete</span>
                       </button>
                     </td>
@@ -103,86 +75,45 @@
                 </tbody>
               </table>
             </div>
-          </div>
-        </div>
-
-        <!-- Members Tab -->
-        <div v-if="activeTab === 'members'" class="tab-content">
-          <div class="section-header">
-            <h2>{{ $t('projectDetail.projectMembers') }}</h2>
-            <button class="btn btn-primary" @click="showAddMemberModal = true">
-              <span class="material-icons">person_add</span>
-              {{ $t('projectDetail.addMember') }}
-            </button>
-          </div>
-
-          <div v-if="members.length === 0" class="empty-state">
-            <span class="material-icons">people_outline</span>
-            <h3>{{ $t('projectDetail.noMembersYet') }}</h3>
-            <p>{{ $t('projectDetail.addTeamMembers') }}</p>
-          </div>
-
-          <div v-else class="members-list">
-            <div v-for="member in members" :key="member.id" class="member-item">
-              <div class="member-avatar">
-                {{ member.username.charAt(0).toUpperCase() }}
-              </div>
-              <div class="member-info">
-                <div class="member-name">{{ member.username }} <div class="member-role">{{ member.memberRole }}</div></div>
-                <div class="member-email">{{ member.email }}</div>
-                
-              </div>
-              <div class="member-actions">
-                <select v-model="member.memberRole" @change="updateMemberRole(member)" class="role-select">
-                  <option value="member">{{ $t('projectDetail.memberRole') }}</option>
-                  <option value="maintainer">{{ $t('projects.roleMaintainer') }}</option>
-                  <option value="owner">{{ $t('projects.roleOwner') }}</option>
-                </select>
-                <button class="btn btn-ghost btn-icon" @click="removeMember(member)">
-                  <span class="material-icons">remove_circle</span>
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
-      <!-- Add Member Modal -->
-      <div v-if="showAddMemberModal" class="modal-overlay" @click.self="showAddMemberModal = false">
+      <!-- Add Repository Modal -->
+      <div v-if="showRepositoryModal" class="modal-overlay" @click.self="showRepositoryModal = false">
         <div class="modal">
           <div class="modal-header">
-            <h2>{{ $t('projectDetail.addProjectMember') }}</h2>
-            <button class="btn btn-ghost btn-icon" @click="showAddMemberModal = false">
+            <h2>{{ $t('projectDetail.addRegistry') }}</h2>
+            <button class="btn btn-ghost btn-icon" @click="showRepositoryModal = false">
               <span class="material-icons">close</span>
             </button>
           </div>
 
-          <form @submit.prevent="addMember" class="modal-content">
+          <form @submit.prevent="addRepository" class="modal-content">
             <div class="form-group">
-              <label for="member-user">{{ $t('projectDetail.selectUser') }} *</label>
-              <select id="member-user" v-model="memberForm.userId" required>
-                <option value="">{{ $t('projectDetail.selectUser') }}</option>
-                <option v-for="user in availableUsers" :key="user.id" :value="user.id">
-                  {{ user.username }} ({{ user.email }})
-                </option>
-              </select>
+              <label>{{ $t('projectDetail.belongingProject') }}</label>
+              <div class="form-info readonly-field">
+                <span class="material-icons">folder</span>
+                <span>{{ project.name }}</span>
+              </div>
             </div>
 
             <div class="form-group">
-              <label for="member-role">{{ $t('projects.role') }}</label>
-              <select id="member-role" v-model="memberForm.role">
-                <option value="member">{{ $t('projectDetail.memberRole') }}</option>
-                <option value="maintainer">{{ $t('projects.roleMaintainer') }}</option>
-                <option value="owner">{{ $t('projects.roleOwner') }}</option>
-              </select>
+              <label for="repo-name">{{ $t('projectDetail.registryRepositoryName') }} *</label>
+              <input id="repo-name" type="text" v-model="repositoryForm.name" required
+                     :placeholder="$t('projectDetail.registryRepositoryNamePlaceholder')" />
+            </div>
+
+            <div class="form-group">
+              <label for="repo-desc">{{ $t('projects.description') }}</label>
+              <textarea id="repo-desc" v-model="repositoryForm.description" rows="3" :placeholder="$t('projects.descriptionPlaceholder')"></textarea>
             </div>
 
             <div class="modal-actions">
-              <button type="button" class="btn btn-ghost" @click="showAddMemberModal = false">
+              <button type="button" class="btn btn-ghost" @click="showRepositoryModal = false">
                 {{ $t('common.cancel') }}
               </button>
               <button type="submit" class="btn btn-primary" :disabled="isSubmitting">
-                {{ isSubmitting ? $t('projectDetail.addingMember') + '...' : $t('projectDetail.addMember') }}
+                {{ isSubmitting ? $t('projectDetail.creating') + '...' : $t('projectDetail.createRegistry') }}
               </button>
             </div>
           </form>
@@ -194,7 +125,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
@@ -202,24 +133,22 @@ import projectService from '@/services/project.service'
 import repositoryService from '@/services/repository.service'
 import userService from '@/services/user.service'
 import { useNotifications } from '@/composables/useNotifications'
-import type { ProjectDetails, ProjectMember, AddMemberData, User, Repository ,Image} from '@/types'
+import { formatDate as fmtDate } from '@/utils/helpers'
+import type { ProjectDetails, User, Repository ,Image} from '@/types'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
-const { showError } = useNotifications()
+const { showError, showSuccess } = useNotifications()
 
 const project = ref<ProjectDetails>({} as ProjectDetails)
 const repositories = ref<Image[]>([])
-const members = ref<ProjectMember[]>([])
 const replicationPolicies = ref([])
-const availableUsers = ref<User[]>([])
 const isLoading = ref(false)
 const isSubmitting = ref(false)
-const activeTab = ref('repositories')
+const activeTab = ref((route.query.tab as string) || 'repositories')
 
 const showRepositoryModal = ref(false)
-const showAddMemberModal = ref(false)
 const showReplicationModal = ref(false)
 
 const editingRepository = ref(null)
@@ -227,18 +156,7 @@ const editingReplication = ref(null)
 
 const repositoryForm = reactive({
   name: '',
-  url: '',
-  type: 'docker',
-  hasAuth: false,
-  authConfig: {
-    username: '',
-    password: ''
-  }
-})
-
-const memberForm = reactive({
-  userId: '',
-  role: 'member'
+  description: ''
 })
 
 const replicationForm = reactive({
@@ -251,7 +169,6 @@ const replicationForm = reactive({
 
 const tabs = [
   { id: 'repositories', name: t('projectDetail.repositories') },
-  { id: 'members', name: t('projectDetail.members') },
   //{ id: 'replication', name: t('projectDetail.replicationPolicies') }
 ]
 
@@ -264,10 +181,9 @@ const fetchProjectData = async () => {
       projectService.getProject(projectId)
     ])
 
-    if (projectResponse.success) {
-      project.value = projectResponse.data
-      members.value = projectResponse.data.members || []
-    }
+     if (projectResponse.success) {
+       project.value = projectResponse.data
+     }
 
     // 获取项目相关的仓库
     const repositoriesResponse = await repositoryService.getProjectImages(projectId, {})
@@ -284,117 +200,38 @@ const fetchProjectData = async () => {
     isLoading.value = false
   }
 }
-
-const fetchUsers = async () => {
-  try {
-    await userService.getUsers({}).then(response => {
-      if (response.success && (response.data )) {
-      // 兼容两种数据结构：data 和 datas
-      availableUsers.value = response.data || []
-      } else {
-        availableUsers.value = []
-      }
-    })
-  } catch (error) {
-    console.error('Error fetching users:', error)
-    availableUsers.value = []
-  }
+const editProject = () => {
+  console.log('Edit project:', project.value)
 }
 
-const addMember = async () => {
+const addRepository = async () => {
+  if (!repositoryForm.name.trim()) return
   try {
     isSubmitting.value = true
-
-    const response = await projectService.addMember(
-      project.value.id.toString(),
-      {
-        userId: Number(memberForm.userId),
-        role: memberForm.role as 'owner' | 'maintainer' | 'viewer'
-      }
-    )
-
+    const response = await repositoryService.createRepository({
+      name: repositoryForm.name,
+      description: repositoryForm.description,
+      projectId: project.value.id
+    })
     if (response.success) {
-      await fetchProjectData()
-      showAddMemberModal.value = false
-      resetMemberForm()
+      showRepositoryModal.value = false
+      repositoryForm.name = ''
+      repositoryForm.description = ''
+      fetchProjectData()
     } else {
-      throw new Error(response.message || 'Failed to add member')
+      showError('Failed', response.message)
     }
-  } catch (error: any) {
-    console.error('Error adding member:', error)
-    showError(t('projectDetail.togglePolicyStatusFailed'), error.message)
+  } catch (e: any) {
+    showError('Failed', e.message)
   } finally {
     isSubmitting.value = false
   }
 }
 
-const updateMemberRole = async (member: ProjectMember) => {
-  try {
-    const response = await projectService.updateMemberRole(
-      project.value.id.toString(),
-      member.id.toString(),
-      { role: member.memberRole }
-    )
-
-    if (!response.success) {
-      throw new Error(response.message || 'Failed to update member role')
-    }
-  } catch (error: any) {
-    console.error('Error updating member role:', error)
-    showError(t('projectDetail.togglePolicyStatusFailed'), error.message)
-    // Revert the change if it failed
-    await fetchProjectData()
-  }
-}
-
-const editRepository = (repository: Image) => {
-  // TODO: Implement edit repository functionality
-  console.log('Edit repository:', repository)
-}
-
-const removeMember = async (member: ProjectMember) => {
-  if (confirm(t('projectDetail.confirmRemoveMember', { username: member.username }))) {
-    try {
-      const response = await projectService.removeMember(
-        project.value.id.toString(),
-        member.id.toString()
-      )
-
-      if (response.success) {
-        await fetchProjectData()
-      } else {
-        throw new Error(response.message || 'Failed to remove member')
-      }
-    } catch (error: any) {
-      console.error('Error removing member:', error)
-      showError(t('projectDetail.deletePolicyFailed'), error.message)
-    }
-  }
-}
-
-
-const editProject = () => {
-  // TODO: Implement edit project functionality
-  console.log('Edit project:', project.value)
-}
-
-const resetMemberForm = () => {
-  memberForm.userId = ''
-  memberForm.role = 'member'
-}
-
-// 格式化日期
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString)
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  })
-}
+const formatDate = (dateString: string) => fmtDate(dateString, locale.value)
 
 const deleteRepository = (repository: Image) => {
-  if (confirm(t('projectDetail.confirmDeleteRepository', { name: repository.name }))) {
+  if (confirm(t('projectDetail.confirmDeleteRegistry', { name: repository.name }))) {
     // TODO: Implement delete repository functionality
     console.log('Delete repository:', repository)
   }
@@ -402,7 +239,6 @@ const deleteRepository = (repository: Image) => {
 
 onMounted(() => {
   fetchProjectData()
-  fetchUsers()
 })
 </script>
 
@@ -411,86 +247,28 @@ onMounted(() => {
   // 样式由ManagementLayout管理
 }
 
-.project-header {
+.project-actions {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 30px;
+  align-items: center;
+  margin-bottom: 16px;
 
-  .project-info {
-    width: 100%;
+  .action-btns {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 
     .back-link {
       display: flex;
       align-items: center;
-      gap: 5px;
-      color: #7f8c8d;
+      gap: 4px;
+      color: var(--neutral-text);
       text-decoration: none;
-      margin-bottom: 15px;
       font-size: 14px;
-      float: right;
-      padding-top: 10px;
 
-      &:hover {
-        color: #3498db;
-      }
+      &:hover { color: var(--accent-text); }
 
-      .material-icons {
-        font-size: 18px;
-      }
-    }
-
-    .project-title {
-      float: left;
-
-      h1 {
-        font-size: 28px;
-        font-weight: 600;
-        //color: #2c3e50;
-        margin-bottom: 8px;
-      }
-
-      p {
-        color: #7f8c8d;
-        font-size: 16px;
-      }
-    }
-  }
-
-  .project-actions {
-    display: flex;
-    gap: 10px;
-
-    .btn {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-  }
-}
-
-.project-tabs {
-  display: flex;
-  border-bottom: 1px solid var(--border-color);
-  margin-bottom: 30px;
-
-  .tab-button {
-    padding: 12px 20px;
-    background: none;
-    border: none;
-    border-bottom: 3px solid transparent;
-    color: var(--primary-text);
-    font-size: 16px;
-    cursor: pointer;
-    transition: all 0.2s;
-
-    &:hover {
-      color: var(--primary-color);
-    }
-
-    &.active {
-      color: var(--primary-color);
-      border-bottom-color: var(--primary-color);
+      .material-icons { font-size: 18px; }
     }
   }
 }
@@ -529,29 +307,11 @@ onMounted(() => {
       margin-bottom: 30px;
     }
   }
-
-  .section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    //margin-bottom: 20px;
-    background-color: var(--card-bg);
-    padding: 16px;
-    border-radius: 8px 8px 0 0;
-    border-bottom: 1px solid var(--border-color);
-
-    h2 {
-      font-size: 20px;
-      font-weight: 600;
-      margin-bottom: 0px;
-      //color: #2c3e50;
-    }
-  }
 }
 
 .repositories-table-container {
   background-color: var(--card-bg);
-  border-radius: 0 0 8px 8px;
+  border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   overflow: hidden;
 }
@@ -587,19 +347,19 @@ onMounted(() => {
 
   th {
     font-weight: 600;
-    color: var(--text-secondary);
-    background-color: var(--hover-bg);
+    color: var(--neutral-text);
+    background-color: var(--hover-background);
   }
 
   tr:hover {
-    background-color: var(--hover-bg);
+    background-color: var(--hover-background);
   }
 
   .loading-cell,
   .empty-cell {
     text-align: center;
     padding: 40px 12px;
-    color: var(--text-muted);
+    color: var(--neutral-text);
   }
 
   .loading-indicator {
@@ -643,7 +403,7 @@ onMounted(() => {
     display: flex;
     align-items: center;
     gap: 6px;
-    color: var(--text-secondary);
+    color: var(--neutral-text);
 
     .material-icons {
       font-size: 16px;
@@ -656,7 +416,7 @@ onMounted(() => {
 
     .material-icons {
       font-size: 64px;
-      color: var(--text-muted);
+      color: var(--neutral-text);
       margin-bottom: 16px;
     }
 
@@ -666,14 +426,8 @@ onMounted(() => {
     }
 
     p {
-      color: var(--text-muted);
+      color: var(--neutral-text);
       margin-bottom: 24px;
-    }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
     }
   }
 }
@@ -989,6 +743,22 @@ onMounted(() => {
       border-radius: 4px;
       margin-top: 10px;
     }
+
+    .form-info.readonly-field {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      background: var(--hover-background);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      color: var(--primary-text);
+      font-size: 14px;
+    }
+    .form-info.readonly-field .material-icons {
+      font-size: 18px;
+      color: var(--neutral-text);
+    }
   }
 
   .modal-actions {
@@ -1007,53 +777,6 @@ onMounted(() => {
 
   to {
     transform: rotate(360deg);
-  }
-}
-
-// Button styles
-.btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &.btn-primary {
-    background-color: var(--primary-color);
-    color: white;
-
-    &:hover:not(:disabled) {
-      background-color: var(--primary-color-hover);
-    }
-  }
-
-  &.btn-ghost {
-    background: transparent;
-    color: #7f8c8d;
-
-    &:hover {
-      background: rgba(127, 140, 141, 0.1);
-    }
-  }
-
-  &.btn-icon {
-    padding: 8px;
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    .material-icons {
-      font-size: 18px;
-    }
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
   }
 }
 </style>

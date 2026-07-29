@@ -219,10 +219,11 @@ import repositoryService from '@/services/repository.service'
 import projectService from '@/services/project.service'
 import authService from '@/services/auth.service'
 
+import { formatDateTime as fmtDT } from '@/utils/helpers'
 import type { Image, Project } from '@/types'
 
 const router = useRouter()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { showSuccess, showError, showInfo } = useNotifications()
 
 // State management
@@ -279,7 +280,7 @@ const loadProjects = async () => {
     if (projectsData && projectsData.length > 0) {
       // Sort by creation time descending
       projects.value = projectsData.sort((a: Project, b: Project) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       )
 
       // Expand first project by default
@@ -467,11 +468,7 @@ const formatFileSize = (bytes: number): string => {
 }
 
 // Format date
-const formatDate = (dateString: string | undefined): string => {
-  if (!dateString) return 'N/A'
-  const date = new Date(dateString)
-  return date.toLocaleDateString() + ' ' + date.toLocaleTimeString()
-}
+const formatDate = (dateString: string | undefined): string => fmtDT(dateString || '', locale.value)
 
 // Watch search term changes
 watch(searchTerm, () => {

@@ -43,13 +43,19 @@ a {
   }
 }
 
-input[type="text"],textarea {
- width: 100%;
-    padding: 8px 12px 8px 40px;
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    background-color: var(--background);
-    color: var(--primary-text);
+input[type="text"], textarea, select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background-color: var(--background);
+  color: var(--primary-text);
+  font-family: inherit;
+  font-size: inherit;
+}
+
+select {
+  cursor: pointer;
 }
 // Utility classes
 .text-center {

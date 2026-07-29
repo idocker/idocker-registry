@@ -7,7 +7,8 @@ import type {
   ImageDetails, 
   ImageTagDetails, 
   PaginationParams,
-  ImageRepositoryPaginatedResponse
+  ImageRepositoryPaginatedResponse,
+  Repository
 } from '@/types'
 
 import { http } from '@/utils/http'
@@ -107,6 +108,13 @@ class RepositoryService {
     this.validateRequired(imageId, '镜像ID');
     this.validateRequired(tagId, '标签ID');
     return http.delete(`/api/repository/images/${imageId}/tags/${tagId}`);
+  }
+
+  /**
+   * 创建仓库
+   */
+  async createRepository(data: { projectId: number; name: string; description?: string }): Promise<{ success: boolean; message: string; data: Repository }> {
+    return http.post('/api/repository/create', data);
   }
 
   /**

@@ -10,7 +10,7 @@
 import express from 'express';
 import dockerRegistryService from '../services/dockerRegistryService.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
-import { requireProjectPermission, requireAdmin } from '../middleware/auth.js';
+import { authMiddleware, requireProjectPermission, requireAdmin } from '../middleware/auth.js';
 import { logger } from '../utils/logger.js';
 import { ProjectModel } from '../models/ProjectModel.js';
 import { RepositoryModel } from '../models/RepositoryModel.js';
@@ -25,6 +25,24 @@ const repositoryModel = new RepositoryModel();
 const imageTagModel = new ImageTagModel();
 const registryConfigModel = new RegistryConfigModel();
 const authModel = new AuthModel();
+
+router.get('/all', authMiddleware, asyncHandler(async (req, res) => {
+  try {
+    const repos = await repositoryModel.all(
+      `SELECT r.id, r.name, r.project_id, r.description, r.is_public, r.is_active,
+              p.name as project_name, p.namespace,
+              (SELECT COUNT(*) FROM repository_members WHERE repository_id = r.id) as memberCount
+       FROM repositories r
+       JOIN projects p ON r.project_id = p.id
+       WHERE r.is_active = 1
+       ORDER BY p.namespace, p.name, r.name`
+    );
+    res.status(200).json(success(repos || []));
+  } catch (e) {
+    logger.error('Error getting all repositories:', e);
+    res.status(500).json(error('Failed to get repositories'));
+  }
+}));
 
 router.get('/', asyncHandler(async (req, res) => {
   //获取用户的项目列表（不分页）
@@ -393,6 +411,38 @@ router.delete('/images/:imageId/tags/:tagId', asyncHandler(async (req, res) => {
 }));
 
 /**
+ * POST /api/repository/create
+ * 创建仓库
+ */
+router.post('/create', authMiddleware, asyncHandler(async (req, res) => {
+  const { projectId, name, description } = req.body;
+
+  if (!projectId || !name) {
+    return res.status(400).json({ success: false, message: 'Project ID and repository name are required' });
+  }
+
+  try {
+    const project = await projectModel.getProjectBasicInfo(projectId);
+    if (!project) {
+      return res.status(404).json({ success: false, message: 'Project not found' });
+    }
+
+    if (req.user.role !== 'admin') {
+      const membership = await projectModel.getUserMembership(projectId, req.user.id);
+      if (!membership) {
+        return res.status(403).json({ success: false, message: 'No permission' });
+      }
+    }
+
+    const result = await repositoryModel.createSimpleRepository(projectId, name, description);
+    res.status(201).json(success(result, 'Repository created successfully'));
+  } catch (error) {
+    logger.error('Error creating repository:', error);
+    res.status(500).json({ success: false, message: 'Failed to create repository' });
+  }
+}));
+
+/**
  * POST /api/repository/sync
  * 同步Docker Repository中的镜像信息到数据库
  * 这是一个长时间运行的操作，可能需要异步处理
@@ -565,6 +615,111 @@ router.get('/config', asyncHandler(async (req, res) => {
       success: false,
       message: '获取Repository配置失败'
     });
+  }
+}));
+
+
+// ===== Repository Members =====
+
+router.get('/:id/members', authMiddleware, asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  try {
+    const members = await repositoryModel.getMembers(id);
+    res.status(200).json(success({ repository: { id }, members: members || [] }));
+  } catch (e) {
+    logger.error('Error getting repository members:', e);
+    res.status(500).json(error('Failed to get repository members'));
+  }
+}));
+
+router.post('/:id/members', authMiddleware, asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { userId, role = 'developer' } = req.body;
+
+  if (!userId) {
+    return res.status(400).json(error('User ID cannot be empty', 400));
+  }
+  if (!['project_manager', 'developer', 'operator'].includes(role)) {
+    return res.status(400).json(error('Invalid role. Must be project_manager, developer, or operator', 400));
+  }
+
+  try {
+    if (req.user.role !== 'admin') {
+      const membership = await repositoryModel.getUserMembership(id, req.user.id);
+      if (!membership || membership.role !== 'project_manager') {
+        return res.status(403).json(error('Only admin or repository project_manager can manage members', 403));
+      }
+    }
+
+    const exists = await repositoryModel.memberExists(id, userId);
+    if (exists) {
+      return res.status(409).json(error('User is already a member', 409));
+    }
+
+    await repositoryModel.addMember(id, userId, role);
+    res.status(201).json(success(null, 'Member added successfully'));
+  } catch (e) {
+    logger.error('Error adding member:', e);
+    res.status(500).json(error('Failed to add member'));
+  }
+}));
+
+router.put('/:id/members/:userId', authMiddleware, asyncHandler(async (req, res) => {
+  const { id, userId } = req.params;
+  const { role } = req.body;
+
+  if (!role || !['project_manager', 'developer', 'operator'].includes(role)) {
+    return res.status(400).json(error('Invalid role', 400));
+  }
+
+  try {
+    if (req.user.role !== 'admin') {
+      const membership = await repositoryModel.getUserMembership(id, req.user.id);
+      if (!membership || membership.role !== 'project_manager') {
+        return res.status(403).json(error('Only admin or repository project_manager can manage members', 403));
+      }
+    }
+
+    await repositoryModel.updateMemberRole(id, userId, role);
+    res.status(200).json(success(null, 'Member role updated successfully'));
+  } catch (e) {
+    logger.error('Error updating member role:', e);
+    res.status(500).json(error('Failed to update member role'));
+  }
+}));
+
+router.delete('/:id/members/:userId', authMiddleware, asyncHandler(async (req, res) => {
+  const { id, userId } = req.params;
+  try {
+    if (req.user.role !== 'admin') {
+      const membership = await repositoryModel.getUserMembership(id, req.user.id);
+      if (!membership || membership.role !== 'project_manager') {
+        return res.status(403).json(error('Only admin or repository project_manager can manage members', 403));
+      }
+    }
+
+    await repositoryModel.removeMember(id, userId);
+    res.status(200).json(success(null, 'Member removed successfully'));
+  } catch (e) {
+    logger.error('Error removing member:', e);
+    res.status(500).json(error('Failed to remove member'));
+  }
+}));
+
+router.put('/:id/public', authMiddleware, asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { isPublic } = req.body;
+
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json(error('Only admin can change repository visibility', 403));
+    }
+
+    await repositoryModel.updateRepository(id, { is_public: isPublic ? 1 : 0 });
+    res.status(200).json(success(null, isPublic ? 'Repository is now public' : 'Repository is now private'));
+  } catch (e) {
+    logger.error('Error updating repository visibility:', e);
+    res.status(500).json(error('Failed to update repository visibility'));
   }
 }));
 

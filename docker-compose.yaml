@@ -1,12 +1,9 @@
-
 services:
   idocker-registry:
-    #build: .
-    image: idocker-registry:0.9.9
+    image: idocker-registry:1.0.0
     container_name: idocker-registry
     ports:
       - "7588:7518"
-      #- "7519:7519"
     volumes:
       - ./test/registry-data:/var/lib/registry
       - ./test/app-data:/app/data

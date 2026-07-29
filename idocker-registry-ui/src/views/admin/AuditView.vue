@@ -72,7 +72,7 @@
             <div class="logs-table-container">
                 <div class="table-controls">
                     <div class="table-info">
-                        {{ $t('audit.totalRecords', { count: totalLogs }) }}
+                        {{ $t('common.totalRecords', { count: totalLogs }) }}
                     </div>
                     <div class="table-actions">
                         <button class="btn btn-ghost" @click="refreshLogs">
@@ -116,7 +116,7 @@
                                 <td colspan="7" class="empty-cell">{{ $t('audit.noLogsFound') }}</td>
                             </tr>
                             <tr v-for="log in logs" :key="log.id">
-                                <td>{{ formatDateTime(log.createdAt) }}</td>
+                                <td>{{ formatDateTime(log.created_at) }}</td>
                                 <td>{{ log.username || '-' }}</td>
                                 <td>
                                     <span class="action-badge" :class="getActionClass(log.action)">
@@ -130,7 +130,7 @@
                                     </button>
                                     <span v-else>-</span>
                                 </td>
-                                <td>{{ log.ipAddress || '-' }}</td>
+                                <td>{{ log.ip_address || '-' }}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -148,6 +148,11 @@
                         :disabled="currentPage === totalPages">
                         {{ $t('common.nextPage') }}
                     </button>
+                    <select v-model="pageSize" class="page-size-select">
+                        <option :value="10">10</option>
+                        <option :value="20">20</option>
+                        <option :value="50">50</option>
+                    </select>
                 </div>
             </div>
 
@@ -165,7 +170,7 @@
                         <div class="log-details">
                             <div class="detail-item">
                                 <label>{{ $t('audit.time') }}:</label>
-                                <span>{{ formatDateTime(selectedLog.createdAt) }}</span>
+                                <span>{{ formatDateTime(selectedLog.created_at) }}</span>
                             </div>
                             <div class="detail-item">
                                 <label>{{ $t('audit.user') }}:</label>
@@ -177,15 +182,15 @@
                             </div>
                             <div class="detail-item">
                                 <label>{{ $t('audit.resourceType') }}:</label>
-                                <span>{{ getResourceTypeDisplay(selectedLog.resourceType) }}</span>
+                                <span>{{ getResourceTypeDisplay(selectedLog.resource_type) }}</span>
                             </div>
                             <div class="detail-item">
                                 <label>{{ $t('audit.resourceId') }}:</label>
-                                <span>{{ selectedLog.resourceId || '-' }}</span>
+                                <span>{{ selectedLog.resource_id || '-' }}</span>
                             </div>
                             <div class="detail-item">
                                 <label>{{ $t('audit.ipAddress') }}:</label>
-                                <span>{{ selectedLog.ipAddress || '-' }}</span>
+                                <span>{{ selectedLog.ip_address || '-' }}</span>
                             </div>
                             <div v-if="selectedLog.details" class="detail-item full-width">
                                 <label>{{ $t('audit.details') }}:</label>
@@ -247,7 +252,7 @@
             <!-- 消息提示 -->
             <div v-if="message" class="snackbar" :class="`snackbar-${message.type}`">
                 {{ message.text }}
-                <button class="snackbar-close" @click="message.text = ''">
+                <button class="snackbar-close" @click="message = null">
                     <span class="material-icons">close</span>
                 </button>
             </div>
@@ -256,11 +261,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
 import auditService from '@/services/audit.service'
 import userService from '@/services/user.service'
+import { formatDateTime as fmtDT } from '@/utils/helpers'
 import type { AuditLog, Message, User, UserPaginatedResponse } from '@/types'
 import axios from 'axios'
 const { t, locale } = useI18n()
@@ -278,7 +284,7 @@ const logs = ref<AuditLog[]>([])
 const users = ref<User[]>([])
 const selectedLog = ref<AuditLog | null>(null)
 const currentPage = ref(1)
-const pageSize = ref(4)
+const pageSize = ref(10)
 const totalLogs = ref(0)
 
 // Filter conditions
@@ -368,18 +374,7 @@ const getResourceTypeDisplay = (resourceType: string) => {
     }
 }
 
-// Format date time
-const formatDateTime = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleString(locale.value, {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-    })
-}
+const formatDateTime = (dateString: string) => dateString ? fmtDT(dateString, locale.value) : ''
 
 // Load logs
 const loadLogs = async () => {
@@ -401,9 +396,9 @@ const loadLogs = async () => {
             totalPages.value = response.pagination?.totalPages || 1
         })
         
-    } catch (error) {
-        console.error('Failed to load audit logs:', error)
-        showMessage(t('audit.loadAuditLogsFailed'), 'error')
+    } catch (e: any) {
+        console.error('Failed to load audit logs:', e)
+        showMessage(e?.message || t('audit.loadAuditLogsFailed'), 'error')
     } finally {
         isLoading.value = false
     }
@@ -475,9 +470,9 @@ const confirmDelete = async () => {
 
         // 重新加载日志
         loadLogs()
-    } catch (error) {
-        console.error('Failed to delete audit logs:', error)
-        showMessage(t('audit.deleteLogsFailed'), 'error')
+    } catch (e: any) {
+        console.error('Failed to delete audit logs:', e)
+        showMessage(e?.message || t('audit.deleteLogsFailed'), 'error')
     } finally {
         isDeleting.value = false
     }
@@ -486,7 +481,21 @@ const confirmDelete = async () => {
 // Show message
 const showMessage = (text: string, type: 'success' | 'error' | 'info' = 'info') => {
     message.value = { text, type } as Message
+    setTimeout(() => {
+        message.value = null
+    }, 3000)
 }
+
+// Reload when page changes
+watch(currentPage, () => {
+    loadLogs()
+})
+
+// Reload when page size changes
+watch(pageSize, () => {
+    currentPage.value = 1
+    loadLogs()
+})
 
 // Load data on component mount
 onMounted(() => {
@@ -570,7 +579,7 @@ onMounted(() => {
         border-radius: 4px;
         font-size: 14px;
         background-color: var(--input-bg);
-        color: var(--text);
+        color: var(--primary-text);
 
         &:focus {
             outline: none;
@@ -584,7 +593,7 @@ onMounted(() => {
         gap: 8px;
 
         span {
-            color: var(--text-secondary);
+            color: var(--neutral-text);
         }
     }
 }
@@ -611,7 +620,7 @@ onMounted(() => {
     border-bottom: 1px solid var(--border-color);
 
     .table-info {
-        color: var(--text-secondary);
+        color: var(--neutral-text);
     }
 
     .table-actions {
@@ -632,24 +641,29 @@ onMounted(() => {
     td {
         padding: 12px;
         text-align: left;
+        font-size: 14px;
         border-bottom: 1px solid var(--border-color);
     }
 
     th {
         font-weight: 600;
-        color: var(--text-secondary);
-        background-color: var(--hover-bg);
+        color: var(--neutral-text);
+        background-color: var(--hover-background);
+    }
+
+    td {
+        color: var(--primary-text);
     }
 
     tr:hover {
-        background-color: var(--hover-bg);
+        background-color: var(--hover-background);
     }
 
     .loading-cell,
     .empty-cell {
         text-align: center;
         padding: 40px 12px;
-        color: var(--text-muted);
+        color: var(--neutral-text);
     }
 
     .loading-indicator {
@@ -670,23 +684,23 @@ onMounted(() => {
         font-weight: 500;
 
         &.action-success {
-            background-color: rgba(var(--success-color-rgb), 0.1);
+            background-color: rgba(76, 175, 80, 0.1);
             color: var(--success-color);
         }
 
         &.action-warning {
-            background-color: rgba(var(--warning-color-rgb), 0.1);
+            background-color: rgba(255, 152, 0, 0.1);
             color: var(--warning-color);
         }
 
         &.action-danger {
-            background-color: rgba(var(--danger-color-rgb), 0.1);
-            color: var(--danger-color);
+            background-color: rgba(244, 67, 54, 0.1);
+            color: var(--error-color);
         }
 
         &.action-info {
-            background-color: rgba(var(--info-color-rgb), 0.1);
-            color: var(--info-color);
+            background-color: rgba(52, 152, 219, 0.1);
+            color: var(--accent-text);
         }
     }
 
@@ -713,7 +727,7 @@ onMounted(() => {
     padding: 16px;
 
     .page-info {
-        color: var(--text-secondary);
+        color: var(--neutral-text);
     }
 }
 
@@ -758,7 +772,7 @@ onMounted(() => {
         background: none;
         border: none;
         cursor: pointer;
-        color: var(--text-muted);
+        color: var(--neutral-text);
 
         .material-icons {
             font-size: 20px;
@@ -778,7 +792,7 @@ onMounted(() => {
         label {
             font-weight: 500;
             width: 120px;
-            color: var(--text-secondary);
+            color: var(--neutral-text);
         }
 
         span,

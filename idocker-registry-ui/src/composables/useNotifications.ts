@@ -29,7 +29,7 @@ export function showNotification(
   type: NotificationType,
   title: string,
   message?: string,
-  timeout: number = 5000
+  timeout: number = 3000
 ): string {
   const id = Date.now().toString()
   

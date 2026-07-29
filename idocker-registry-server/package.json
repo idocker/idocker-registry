@@ -1,6 +1,6 @@
 {
   "name": "idocker-registry-server",
-  "version": "0.9.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "start": "node index.js",
@@ -26,5 +26,8 @@
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
+  },
+  "allowScripts": {
+    "sqlite3@5.1.7": true
   }
 }

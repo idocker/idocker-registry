@@ -73,7 +73,7 @@
         <!-- 消息提示 -->
         <div v-if="message" class="snackbar" :class="`snackbar-${message.type}`">
             {{ message.text }}
-            <button class="snackbar-close" @click="message.text = ''">
+                <button class="snackbar-close" @click="message = null">
                 <span class="material-icons">close</span>
             </button>
         </div>
@@ -185,6 +185,9 @@ const resetForm = () => {
 // Show message
 const showMessage = (text: string, type: 'success' | 'error' | 'info' = 'info') => {
     message.value = { text, type } as Message
+    setTimeout(() => {
+        message.value = null
+    }, 3000)
 }
 </script>
 
@@ -287,7 +290,7 @@ const showMessage = (text: string, type: 'success' | 'error' | 'info' = 'info') 
     .password-requirements {
         margin: 24px 0;
         padding: 16px;
-        background-color: var(--hover-bg);
+        background-color: var(--hover-background);
         border-radius: 8px;
 
         .requirements-title {
@@ -307,7 +310,7 @@ const showMessage = (text: string, type: 'success' | 'error' | 'info' = 'info') 
                 gap: 8px;
                 margin-bottom: 8px;
                 font-size: 14px;
-                color: var(--text-muted);
+                color: var(--neutral-text);
 
                 &.requirement-met {
                     color: var(--success-color);

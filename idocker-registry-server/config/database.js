@@ -75,12 +75,20 @@ export async function initDatabase() {
               password VARCHAR(255) NOT NULL,
               email VARCHAR(255),
               full_name VARCHAR(100),
-              role VARCHAR(20) DEFAULT 'user' CHECK (role IN ('admin', 'user')),
+              role VARCHAR(20) DEFAULT 'developer' CHECK (role IN ('admin', 'project_manager', 'developer', 'operator')),
               is_active BOOLEAN DEFAULT 1,
+              last_login DATETIME,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
           `);
+
+          // add last_login column if upgrading from older version
+          db.run(`ALTER TABLE users ADD COLUMN last_login DATETIME`, (err) => {
+            if (err && !err.message.includes('duplicate column')) {
+              logger.error('Failed to add last_login column:', err.message);
+            }
+          });
 
           // create projects table
           db.run(`
@@ -97,16 +105,16 @@ export async function initDatabase() {
             )
           `);
 
-          // create project_members table
+          // create repository_members table
           db.run(`
-            CREATE TABLE IF NOT EXISTS project_members (
+            CREATE TABLE IF NOT EXISTS repository_members (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
-              project_id INTEGER NOT NULL,
+              repository_id INTEGER NOT NULL,
               user_id INTEGER NOT NULL,
-              role VARCHAR(20) DEFAULT 'viewer' CHECK (role IN ('owner', 'maintainer', 'viewer')),
+              role VARCHAR(20) DEFAULT 'developer' CHECK (role IN ('project_manager', 'developer', 'operator')),
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-              UNIQUE(project_id, user_id),
-              FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+              UNIQUE(repository_id, user_id),
+              FOREIGN KEY (repository_id) REFERENCES repositories(id) ON DELETE CASCADE,
               FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
           `);
@@ -210,8 +218,8 @@ export async function initDatabase() {
           // create indexes
           db.run('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)');
           db.run('CREATE INDEX IF NOT EXISTS idx_projects_name ON projects(name)');
-          db.run('CREATE INDEX IF NOT EXISTS idx_project_members_project_id ON project_members(project_id)');
-          db.run('CREATE INDEX IF NOT EXISTS idx_project_members_user_id ON project_members(user_id)');
+          db.run('CREATE INDEX IF NOT EXISTS idx_repository_members_repository_id ON repository_members(repository_id)');
+          db.run('CREATE INDEX IF NOT EXISTS idx_repository_members_user_id ON repository_members(user_id)');
           db.run('CREATE INDEX IF NOT EXISTS idx_repositories_project_id ON repositories(project_id)');
           db.run('CREATE INDEX IF NOT EXISTS idx_image_tags_repository_id ON image_tags(repository_id)');
           db.run('CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id)');
@@ -220,6 +228,71 @@ export async function initDatabase() {
           db.run('CREATE INDEX IF NOT EXISTS idx_namespaces_name ON namespaces(name)');
           db.run('CREATE INDEX IF NOT EXISTS idx_namespaces_is_active ON namespaces(is_active)');
           db.run('CREATE INDEX IF NOT EXISTS idx_namespaces_created_by ON namespaces(created_by)');
+
+          // ===== Schema Migration: use PRAGMA user_version to ensure migration runs exactly once =====
+          db.get("PRAGMA user_version", [], (err, row) => {
+            const schemaVersion = row?.user_version || 0;
+            if (schemaVersion < 1) {
+              // Check if project_members exists (old schema) or repository_members (new schema)
+              db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='project_members'", [], (checkErr, checkRow) => {
+                if (!checkRow) {
+                  // Fresh DB with new schema - skip v1, go directly to v2
+                  logger.info('Fresh database detected, setting schema version to 2');
+                  db.run("PRAGMA user_version = 2");
+                  return;
+                }
+                logger.info('Running schema migration v1: upgrading role system...');
+                db.serialize(() => {
+                  db.run("PRAGMA ignore_check_constraints = ON");
+                  db.run("PRAGMA foreign_keys = OFF");
+
+                  // Migrate user roles: old (admin/user) → new (admin/project_manager/developer/operator)
+                  db.run(`UPDATE users SET role = 'project_manager' WHERE role = 'user' AND id IN (SELECT user_id FROM project_members WHERE role = 'owner')`);
+                  db.run(`UPDATE users SET role = 'developer' WHERE role = 'user' AND id IN (SELECT user_id FROM project_members WHERE role = 'maintainer')`);
+                  db.run(`UPDATE users SET role = 'operator' WHERE role = 'user' AND id IN (SELECT user_id FROM project_members WHERE role = 'viewer')`);
+                  db.run(`UPDATE users SET role = 'developer' WHERE role = 'user'`);
+
+                  db.run(`ALTER TABLE users RENAME TO users_old`);
+                  db.run(`CREATE TABLE users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username VARCHAR(50) UNIQUE NOT NULL,
+                    password VARCHAR(255) NOT NULL,
+                    email VARCHAR(255),
+                    full_name VARCHAR(100),
+                    role VARCHAR(20) DEFAULT 'developer' CHECK (role IN ('admin', 'project_manager', 'developer', 'operator')),
+                    is_active BOOLEAN DEFAULT 1,
+                    last_login DATETIME,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                  )`);
+                  db.run(`INSERT INTO users SELECT * FROM users_old`);
+                  db.run(`DROP TABLE users_old`);
+
+                  db.run(`UPDATE project_members SET role = 'project_manager' WHERE role = 'owner'`);
+                  db.run(`UPDATE project_members SET role = 'developer' WHERE role = 'maintainer'`);
+                  db.run(`UPDATE project_members SET role = 'operator' WHERE role = 'viewer'`);
+
+                  db.run(`ALTER TABLE project_members RENAME TO project_members_old`);
+                  db.run(`CREATE TABLE project_members (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    project_id INTEGER NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    role VARCHAR(20) DEFAULT 'developer' CHECK (role IN ('project_manager', 'developer', 'operator')),
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(project_id, user_id),
+                    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                  )`);
+                  db.run(`INSERT INTO project_members SELECT * FROM project_members_old`);
+                  db.run(`DROP TABLE project_members_old`);
+
+                  db.run("PRAGMA foreign_keys = ON");
+                  db.run("PRAGMA user_version = 1");
+                  logger.info('Schema migration v1 completed');
+                });
+              });
+            }
+          });
 
           // Add namespace_id column to projects table if it doesn't exist
           db.all("PRAGMA table_info(projects)", [], (err, columns) => {
@@ -234,6 +307,33 @@ export async function initDatabase() {
                   }
                 });
               }
+            }
+          });
+
+          // ===== Schema Migration v2: repository-level permissions =====
+          db.get("PRAGMA user_version", [], (err, row) => {
+            const schemaVersion = row?.user_version || 0;
+            if (schemaVersion >= 1 && schemaVersion < 2) {
+              logger.info('Running schema migration v2: repository-level permissions...');
+              db.serialize(() => {
+                db.run("PRAGMA foreign_keys = OFF");
+                db.run(`DROP TABLE IF EXISTS project_members`);
+                db.run(`CREATE TABLE IF NOT EXISTS repository_members (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  repository_id INTEGER NOT NULL,
+                  user_id INTEGER NOT NULL,
+                  role VARCHAR(20) DEFAULT 'developer' CHECK (role IN ('project_manager', 'developer', 'operator')),
+                  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                  UNIQUE(repository_id, user_id),
+                  FOREIGN KEY (repository_id) REFERENCES repositories(id) ON DELETE CASCADE,
+                  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )`);
+                db.run('CREATE INDEX IF NOT EXISTS idx_repository_members_repo_id ON repository_members(repository_id)');
+                db.run('CREATE INDEX IF NOT EXISTS idx_repository_members_user_id ON repository_members(user_id)');
+                db.run("PRAGMA foreign_keys = ON");
+                db.run("PRAGMA user_version = 2");
+                logger.info('Schema migration v2 completed');
+              });
             }
           });
 

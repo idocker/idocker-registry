@@ -114,7 +114,7 @@
             <!-- 消息提示 -->
             <div v-if="message" class="snackbar" :class="`snackbar-${message.type}`">
                 {{ message.text }}
-                <button class="snackbar-close" @click="message.text = ''">
+                <button class="snackbar-close" @click="closeMessage">
                     <span class="material-icons">close</span>
                 </button>
             </div>
@@ -128,6 +128,7 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import userService from '@/services/user.service'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
+import { formatDate as fmtDate } from '@/utils/helpers'
 import type { SnackbarMessage,Message, Project, User ,UserProjects} from '@/types'
 
 const { t, locale } = useI18n()
@@ -159,7 +160,7 @@ const getRoleDisplay = (role: string) => {
         case 'admin':
             return t('users.roleAdmin')
         case 'maintainer':
-            return t('users.roleMaintainer')
+            return t('projects.roleMaintainer')
         case 'member':
             return t('projects.roleViewer')
         default:
@@ -168,14 +169,7 @@ const getRoleDisplay = (role: string) => {
 }
 
 // Format date
-const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString(locale.value, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-    })
-}
+const formatDate = (dateString: string) => fmtDate(dateString, locale.value)
 
 // Load user profile
 const loadUserProfile = async () => {
@@ -296,6 +290,12 @@ const uploadAvatar = async () => {
 // Show message
 const showMessage = (msg: Message) => {
     message.value = msg
+    setTimeout(() => {
+        message.value = null
+    }, 3000)
+}
+const closeMessage = () => {
+    message.value = null
 }
 
 // Load user profile on component mount
@@ -406,7 +406,7 @@ onMounted(() => {
 
             &.role-display {
                 background-color: var(--input-bg);
-                color: var(--text-muted);
+                color: var(--neutral-text);
             }
         }
     }
@@ -441,7 +441,7 @@ onMounted(() => {
         }
 
         p {
-            color: var(--text-muted);
+            color: var(--neutral-text);
             margin-bottom: 16px;
         }
 
@@ -450,7 +450,7 @@ onMounted(() => {
             flex-direction: column;
             gap: 4px;
             font-size: 14px;
-            color: var(--text-muted);
+            color: var(--neutral-text);
         }
     }
 
@@ -554,7 +554,7 @@ onMounted(() => {
         background: none;
         border: none;
         cursor: pointer;
-        color: var(--text-muted);
+        color: var(--neutral-text);
 
         .material-icons {
             font-size: 20px;

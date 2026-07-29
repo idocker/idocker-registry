@@ -276,12 +276,42 @@ export function formatBytes(bytes: number, decimals: number = 2): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]
 }
 
-export function formatDate(dateString: string): string {
-  try {
-    return new Date(dateString).toLocaleString()
-  } catch {
-    return dateString
-  }
+export function normalizeDate(dateString: string): string {
+  if (!dateString) return ''
+  const s = dateString.replace(' ', 'T')
+  return s.includes('Z') || s.includes('+') || s.endsWith('T') ? s : s + 'Z'
+}
+
+export function parseDate(dateString: string): Date | null {
+  if (!dateString) return null
+  const d = new Date(normalizeDate(dateString))
+  return isNaN(d.getTime()) ? null : d
+}
+
+function pad(n: number): string {
+  return n.toString().padStart(2, '0')
+}
+
+export function formatDate(dateString: string, locale: string = 'en-US'): string {
+  const date = parseDate(dateString)
+  if (!date) return dateString || ''
+  const y = date.getFullYear()
+  const M = pad(date.getMonth() + 1)
+  const d = pad(date.getDate())
+  return locale.startsWith('zh') ? `${y}-${M}-${d}` : `${y}/${M}/${d}`
+}
+
+export function formatDateTime(dateString: string, locale: string = 'en-US'): string {
+  const date = parseDate(dateString)
+  if (!date) return dateString || ''
+  const y = date.getFullYear()
+  const M = pad(date.getMonth() + 1)
+  const d = pad(date.getDate())
+  const h = pad(date.getHours())
+  const m = pad(date.getMinutes())
+  const s = pad(date.getSeconds())
+  const datePart = locale.startsWith('zh') ? `${y}-${M}-${d}` : `${y}/${M}/${d}`
+  return `${datePart} ${h}:${m}:${s}`
 }
 
 /**

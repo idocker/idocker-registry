@@ -45,13 +45,13 @@
                                         {{ getRoleDisplay(user.role) }}
                                     </span>
                                 </td>
-                                <td>{{ formatDate(user.createdAt) }}</td>
-                                <td>-</td>
+                                <td>{{ formatDate(user.created_at) }}</td>
+                                <td>{{ user.last_login ? formatDate(user.last_login) : '-' }}</td>
                                 <td class="action-buttons">
-                                    <button class="btn-icon btn-ghost" @click="editUser(user)" :title="$t('userList.editUser')">
+                                    <button class="btn btn-icon btn-ghost" @click="editUser(user)" :title="$t('userList.editUser')">
                                         <span class="material-icons">edit</span>
                                     </button>
-                                    <button class="btn-icon btn-ghost" @click="deleteUser(user)" :title="$t('userList.deleteUser')">
+                                    <button class="btn btn-icon btn-ghost" @click="deleteUser(user)" :title="$t('userList.deleteUser')">
                                         <span class="material-icons">delete</span>
                                     </button>
                                 </td>
@@ -72,6 +72,11 @@
                         :disabled="currentPage === totalPages">
                         {{ $t('common.nextPage') }}
                     </button>
+                    <select v-model="pageSize" class="page-size-select" @change="currentPage = 1">
+                        <option :value="10">10</option>
+                        <option :value="20">20</option>
+                        <option :value="50">50</option>
+                    </select>
                 </div>
             </div>
 
@@ -104,15 +109,6 @@
                                 <input id="password" type="password" v-model="userForm.password"
                                     :required="!showEditDialog" />
                             </div>
-
-                            <div class="form-group">
-                                <label for="role">{{ $t('userList.role') }}</label>
-                                <select id="role" v-model="userForm.role" required>
-                                    <option value="user">{{ $t('userList.roleUser') }}</option>
-                                    <option value="admin">{{ $t('userList.roleAdmin') }}</option>
-                                </select>
-                            </div>
-
 
                             <div class="form-group">
                                 <label for="isActive">{{ $t('users.active') }}</label>
@@ -161,7 +157,7 @@
             <!-- 消息提示 -->
             <div v-if="message" class="snackbar" :class="`snackbar-${message.type}`">
                 {{ message.text }}
-                <button class="snackbar-close" @click="message.text = ''">
+                <button class="snackbar-close" @click="message = null">
                     <span class="material-icons">close</span>
                 </button>
             </div>
@@ -175,6 +171,7 @@ import { useI18n } from 'vue-i18n'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
 import { useAuthStore } from '@/stores/auth'
 import userService from '@/services/user.service'
+import { formatDate as fmtDate } from '@/utils/helpers'
 import type { Message, User } from '@/types'
 
 const { t, locale } = useI18n()
@@ -186,7 +183,7 @@ const isDeleting = ref(false)
 const message = ref<Message | null>(null)
 const searchQuery = ref('')
 const currentPage = ref(1)
-const pageSize = ref(8)
+const pageSize = ref(10)
 
 // Auth store
 const authStore = useAuthStore()
@@ -204,7 +201,7 @@ const userForm = reactive({
     username: '',
     email: '',
     password: '',
-    role: 'user' as 'user' | 'admin',
+    role: 'operator' as User['role'],
     isActive: true
 })
 
@@ -235,24 +232,19 @@ const getRoleDisplay = (role: string) => {
     switch (role) {
         case 'admin':
             return t('userList.roleAdmin')
-        case 'maintainer':
-            return t('userList.roleMaintainer')
-        case 'member':
-            return t('projects.roleViewer')
+        case 'project_manager':
+            return t('userList.roleProjectManager')
+        case 'developer':
+            return t('userList.roleDeveloper')
+        case 'operator':
+            return t('userList.roleOperator')
         default:
-            return t('userList.roleUser')
+            return role
     }
 }
 
 // Format date
-const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString(locale.value, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-    })
-}
+ const formatDate = (dateString: string) => fmtDate(dateString, locale.value)
 
 // Load user list
 const loadUsers = async () => {
@@ -269,9 +261,9 @@ const loadUsers = async () => {
             //totalPages.value = response.pagination?.totalPages || 1
         })
         
-    } catch (error) {
-        console.error('Failed to load users:', error)
-        showMessage(t('userList.loadUsersFailed'), 'error')
+    } catch (e: any) {
+        console.error('Failed to load users:', e)
+        showMessage(e?.message || t('userList.loadUsersFailed'), 'error')
     } finally {
         isLoading.value = false
     }
@@ -289,7 +281,7 @@ const editUser = (user: User) => {
             username: user.username,
             email: user.email,
             password: '',
-            role: user.role as 'user' | 'admin'
+            role: user.role as User['role']
         })
     showEditDialog.value = true
 }
@@ -319,9 +311,9 @@ const confirmDelete = async () => {
         
         showDeleteDialog.value = false
         userToDelete.value = null
-    } catch (error) {
-        console.error('Failed to delete user:', error)
-        showMessage( t('userList.deleteUserFailed'),  'error' )
+    } catch (e: any) {
+        console.error('Failed to delete user:', e)
+        showMessage(e?.message || t('userList.deleteUserFailed'), 'error')
     } finally {
         isDeleting.value = false
     }
@@ -336,7 +328,7 @@ const saveUser = async () => {
             // Edit user
             const response = await userService.updateUser(userForm.id?.toString(), {
                 email: userForm.email,
-                role: userForm.role as 'user' | 'admin',
+                role: userForm.role,
                 isActive: userForm.isActive
             })
             
@@ -356,7 +348,7 @@ const saveUser = async () => {
                 username: userForm.username,
                 email: userForm.email,
                 password: userForm.password,
-                role: (userForm.role || 'user') as 'user' | 'admin'
+                role: 'operator' as User['role']
             })
             
             if (response.success) {
@@ -369,9 +361,9 @@ const saveUser = async () => {
         }
 
         closeDialogs()
-    } catch (error) {
-        console.error('Failed to save user:', error)
-        showMessage( showEditDialog.value ? t('userList.saveUserFailed') : t('userList.saveUserFailed'), 'error' )
+    } catch (e: any) {
+        console.error('Failed to save user:', e)
+        showMessage(e?.message || t('userList.saveUserFailed'), 'error')
     } finally {
         isSaving.value = false
     }
@@ -391,7 +383,7 @@ const resetForm = () => {
             username: '',
             email: '',
             password: '',
-            role: 'user',
+            role: 'developer',
             isActive: true
         })
 }
@@ -399,6 +391,9 @@ const resetForm = () => {
 // Show message
 const showMessage = (text: string, type: 'success' | 'error' | 'info' = 'info') => {
     message.value = { text, type } as Message
+    setTimeout(() => {
+        message.value = null
+    }, 3000)
 }
 
 // Load user list on component mount
@@ -489,19 +484,19 @@ onMounted(async () => {
 
     th {
         font-weight: 600;
-        color: var(--text-secondary);
-        background-color: var(--hover-bg);
+        color: var(--neutral-text);
+        background-color: var(--hover-background);
     }
 
     tr:hover {
-        background-color: var(--hover-bg);
+        background-color: var(--hover-background);
     }
 
     .loading-cell,
     .empty-cell {
         text-align: center;
         padding: 40px 12px;
-        color: var(--text-muted);
+        color: var(--neutral-text);
     }
 
     .loading-indicator {
@@ -555,7 +550,7 @@ onMounted(async () => {
 
         &.badge-muted {
             background-color: rgba(var(--text-muted-rgb), 0.1);
-            color: var(--text-muted);
+            color: var(--neutral-text);
         }
     }
 }
@@ -568,7 +563,7 @@ onMounted(async () => {
     padding: 16px;
 
     .page-info {
-        color: var(--text-secondary);
+        color: var(--neutral-text);
     }
 }
 
@@ -616,7 +611,7 @@ onMounted(async () => {
         background: none;
         border: none;
         cursor: pointer;
-        color: var(--text-muted);
+        color: var(--neutral-text);
 
         .material-icons {
             font-size: 20px;

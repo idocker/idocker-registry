@@ -16,14 +16,15 @@
   --footer-neutral-text: #adbacd;
   --footer-background: #344251;
 
-  --card-bg: #eeeeee;
+  --card-bg: #f5f7fa;
   --border-radius: 0.4rem;
   --input-bg: #fff;
   --input-color: #333;
   
   // Component colors
   --card-background: #ffffff;
-  --border-color: #e0e0e0;
+  --border-color: rgba(0, 0, 0, 0.06);
+  --divider-color: rgba(0, 0, 0, 0.06);
   --success-color: #4caf50;
   --warning-color: #ff9800;
   --error-color: #f44336;
@@ -57,8 +58,10 @@ body.dark-theme {
   --header-background: #333a45;
   
   // Component colors
-  --card-bg: #1c1f28;
-  --border-color: #2d2e2e;
+  --card-bg: #333a44;
+  --card-background: #333a44;
+  --border-color: rgba(255, 255, 255, 0.04);
+  --divider-color: rgba(255, 255, 255, 0.04);
   --border-radius: 0.4rem;
   --input-bg: #22272e;
   --input-color: #eee;

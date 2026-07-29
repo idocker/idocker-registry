@@ -71,7 +71,7 @@
                 <span class="sync-status" :class="syncStatus.lastSync.status">
                   {{ syncStatus.lastSync.status === 'completed' ? $t('sync.success') : $t('sync.failed') }}
                 </span>
-                <span>{{ formatDate(syncStatus.lastSync.createdAt) }}</span>
+                <span>{{ formatDate(syncStatus.lastSync?.created_at) }}</span>
               </div>
 
             </div>
@@ -142,6 +142,11 @@
               :disabled="logsPagination.page === logsPagination.totalPages">
               {{ $t('sync.nextPage') }}
             </button>
+            <select v-model="logsPagination.limit" class="page-size-select" @change="changeLogPage(1)">
+              <option :value="10">10</option>
+              <option :value="20">20</option>
+              <option :value="50">50</option>
+            </select>
           </div>
         </div>
       </div>
@@ -162,9 +167,10 @@ import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
 import syncService from '@/services/sync.service'
+import { formatDateTime as fmtDT } from '@/utils/helpers'
 import type { SyncStatus, SyncLog, SyncResult } from '@/types'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 // 状态
 const syncStatus = ref<SyncStatus>({
@@ -179,7 +185,7 @@ const syncStatus = ref<SyncStatus>({
 const syncLogs = ref<SyncLog[]>([])
 const logsPagination = ref({
   page: 1,
-  limit: 20,
+  limit: 10,
   totalPages: 1
 })
 
@@ -280,17 +286,13 @@ const formatSyncType = (type: string) => {
   return types[type] || type
 }
 
-const formatDate = (dateString: string) => {
-  if (!dateString) return ''
-  const date = new Date(dateString)
-  return date.toLocaleString('zh-CN')
-}
+const formatDate = (dateString: string) => dateString ? fmtDT(dateString, locale.value) : ''
 
 const showMessage = (text: string, type: 'success' | 'error' | 'info' = 'info') => {
   message.value = { text, type }
   setTimeout(() => {
     message.value = null
-  }, 5000)
+  }, 3000)
 }
 
 // 生命周期
@@ -351,15 +353,15 @@ onMounted(() => {
     border-radius: 4px 4px 0 0;
     font-size: 14px;
     font-weight: 500;
-    color: var(--text-muted);
+    color: var(--neutral-text);
     cursor: pointer;
     transition: all 0.2s;
     margin-bottom: -1px;
     border-bottom: 2px solid transparent;
 
     &:hover {
-      background: var(--hover-bg);
-      color: var(--text);
+      background: var(--hover-background);
+      color: var(--primary-text);
     }
 
     &.active {
@@ -417,7 +419,7 @@ onMounted(() => {
     .status-info {
       .status-label {
         font-size: 14px;
-        color: var(--text-secondary);
+        color: var(--neutral-text);
         margin-bottom: 4px;
       }
 
@@ -429,7 +431,7 @@ onMounted(() => {
 
       .status-detail {
         font-size: 14px;
-        color: var(--text-muted);
+        color: var(--neutral-text);
       }
     }
   }
@@ -443,7 +445,7 @@ onMounted(() => {
     .stat-item {
       text-align: center;
       padding: 16px;
-      background: var(--hover-bg);
+      background: var(--hover-background);
       border-radius: 6px;
 
       .stat-number {
@@ -455,7 +457,7 @@ onMounted(() => {
 
       .stat-label {
         font-size: 14px;
-        color: var(--text-secondary);
+        color: var(--neutral-text);
       }
     }
   }
@@ -466,7 +468,7 @@ onMounted(() => {
 
     .sync-label {
       font-size: 14px;
-      color: var(--text-secondary);
+      color: var(--neutral-text);
       margin-bottom: 8px;
     }
 
@@ -540,15 +542,15 @@ onMounted(() => {
 
       th {
         font-weight: 600;
-        color: var(--text-secondary);
-        background: var(--hover-bg);
+        color: var(--neutral-text);
+        background: var(--hover-background);
       }
 
       .loading-cell,
       .empty-cell {
         text-align: center;
         padding: 40px 16px;
-        color: var(--text-muted);
+        color: var(--neutral-text);
       }
 
       .loading-indicator {
@@ -563,7 +565,7 @@ onMounted(() => {
       }
 
       .log-row:hover {
-        background: var(--hover-bg);
+        background: var(--hover-background);
       }
 
       .log-type {
@@ -616,7 +618,7 @@ onMounted(() => {
     border-top: 1px solid var(--border-color);
 
     .page-info {
-      color: var(--text-secondary);
+      color: var(--neutral-text);
     }
   }
 }
@@ -744,7 +746,7 @@ onMounted(() => {
 
   &.btn-ghost {
     background: transparent;
-    color: var(--text-muted);
+    color: var(--neutral-text);
 
     &:hover {
       background: rgba(127, 140, 141, 0.1);

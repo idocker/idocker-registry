@@ -85,6 +85,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { formatDateTime as fmtDT } from '@/utils/helpers'
 import repositoryService from '@/services/repository.service'
 
 const { t, locale } = useI18n()
@@ -178,10 +179,7 @@ const formatSize = (bytes: number) => {
   return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i]
 }
 
-const formatDate = (dateString: string) => {
-  if (!dateString) return 'N/A'
-  return new Date(dateString).toLocaleString(locale.value)
-}
+const formatDate = (dateString: string) => dateString ? fmtDT(dateString, locale.value) : 'N/A'
 
 const close = () => {
   internalValue.value = false

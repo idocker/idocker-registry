@@ -306,11 +306,12 @@ import { useI18n } from 'vue-i18n'
 import { useNotifications } from '@/composables/useNotifications'
 import repositoryService from '@/services/repository.service'
 import authService from '@/services/auth.service'
+import { formatDateTime as fmtDT } from '@/utils/helpers'
 import type { ImageTag, ImageTagDetails, ImageDetails } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { showSuccess, showError, showInfo } = useNotifications()
 
 // State management
@@ -497,12 +498,7 @@ const formatFileSize = (bytes: number): string => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
-// Format date
-const formatDate = (dateString: string | undefined): string => {
-  if (!dateString) return 'N/A'
-  const date = new Date(dateString)
-  return date.toLocaleDateString() + ' ' + date.toLocaleTimeString()
-}
+const formatDate = (dateString: string | undefined): string => fmtDT(dateString || '', locale.value)
 
 // Go back
 const goBack = () => {

@@ -276,7 +276,7 @@ async function handleTokenService(req, res) {
     }
     
     // Validate scopes and generate token
-    const token = DockerAuthzService.generateDockerToken(user, service, requestedScopes);
+    const token = await DockerAuthzService.generateDockerToken(user, service, requestedScopes);
     
     // Log token issuance
     await DockerLogService.logOperation({

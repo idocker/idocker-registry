@@ -31,8 +31,8 @@ router.get('/status', asyncHandler(async (req, res) => {
     const status = await dockerSyncService.getSyncStatus();
     
     res.status(200).json(success(status));
-  } catch (error) {
-    logger.error('Failed to get sync status:', error);
+  } catch (e) {
+    logger.error('Failed to get sync status:', e);
     res.status(500).json(error('Failed to get sync status'));
   }
 }));
@@ -72,8 +72,8 @@ router.post('/all', asyncHandler(async (req, res) => {
     logger.info(`Full sync completed: ${JSON.stringify(result)}`);
     
     res.status(200).json(success(result, 'Sync completed'));
-  } catch (error) {
-    logger.error('Full sync failed:', error);
+  } catch (e) {
+    logger.error('Full sync failed:', e);
     
     // Log sync failure
     await dockerSyncService.logSync({
@@ -125,8 +125,8 @@ router.post('/project/:projectId', asyncHandler(async (req, res) => {
     logger.info(`Project sync completed: ${JSON.stringify(result)}`);
     
     res.status(200).json(success(result, 'Project sync completed'));
-  } catch (error) {
-    logger.error('Project sync failed:', error);
+  } catch (e) {
+    logger.error('Project sync failed:', e);
     
     // Log sync failure
     await dockerSyncService.logSync({
@@ -176,8 +176,8 @@ router.get('/logs', asyncHandler(async (req, res) => {
       logs: result.data,
       pagination: result.pagination
     }));
-  } catch (error) {
-    logger.error('Failed to get sync logs:', error);
+  } catch (e) {
+    logger.error('Failed to get sync logs:', e);
     res.status(500).json(error('Failed to get sync logs'));
   }
 }));

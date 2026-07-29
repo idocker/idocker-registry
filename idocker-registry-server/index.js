@@ -110,28 +110,31 @@ const dockerRegistryProxy = createProxyMiddleware({
       const { repositoryName, action } = extractDockerOperationInfo(req);
       
       if (repositoryName && action) {
-        // Log the operation result
         const status = proxyRes.statusCode >= 200 && proxyRes.statusCode < 300 ? 'success' : 'error';
-        
-        // Import asynchronously but don't use await here
-        import('./services/dockerLogService.js').then(({ DockerLogService }) => {
-          DockerLogService.logOperation({
-            userId: req.user.id,
-            username: req.user.username,
-            action,
-            repository: repositoryName,
-            status,
-            ipAddress: req.ip,
-            userAgent: req.headers['user-agent'],
-            additionalData: {
-              responseTime,
-              statusCode: proxyRes.statusCode
+
+        Promise.all([
+          import('./services/dockerLogService.js').then(({ DockerLogService }) =>
+            DockerLogService.logOperation({
+              userId: req.user.id,
+              username: req.user.username,
+              action,
+              repository: repositoryName,
+              status,
+              ipAddress: req.ip,
+              userAgent: req.headers['user-agent'],
+              additionalData: { responseTime, statusCode: proxyRes.statusCode }
+            })
+          ),
+          import('./services/dockerAuthzService.js').then(({ DockerAuthzService }) => {
+            if (status === 'success' && ['push', 'delete', 'pull'].includes(action)) {
+              return DockerAuthzService.logDockerOperation(
+                req.user, action, repositoryName, req.ip, req.headers['user-agent'],
+                { statusCode: proxyRes.statusCode }
+              );
             }
-          }).catch(error => {
-            logger.error('Failed to log Docker operation result:', error);
-          });
-        }).catch(error => {
-          logger.error('Failed to import DockerLogService:', error);
+          }),
+        ]).catch(error => {
+          logger.error('Failed to log Docker operation:', error);
         });
       }
     }
@@ -144,22 +147,27 @@ const dockerRegistryProxy = createProxyMiddleware({
       const { repositoryName, action } = extractDockerOperationInfo(req);
       
       if (repositoryName && action) {
-        // Import asynchronously but don't use await here
-        import('./services/dockerLogService.js').then(({ DockerLogService }) => {
-          DockerLogService.logOperation({
-            userId: req.user.id,
-            username: req.user.username,
-            action,
-            repository: repositoryName,
-            status: 'error',
-            ipAddress: req.ip,
-            userAgent: req.headers['user-agent'],
-            errorMessage: err.message
-          }).catch(error => {
-            logger.error('Failed to log Docker operation error:', error);
-          });
-        }).catch(error => {
-          logger.error('Failed to import DockerLogService:', error);
+        Promise.all([
+          import('./services/dockerLogService.js').then(({ DockerLogService }) =>
+            DockerLogService.logOperation({
+              userId: req.user.id,
+              username: req.user.username,
+              action,
+              repository: repositoryName,
+              status: 'error',
+              ipAddress: req.ip,
+              userAgent: req.headers['user-agent'],
+              errorMessage: err.message
+            })
+          ),
+          import('./services/dockerAuthzService.js').then(({ DockerAuthzService }) =>
+            DockerAuthzService.logDockerOperation(
+              req.user, action, repositoryName, req.ip, req.headers['user-agent'],
+              { error: err.message }
+            )
+          ),
+        ]).catch(logErr => {
+          logger.error('Failed to log Docker operation error:', logErr);
         });
       }
     }
@@ -254,8 +262,9 @@ app.use(express.static(publicPath));
 app.use(errorHandler);
 
 // SPA fallback - Allow all non-API and /v2 routes to return index.html
+// Skip requests for static assets (files with extensions like .js, .css, .png)
 app.use((req, res, next) => {
-  if (!req.path.startsWith('/api') && !req.path.startsWith('/v2')) {
+  if (!req.path.startsWith('/api') && !req.path.startsWith('/v2') && !/\.[a-z0-9]{2,6}$/i.test(req.path)) {
     res.sendFile(path.join(publicPath, 'index.html'));
   } else {
     next();

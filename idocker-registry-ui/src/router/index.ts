@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import i18n from '@/i18n'
 
 
 // 检查页面是否需要授权的函数
@@ -110,7 +111,8 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('@/views/admin/UsersView.vue'),
     meta: {
       title: 'Users',
-      requiresAuth: true
+      requiresAuth: true,
+      requiresAdmin: true
     }
   },
   {
@@ -119,7 +121,8 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('@/views/admin/AuditView.vue'),
     meta: {
       title: 'Audit Logs',
-      requiresAuth: true
+      requiresAuth: true,
+      requiresAdmin: true
     }
   },
   {
@@ -137,7 +140,18 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('@/views/admin/NamespacesView.vue'),
     meta: {
       title: 'Namespaces',
-      requiresAuth: true
+      requiresAuth: true,
+      requiresAdmin: true
+    }
+  },
+  {
+    path: '/admin/repositories',
+    name: 'admin-repositories',
+    component: () => import('@/views/admin/RepositoriesView.vue'),
+    meta: {
+      titleKey: 'projectDetail.repositories',
+      requiresAuth: true,
+      requiresAdmin: true
     }
   },
   {
@@ -146,7 +160,8 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('@/views/admin/ProjectsView.vue'),
     meta: {
       title: 'Projects',
-      requiresAuth: true
+      requiresAuth: true,
+      requiresAdmin: true
     }
   },
   {
@@ -155,7 +170,8 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('@/views/admin/ProjectDetailView.vue'),
     meta: {
       title: 'Project Detail',
-      requiresAuth: true
+      requiresAuth: true,
+      requiresAdmin: true
     }
   },
   {
@@ -164,6 +180,16 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('@/views/admin/SyncView.vue'),
     meta: {
       title: 'Registry Sync',
+      requiresAuth: true,
+      requiresAdmin: true
+    }
+  },
+  {
+    path: '/admin/user-guide',
+    name: 'admin-user-guide',
+    component: () => import('@/views/admin/PlaceholderView.vue'),
+    meta: {
+      title: '用户指南',
       requiresAuth: true
     }
   },
@@ -193,7 +219,9 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   let documentTitle = 'iDocker Registry'
   
-  if (to.meta.title) {
+  if (to.meta.titleKey) {
+    documentTitle = `${i18n.global.t(to.meta.titleKey as string)} - iDocker Registry`
+  } else if (to.meta.title) {
     documentTitle = `${to.meta.title} - iDocker Registry`
   }
   
@@ -216,6 +244,11 @@ router.beforeEach((to, from, next) => {
     
     // 如果已登录且访问登录页，重定向到个人中心
     if (to.path === '/admin/login') {
+      return next('/admin/profile')
+    }
+    
+    // 检查是否需要管理员权限
+    if (to.meta && to.meta.requiresAdmin && authStore.user?.role !== 'admin') {
       return next('/admin/profile')
     }
     

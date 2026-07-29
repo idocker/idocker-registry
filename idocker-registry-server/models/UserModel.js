@@ -16,7 +16,7 @@ export class UserModel extends BaseModel {
   async getUsersList({ page = 1, limit = 20, search = '' } = {}) {
     try {
       let query = `
-        SELECT id, username, full_name, email, role, is_active, created_at, updated_at
+        SELECT id, username, full_name, email, role, is_active, created_at, updated_at, last_login
         FROM users
         WHERE 1=1
       `;
@@ -206,10 +206,11 @@ export class UserModel extends BaseModel {
   async getUserProjects(userId) {
     try {
       const sql = `
-        SELECT p.id, p.name, p.description, p.namespace, pm.role, pm.created_at as member_since
+        SELECT DISTINCT p.id, p.name, p.description, p.namespace
         FROM projects p
-        JOIN project_members pm ON p.id = pm.project_id
-        WHERE pm.user_id = ? AND p.is_active = 1
+        JOIN repositories r ON r.project_id = p.id
+        JOIN repository_members rm ON rm.repository_id = r.id
+        WHERE rm.user_id = ? AND p.is_active = 1
         ORDER BY p.name
       `;
       
@@ -254,7 +255,7 @@ export class UserModel extends BaseModel {
   async getUserDetails(userId) {
     try {
       return await this.get(
-        'SELECT id, username, email, full_name, role, is_active, created_at, updated_at FROM users WHERE id = ?',
+        'SELECT id, username, email, full_name, role, is_active, created_at, updated_at, last_login FROM users WHERE id = ?',
         [userId]
       );
     } catch (error) {

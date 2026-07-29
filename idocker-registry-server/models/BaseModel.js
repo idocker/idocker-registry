@@ -66,12 +66,13 @@ export class BaseModel {
    * Execute SQL statements (INSERT, UPDATE, DELETE)
    */
   async run(sql, params = []) {
+    const tableName = this.tableName;
     try {
       const db = await this.getDb();
       return new Promise((resolve, reject) => {
         db.run(sql, params, function(err) {
           if (err) {
-            logger.error(`Database execution error [${this.tableName}.run]:`, err);
+            logger.error(`Database execution error [${tableName}.run]:`, err);
             reject(err);
           } else {
             resolve({ 
@@ -81,9 +82,9 @@ export class BaseModel {
           }
         });
       });
-    } catch (error) {
-      logger.error(`Failed to get database connection [${this.tableName}.run]:`, error);
-      throw error;
+    } catch (e) {
+      logger.error(`Failed to get database connection [${tableName}.run]:`, e);
+      throw e;
     }
   }
 

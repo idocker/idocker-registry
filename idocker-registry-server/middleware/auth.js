@@ -242,7 +242,7 @@ export async function requireProjectPermission(req, res, next) {
     }
 
     const membership = await dbGet(
-      `SELECT p.id, p.name, pm.role as member_role
+      `SELECT p.id, p.name
        FROM projects p
        JOIN project_members pm ON p.id = pm.project_id
        WHERE p.id = ? AND pm.user_id = ? AND p.is_active = 1`,

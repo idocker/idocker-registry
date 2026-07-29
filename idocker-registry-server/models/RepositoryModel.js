@@ -318,4 +318,101 @@ export class RepositoryModel extends BaseModel {
       throw error;
     }
   }
+
+  async addMember(repositoryId, userId, role = 'developer') {
+    try {
+      await this.run(
+        'INSERT INTO repository_members (repository_id, user_id, role, created_at) VALUES (?, ?, ?, ?)',
+        [repositoryId, userId, role, new Date().toISOString()]
+      );
+    } catch (e) {
+      logger.error('Failed to add repository member:', e);
+      throw e;
+    }
+  }
+
+  async removeMember(repositoryId, userId) {
+    try {
+      await this.run(
+        'DELETE FROM repository_members WHERE repository_id = ? AND user_id = ?',
+        [repositoryId, userId]
+      );
+    } catch (e) {
+      logger.error('Failed to remove repository member:', e);
+      throw e;
+    }
+  }
+
+  async updateMemberRole(repositoryId, userId, role) {
+    try {
+      await this.run(
+        'UPDATE repository_members SET role = ? WHERE repository_id = ? AND user_id = ?',
+        [role, repositoryId, userId]
+      );
+    } catch (e) {
+      logger.error('Failed to update repository member role:', e);
+      throw e;
+    }
+  }
+
+  async getMembers(repositoryId) {
+    try {
+      return await this.all(
+        `SELECT rm.id, rm.user_id, rm.role, rm.created_at,
+                u.username, u.email, u.full_name, u.role as user_role, u.is_active
+         FROM repository_members rm
+         JOIN users u ON rm.user_id = u.id
+         WHERE rm.repository_id = ?
+         ORDER BY rm.created_at DESC`,
+        [repositoryId]
+      );
+    } catch (e) {
+      logger.error('Failed to get repository members:', e);
+      throw e;
+    }
+  }
+
+  async getUserMembership(repositoryId, userId) {
+    try {
+      return await this.get(
+        'SELECT * FROM repository_members WHERE repository_id = ? AND user_id = ?',
+        [repositoryId, userId]
+      );
+    } catch (e) {
+      logger.error('Failed to get user membership:', e);
+      throw e;
+    }
+  }
+
+  async memberExists(repositoryId, userId) {
+    try {
+      const result = await this.get(
+        'SELECT COUNT(*) as count FROM repository_members WHERE repository_id = ? AND user_id = ?',
+        [repositoryId, userId]
+      );
+      return result && result.count > 0;
+    } catch (e) {
+      logger.error('Failed to check member existence:', e);
+      throw e;
+    }
+  }
+
+  async getUserRepositories(userId, role) {
+    try {
+      const query = `
+        SELECT DISTINCT r.id, r.name, r.project_id, r.description, r.is_public, r.is_active,
+               p.name as project_name, p.namespace
+        FROM repositories r
+        JOIN projects p ON r.project_id = p.id
+        LEFT JOIN repository_members rm ON r.id = rm.repository_id AND rm.user_id = ?
+        WHERE r.is_active = 1
+          AND (rm.user_id IS NOT NULL OR r.is_public = 1)
+        ORDER BY p.namespace, p.name, r.name
+      `;
+      return await this.all(query, [userId]);
+    } catch (e) {
+      logger.error('Failed to get user repositories:', e);
+      throw e;
+    }
+  }
 }

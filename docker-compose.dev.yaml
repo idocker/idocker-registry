@@ -1,0 +1,17 @@
+
+services:
+  idocker-registry:
+    entrypoint: ["/bin/sh", "/app/deploy/dev-entrypoint.sh"]
+    volumes:
+      # 前端 dist（编译后直接生效）
+      - ./idocker-registry-ui/dist:/app/idocker/public
+      # 后端源码（nodemon polling 热重载）
+      - ./idocker-registry-server/index.js:/app/idocker/index.js
+      - ./idocker-registry-server/config:/app/idocker/config
+      - ./idocker-registry-server/routes:/app/idocker/routes
+      - ./idocker-registry-server/models:/app/idocker/models
+      - ./idocker-registry-server/services:/app/idocker/services
+      - ./idocker-registry-server/middleware:/app/idocker/middleware
+      - ./idocker-registry-server/utils:/app/idocker/utils
+      - ./idocker-registry-server/.env:/app/idocker/.env
+      - ./deploy/dev-entrypoint.sh:/app/deploy/dev-entrypoint.sh

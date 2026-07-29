@@ -36,8 +36,8 @@ router.get('/', asyncHandler(async (req, res) => {
     const result = await userModel.getUsersList({ page, limit, search, role });
 
     res.status(200).json(success(result.data));
-  } catch (error) {
-    logger.error('Error getting user list:', error);
+  } catch (e) {
+    logger.error('Error getting user list:', e);
     res.status(500).json(error('Failed to get user list'));
   }
 }));
@@ -63,8 +63,8 @@ router.get('/:id', asyncHandler(async (req, res) => {
       ...user,
       projects
     }));
-  } catch (error) {
-    logger.error('获取用户详情时出错:', error);
+  } catch (e) {
+    logger.error('获取用户详情时出错:', e);
     res.status(500).json(error('获取用户详情失败'));
   }
 }));
@@ -82,7 +82,7 @@ router.post('/', asyncHandler(async (req, res) => {
   }
 
   // Validate role
-  if (!['admin', 'user'].includes(role)) {
+  if (!['admin', 'project_manager', 'developer', 'operator'].includes(role)) {
     return res.status(400).json(error('Invalid user role', 400));
   }
 
@@ -125,8 +125,8 @@ router.post('/', asyncHandler(async (req, res) => {
     const userDetails = await userModel.getUserDetails(newUser.id);
 
     res.status(201).json(success(userDetails, 'User created successfully'));
-  } catch (error) {
-    logger.error('Error creating user:', error);
+  } catch (e) {
+    logger.error('Error creating user:', e);
     res.status(500).json(error('Failed to create user'));
   }
 }));
@@ -140,7 +140,7 @@ router.put('/:id', asyncHandler(async (req, res) => {
   const { email, fullName, role, isActive } = req.body;
 
   // Validate role
-  if (role && !['admin', 'user'].includes(role)) {
+  if (role && !['admin', 'project_manager', 'developer', 'operator'].includes(role)) {
     return res.status(400).json(error('Invalid user role', 400));
   }
 
@@ -154,9 +154,9 @@ router.put('/:id', asyncHandler(async (req, res) => {
     // Get current user information
     const currentUser = await userModel.findById(id);
 
-    // Prevent admin from changing their own role to regular user (resulting in no admin)
-    if (parseInt(id) === req.user.id && role === 'user') {
-    return res.status(400).json(error('Cannot change your own role to regular user', 400));
+    // Prevent admin from changing their own role
+    if (parseInt(id) === req.user.id && role && role !== 'admin') {
+      return res.status(400).json(error('Cannot change your own role', 400));
     }
 
     // Check if email is unique (if updating email)
@@ -185,8 +185,8 @@ router.put('/:id', asyncHandler(async (req, res) => {
     const updatedUser = await userModel.getUserDetails(id);
 
     res.status(200).json(success(updatedUser, 'User information updated successfully'));
-  } catch (error) {
-    logger.error('Error updating user information:', error);
+  } catch (e) {
+    logger.error('Error updating user information:', e);
     res.status(500).json(error('Failed to update user information'));
   }
 }));
@@ -222,8 +222,8 @@ router.put('/:id/password', asyncHandler(async (req, res) => {
     await userModel.updatePassword(id, hashedPassword);
 
     res.status(200).json(success(null, 'Password reset successfully'));
-  } catch (error) {
-    logger.error('Error resetting password:', error);
+  } catch (e) {
+    logger.error('Error resetting password:', e);
     res.status(500).json(error('Failed to reset password'));
   }
 }));
@@ -262,8 +262,8 @@ router.delete('/:id', asyncHandler(async (req, res) => {
     await userModel.deleteUser(id);
 
     res.status(200).json(success(null, 'User deleted successfully'));
-  } catch (error) {
-    logger.error('Error deleting user:', error);
+  } catch (e) {
+    logger.error('Error deleting user:', e);
     res.status(500).json(error('Failed to delete user'));
   }
 }));
@@ -289,8 +289,8 @@ router.get('/:id/projects', asyncHandler(async (req, res) => {
       user: { id },
       projects
     }));
-  } catch (error) {
-    logger.error('Error getting user project list:', error);
+  } catch (e) {
+    logger.error('Error getting user project list:', e);
     res.status(500).json(error('Failed to get user project list'));
   }
 }));
@@ -331,8 +331,8 @@ router.post('/:id/projects/:projectId', asyncHandler(async (req, res) => {
     await projectModel.addProjectMember(projectId, id, role);
 
     res.status(201).json(success(null, 'User added to project'));
-  } catch (error) {
-    logger.error('Error adding user to project:', error);
+  } catch (e) {
+    logger.error('Error adding user to project:', e);
     res.status(500).json(error('Failed to add user to project'));
   }
 }));
@@ -367,8 +367,8 @@ router.delete('/:id/projects/:projectId', asyncHandler(async (req, res) => {
     await projectModel.removeProjectMember(projectId, id);
 
     res.status(200).json(success(null, 'User removed from project'));
-  } catch (error) {
-    logger.error('Error removing user from project:', error);
+  } catch (e) {
+    logger.error('Error removing user from project:', e);
     res.status(500).json(error('Failed to remove user from project'));
   }
 }));

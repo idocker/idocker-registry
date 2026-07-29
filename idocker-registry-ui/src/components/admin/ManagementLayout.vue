@@ -22,7 +22,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import NavigationSidebar from '@/components/admin/NavigationSidebar.vue'
 import { useI18n } from 'vue-i18n'
@@ -71,11 +71,25 @@ const setPageTitle = () => {
       pageTitle.value = t('pageTitles.warehouseSync')
       pageSubtitle.value = t('pageTitles.warehouseSyncSubtitle')
       break
+    case '/admin/repositories':
+      pageTitle.value = t('managementLayout.repositoryManagement')
+      pageSubtitle.value = t('managementLayout.repositoryManagementDesc')
+      break
+    case '/admin/user-guide':
+      pageTitle.value = t('nav.userGuide')
+      pageSubtitle.value = ''
+      break
     default:
       // If it's a project detail page
       if (route.path.startsWith('/admin/projects/')) {
-        pageTitle.value = t('pageTitles.projectDetail')
-        pageSubtitle.value = t('pageTitles.projectDetailSubtitle')
+        pageTitle.value = t('projectDetail.projectRepo')
+        const ns = route.query.namespace as string
+        const nm = route.query.name as string
+        if (ns && nm) {
+          pageSubtitle.value = `${decodeURIComponent(ns)} / ${decodeURIComponent(nm)}`
+        } else {
+          pageSubtitle.value = ''
+        }
       } else {
         pageTitle.value = t('pageTitles.managementCenter')
         pageSubtitle.value = ''
@@ -104,6 +118,10 @@ onMounted(() => {
   setPageTitle()
   checkMobile()
   window.addEventListener('resize', handleResize)
+})
+
+watch(() => route.fullPath, () => {
+  setPageTitle()
 })
 
 onUnmounted(() => {
@@ -141,11 +159,11 @@ onUnmounted(() => {
     padding: 8px;
     border-radius: 4px;
     margin-right: 16px;
-    color: var(--text);
+    color: var(--primary-text);
     cursor: pointer;
     
     &:hover {
-      background-color: var(--hover-bg);
+      background-color: var(--hover-background);
     }
     
     .material-icons {
@@ -154,6 +172,7 @@ onUnmounted(() => {
   }
   
   .page-title {
+    flex: 1;
     h1 {
       margin: 0 0 4px 0;
       font-size: 24px;
@@ -164,9 +183,10 @@ onUnmounted(() => {
     .page-subtitle {
       margin: 0;
       font-size: 14px;
-      color: var(--text-muted);
+      color: var(--neutral-text);
     }
   }
+
 }
 
 .content-body {

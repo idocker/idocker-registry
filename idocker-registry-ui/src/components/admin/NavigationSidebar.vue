@@ -21,27 +21,38 @@
         </router-link>
       </div>
       
-      <div class="nav-section">
+      <div v-if="user && user.role === 'admin'" class="nav-section">
         <div class="nav-section-title">{{ $t('managementLayout.systemManagement') }}</div>
         <router-link to="/admin/namespaces" class="nav-item" :class="{ active: isActive('/admin/namespaces') }">
           <span class="material-icons">dns</span>
-          <span>{{ $t('managementLayout.namespaceManagement') }}</span>
+          <span>{{ $t('managementLayout.namespace') }}</span>
         </router-link>
         <router-link to="/admin/projects" class="nav-item" :class="{ active: isActive('/admin/projects') }">
           <span class="material-icons">folder</span>
           <span>{{ $t('managementLayout.projectManagement') }}</span>
         </router-link>
-        <router-link v-if="user && user.role === 'admin'" to="/admin/users" class="nav-item" :class="{ active: isActive('/admin/users') }">
+        <router-link to="/admin/repositories" class="nav-item" :class="{ active: isActive('/admin/repositories') }">
+          <span class="material-icons">inventory_2</span>
+          <span>{{ $t('managementLayout.repositoryManagement') }}</span>
+        </router-link>
+        <router-link to="/admin/users" class="nav-item" :class="{ active: isActive('/admin/users') }">
           <span class="material-icons">people</span>
           <span>{{ $t('managementLayout.userManagement') }}</span>
         </router-link>
-        <router-link v-if="user && user.role === 'admin'" to="/admin/audit" class="nav-item" :class="{ active: isActive('/admin/audit') }">
+        <router-link to="/admin/audit" class="nav-item" :class="{ active: isActive('/admin/audit') }">
           <span class="material-icons">history</span>
           <span>{{ $t('nav.audit') }}</span>
         </router-link>
-        <router-link v-if="user && user.role === 'admin'" to="/admin/sync" class="nav-item" :class="{ active: isActive('/admin/sync') }">
-          <span class="material-icons">sync</span>
-          <span>{{ $t('managementLayout.warehouseSync') }}</span>
+      </div>
+
+      <div class="nav-section nav-section-bottom">
+        <router-link to="/admin/user-guide" class="nav-item" :class="{ active: isActive('/admin/user-guide') }">
+          <span class="material-icons">help_outline</span>
+          <span>{{ $t('nav.userGuide') }}</span>
+        </router-link>
+        <router-link to="/" class="nav-item nav-item-highlight">
+          <span class="material-icons">arrow_back</span>
+          <span>{{ $t('nav.backToRepositories') }}</span>
         </router-link>
       </div>
     </div>
@@ -73,7 +84,7 @@ const isActive = (path: string) => {
 .nav-sidebar {
   width: 250px;
   //background-color: var(--sidebar-bg, var(--card-bg));
-  border-right: 1px solid var(--border-color);
+  border-right: 1px solid var(--divider-color);
   min-height: calc(100vh - 117px - 2rem);
   position: sticky;
   top: 64px;
@@ -83,12 +94,12 @@ const isActive = (path: string) => {
 
 .nav-header {
   padding: 16px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--divider-color);
   
   h3 {
     margin: 0;
     font-size: 18px;
-    color: var(--text);
+    color: var(--primary-text);
   }
 }
 
@@ -104,12 +115,17 @@ const isActive = (path: string) => {
   }
 }
 
+.nav-section-bottom {
+  border-top: 1px solid var(--divider-color);
+  padding-top: 16px;
+}
+
 .nav-section-title {
   padding: 0 16px 8px;
   font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--neutral-text);
   letter-spacing: 0.5px;
 }
 
@@ -120,19 +136,29 @@ const isActive = (path: string) => {
   padding: 10px 16px;
   margin: 2px 8px;
   border-radius: 6px;
-  color: var(--text);
+  color: var(--primary-text);
   text-decoration: none;
   font-size: 14px;
   transition: background-color 0.2s ease;
   
   &:hover {
-    background-color: var(--hover-bg);
+    background-color: var(--hover-background);
   }
   
   &.active {
-    background-color: var(--primary-color-light);
+    background-color: rgba(var(--primary-color), 0.1);
     color: var(--primary-color);
     font-weight: 500;
+  }
+  
+  &.nav-item-highlight {
+    color: var(--accent-text);
+    font-weight: 500;
+    
+    &:hover {
+      background-color: var(--hover-background);
+      color: var(--accent-text);
+    }
   }
   
   .material-icons {

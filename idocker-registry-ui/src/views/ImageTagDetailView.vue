@@ -106,6 +106,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { formatDateTime as fmtDT } from '@/utils/helpers'
 
 interface TagDetail {
   id: string
@@ -120,7 +121,7 @@ interface TagDetail {
 
 const router = useRouter()
 const route = useRoute()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const tagDetails = ref<TagDetail | null>(null)
 const isLoading = ref(false)
@@ -168,10 +169,7 @@ const formatSize = (bytes: number) => {
   return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i]
 }
 
-const formatDate = (dateString: string) => {
-  if (!dateString) return 'N/A'
-  return new Date(dateString).toLocaleString('zh-CN')
-}
+const formatDate = (dateString: string) => dateString ? fmtDT(dateString, locale.value) : 'N/A'
 
 const goBack = () => {
   const imageId = route.params.imageId as string

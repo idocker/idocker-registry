@@ -24,14 +24,13 @@
                 <th>{{ $t('projects.namespace') }}</th>
                 <th>{{ $t('projects.description') }}</th>
                 <th>{{ $t('projects.repositoryCount') }}</th>
-                <th>{{ $t('projects.members') }}</th>
                 <th>{{ $t('projects.createdAt') }}</th>
                 <th>{{ $t('common.actions') }}</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="isLoading">
-                <td colspan="7" class="loading-cell">
+                <td colspan="6" class="loading-cell">
                   <div class="loading-indicator">
                     <span class="material-icons">refresh</span>
                     {{ $t('projectList.loadingProjects') }}
@@ -39,7 +38,7 @@
                 </td>
               </tr>
               <tr v-else-if="filteredProjects.length === 0 && searchQuery === ''">
-                <td colspan="7" class="empty-cell">
+                <td colspan="6" class="empty-cell">
                   <div class="empty-state">
                     <span class="material-icons">folder_open</span>
                     <h3>{{ $t('projectList.noProjectsYet') }}</h3>
@@ -56,18 +55,17 @@
                 <td>{{ project.namespace }}</td>
                 <td>{{ project.description || '-' }}</td>
                 <td>{{ project.repositoryCount || 0 }}</td>
-                <td>{{ project.memberCount || 0 }}</td>
-                <td>{{ formatDate(project.createdAt) }}</td>
+                <td>{{ formatDate(project.created_at) }}</td>
                 <td class="action-buttons">
-                  <router-link :to="`/admin/projects/${project.id}`" class="btn-icon btn-ghost"
-                    :title="$t('projectList.viewDetails')">
-                    <span class="material-icons">visibility</span>
+                  <router-link :to="`/admin/projects/${project.id}?namespace=${encodeURIComponent(project.namespace)}&name=${encodeURIComponent(project.name)}`" class="btn btn-icon btn-ghost"
+                    :title="$t('projectDetail.repositories')">
+                    <span class="material-icons">storage</span>
                   </router-link>
-                  <button class="btn-icon btn-ghost" @click="editProject(project)"
+                  <button class="btn btn-icon btn-ghost" @click="editProject(project)"
                     :title="$t('projectList.editProject')">
                     <span class="material-icons">edit</span>
                   </button>
-                  <button class="btn-icon btn-ghost" @click="deleteProject(project)" :title="$t('common.delete')">
+                  <button class="btn btn-icon btn-ghost" @click="deleteProject(project)" :title="$t('common.delete')">
                     <span class="material-icons">delete</span>
                   </button>
                 </td>
@@ -88,6 +86,11 @@
             :disabled="currentPage === totalPages">
             {{ $t('common.nextPage') }}
           </button>
+          <select v-model="pageSize" class="page-size-select" @change="currentPage = 1">
+            <option :value="10">10</option>
+            <option :value="20">20</option>
+            <option :value="50">50</option>
+          </select>
         </div>
       </div>
 
@@ -110,8 +113,10 @@
 
             <div class="form-group">
               <label for="namespace">{{ $t('projects.namespace') }} *</label>
-              <input id="namespace" type="text" v-model="projectForm.namespace"
-                :placeholder="$t('projectList.namespacePlaceholder')" required />
+              <select id="namespace" v-model="projectForm.namespace" required>
+                <option value="" disabled>{{ $t('projectList.namespacePlaceholder') }}</option>
+                <option v-for="ns in namespaces" :key="ns.id" :value="ns.name">{{ ns.name }}</option>
+              </select>
               <small class="form-help">{{ $t('projectList.namespaceHelp') }}</small>
             </div>
 
@@ -143,10 +148,13 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
 import projectService from '@/services/project.service'
+import namespaceService from '@/services/namespace.service'
+import userService from '@/services/user.service'
 import { useNotifications } from '@/composables/useNotifications'
-import type { Project, CreateProjectData, ProjectPaginatedResponse } from '@/types'
+import { formatDate as fmtDate } from '@/utils/helpers'
+import type { Project, CreateProjectData, UpdateProjectData, ProjectPaginatedResponse, Namespace, User } from '@/types'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const authStore = useAuthStore()
 const { showError, showSuccess } = useNotifications()
 
@@ -158,13 +166,26 @@ const editingProject = ref<Project | null>(null)
 const isActive = ref("all")
 const searchQuery = ref('')
 const currentPage = ref(1)
-const pageSize = ref(8)
+const pageSize = ref(10)
+const namespaces = ref<Namespace[]>([])
+const availableUsers = ref<User[]>([])
 
 const projectForm = reactive({
   name: '',
   namespace: '',
   description: ''
 })
+
+const fetchNamespaces = async () => {
+  try {
+    const response = await namespaceService.getNamespaces({ page: 1, limit: 100, isActive: true })
+    if (response.success && response.data) {
+      namespaces.value = response.data
+    }
+  } catch (error) {
+    console.error('Error fetching namespaces:', error)
+  }
+}
 
 const fetchProjects = async () => {
   try {
@@ -194,9 +215,17 @@ const saveProject = async () => {
 
     let response: any
     if (editingProject.value) {
-      response = await projectService.updateProject(editingProject.value.id.toString(), projectForm)
+      response = await projectService.updateProject(editingProject.value.id.toString(), {
+        name: projectForm.name,
+        namespace: projectForm.namespace,
+        description: projectForm.description
+      })
     } else {
-      response = await projectService.createProject(projectForm as CreateProjectData)
+      response = await projectService.createProject({
+        name: projectForm.name,
+        namespace: projectForm.namespace,
+        description: projectForm.description
+      })
     }
 
     if (response.success) {
@@ -238,6 +267,17 @@ const deleteProject = async (project: Project) => {
   }
 }
 
+const fetchUsers = async () => {
+  try {
+    const response = await userService.getUsers({})
+    if (response.success && response.data) {
+      availableUsers.value = response.data
+    }
+  } catch (error) {
+    console.error('Error fetching users:', error)
+  }
+}
+
 const resetForm = () => {
   editingProject.value = null
   projectForm.name = ''
@@ -250,15 +290,7 @@ const refreshProjects = () => {
   fetchProjects()
 }
 
-// Format date
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString)
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  })
-}
+const formatDate = (dateString: string) => fmtDate(dateString, locale.value)
 // Computed properties
 const filteredProjects = computed(() => {
   if (!searchQuery.value) return projects.value
@@ -281,6 +313,8 @@ const totalPages = computed(() => {
 
 onMounted(() => {
   fetchProjects()
+  fetchNamespaces()
+  fetchUsers()
 })
 </script>
 
@@ -344,19 +378,19 @@ onMounted(() => {
 
   th {
     font-weight: 600;
-    color: var(--text-secondary);
-    background-color: var(--hover-bg);
+    color: var(--neutral-text);
+    background-color: var(--hover-background);
   }
 
   tr:hover {
-    background-color: var(--hover-bg);
+    background-color: var(--hover-background);
   }
 
   .loading-cell,
   .empty-cell {
     text-align: center;
     padding: 40px 12px;
-    color: var(--text-muted);
+    color: var(--neutral-text);
   }
 
   .loading-indicator {
@@ -407,7 +441,7 @@ onMounted(() => {
     display: flex;
     align-items: center;
     gap: 6px;
-    color: var(--text-secondary);
+    color: var(--neutral-text);
 
     .material-icons {
       font-size: 16px;
@@ -420,7 +454,7 @@ onMounted(() => {
 
     .material-icons {
       font-size: 64px;
-      color: var(--text-muted);
+      color: var(--neutral-text);
       margin-bottom: 16px;
     }
 
@@ -430,7 +464,7 @@ onMounted(() => {
     }
 
     p {
-      color: var(--text-muted);
+      color: var(--neutral-text);
       margin-bottom: 24px;
     }
 
@@ -450,7 +484,7 @@ onMounted(() => {
   padding: 16px;
 
   .page-info {
-    color: var(--text-secondary);
+    color: var(--neutral-text);
   }
 }
 
@@ -502,13 +536,16 @@ onMounted(() => {
       }
 
       input,
-      textarea {
+      textarea,
+      select {
         width: 100%;
         padding: 10px;
         border: 1px solid var(--border-color);
         border-radius: var(--border-radius);
         background-color: var(--background);
         color: var(--primary-text);
+        font-family: inherit;
+        font-size: inherit;
 
         &:focus {
           outline: none;
@@ -517,11 +554,15 @@ onMounted(() => {
         }
       }
 
+      select {
+        cursor: pointer;
+      }
+
       .form-help {
         display: block;
         margin-top: 5px;
         font-size: 0.8rem;
-        color: var(--text-muted);
+        color: var(--neutral-text);
         font-style: italic;
       }
     }

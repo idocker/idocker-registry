@@ -32,29 +32,39 @@
           <span class="material-icons">lock</span>
           <span>{{ $t('nav.password') }}</span>
         </button>
-        
-        <div class="menu-divider"></div>
 
+
+        <template v-if="user.role === 'admin'">
+        <div class="menu-divider"></div>
+        
+        <button class="menu-item" @click="navigateToNamespaces">
+          <span class="material-icons">dns</span>
+          <span>{{ $t('managementLayout.namespace') }}</span>
+        </button>
+        
         <button class="menu-item" @click="$emit('action', 'projects')">
           <span class="material-icons">folder</span>
           <span>{{ $t('projects.title') }}</span>
         </button>
         
-        <button v-if="user.role === 'admin'" class="menu-item" @click="navigateToUsers">
+        <button class="menu-item" @click="navigateToUsers">
           <span class="material-icons">people</span>
           <span>{{ $t('users.title') }}</span>
         </button>
         
-        <button v-if="user.role === 'admin'" class="menu-item" @click="navigateToLogs">
+        <button class="menu-item" @click="navigateToLogs">
           <span class="material-icons">history</span>
           <span>{{ $t('audit.title') }}</span>
         </button>
 
-        <button v-if="user.role === 'admin'" class="menu-item" @click="navigateToSync">
-          <span class="material-icons">sync</span>
-          <span>{{ $t('managementLayout.warehouseSync') }}</span>
+        <div class="menu-divider"></div>
+        </template>
+
+        <button class="menu-item" @click="navigateToUserGuide">
+          <span class="material-icons">help_outline</span>
+          <span>{{ $t('nav.userGuide') }}</span>
         </button>
-        
+
         <div class="menu-divider"></div>
         
         <button class="menu-item logout" @click="$emit('action', 'logout')">
@@ -143,12 +153,6 @@ const navigateToDashboard = () => {
   router.push('/admin/dashboard')
 }
 
-// Navigate to warehouse sync page
-const navigateToSync = () => {
-  emit('close')
-  router.push('/admin/sync')
-}
-
 // Navigate to password change page
 const navigateToPassword = () => {
   emit('close')
@@ -161,16 +165,30 @@ const navigateToLogs = () => {
   router.push('/admin/audit')
 }
 
+// Navigate to namespaces
+const navigateToNamespaces = () => {
+  emit('close')
+  router.push('/admin/namespaces')
+}
+
+// Navigate to user guide
+const navigateToUserGuide = () => {
+  emit('close')
+  router.push('/admin/user-guide')
+}
+
 const getRoleDisplay = (role: string) => {
   switch (role) {
     case 'admin':
       return t('users.roleAdmin')
-    case 'maintainer':
-      return t('projects.roleMaintainer')
-    case 'member':
-      return t('projects.roleViewer')
+    case 'project_manager':
+      return t('users.roleProjectManager')
+    case 'developer':
+      return t('users.roleDeveloper')
+    case 'operator':
+      return t('users.roleOperator')
     default:
-      return t('users.roleUser')
+      return role
   }
 }
 </script>
@@ -190,7 +208,7 @@ const getRoleDisplay = (role: string) => {
   width: 250px;
   margin-top: 8px;
   overflow: hidden;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--divider-color);
   backdrop-filter: blur(10px);
   color: var(--primary-text);
 }
@@ -242,7 +260,7 @@ const getRoleDisplay = (role: string) => {
     
     .user-email {
       font-size: 14px;
-      color: var(--text-muted);
+      color: var(--neutral-text);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -258,7 +276,7 @@ const getRoleDisplay = (role: string) => {
 
 .menu-divider {
   height: 1px;
-  background-color: var(--border-color);
+  background-color: var(--divider-color);
   margin: 8px 0;
 }
 
@@ -271,7 +289,7 @@ const getRoleDisplay = (role: string) => {
     padding: 12px 16px;
     border: none;
     background-color: transparent;
-    color: var(--text);
+    color: var(--primary-text);
     cursor: pointer;
     transition: all 0.2s ease;
     font-size: 14px;
@@ -284,7 +302,7 @@ const getRoleDisplay = (role: string) => {
     }
     
     &:hover {
-      background-color: var(--hover-bg);
+      background-color: var(--hover-background);
       
       .material-icons {
         opacity: 1;

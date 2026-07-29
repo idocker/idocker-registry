@@ -30,7 +30,7 @@ export class ProjectModel extends BaseModel {
    */
   async getUserMembership(projectId, userId) {
     return await this.get(
-      `SELECT pm.role as member_role
+      `SELECT pm.id, pm.role
        FROM project_members pm
        WHERE pm.project_id = ? AND pm.user_id = ?`,
       [projectId, userId]
@@ -103,13 +103,13 @@ export class ProjectModel extends BaseModel {
         }
       } else {
         query = `
-          SELECT p.id, p.name, p.description, p.namespace, p.is_active, p.created_at, p.updated_at,
-                 u.username as created_by_username, u.full_name as created_by_name,
-                 pm.role as member_role, pm.created_at as member_since
+          SELECT DISTINCT p.id, p.name, p.description, p.namespace, p.is_active, p.created_at, p.updated_at,
+                 u.username as created_by_username, u.full_name as created_by_name
           FROM projects p
           LEFT JOIN users u ON p.created_by = u.id
-          JOIN project_members pm ON p.id = pm.project_id
-          WHERE pm.user_id = ? AND p.is_active = 1
+          JOIN repositories r ON p.id = r.project_id
+          JOIN repository_members rm ON r.id = rm.repository_id
+          WHERE rm.user_id = ? AND p.is_active = 1
         `;
         params = [userId];
 
@@ -159,10 +159,7 @@ export class ProjectModel extends BaseModel {
    * Get project member count
    */
   async getProjectMemberCount(projectId) {
-    return await this.get(
-      'SELECT COUNT(*) as count FROM project_members WHERE project_id = ?',
-      [projectId]
-    );
+    return { count: 0 };
   }
 
   /**
@@ -274,16 +271,16 @@ export class ProjectModel extends BaseModel {
   /**
    * 添加项目成员
    */
-  async addProjectMember(projectId, userId, role = 'member') {
+  async addProjectMember(projectId, userId, role) {
     try {
       const sql = `
         INSERT INTO project_members (project_id, user_id, role, created_at) 
         VALUES (?, ?, ?, ?)
       `;
-      const params = [projectId, userId, role, new Date().toISOString()];
+      const params = [projectId, userId, role || 'developer', new Date().toISOString()];
 
       const result = await this.run(sql, params);
-      return { id: result.lastID, projectId, userId, role };
+      return { id: result.lastID, projectId, userId, role: role || 'developer' };
     } catch (error) {
       logger.error('添加项目成员失败:', error);
       throw error;
@@ -296,7 +293,8 @@ export class ProjectModel extends BaseModel {
   async getProjectMembers(projectId) {
     try {
       const sql = `
-        SELECT pm.*, u.username, u.full_name, u.email, u.role as user_role
+        SELECT pm.id, pm.project_id, pm.user_id, pm.role, pm.created_at,
+               u.username, u.full_name, u.email, u.role as user_role, u.is_active
         FROM project_members pm
         JOIN users u ON pm.user_id = u.id
         WHERE pm.project_id = ?
@@ -313,21 +311,7 @@ export class ProjectModel extends BaseModel {
   /**
    * 移除项目成员
    */
-  async removeProjectMember(projectId, userId) {
-    try {
-      const sql = 'DELETE FROM project_members WHERE project_id = ? AND user_id = ?';
-      const result = await this.run(sql, [projectId, userId]);
-      return { changes: result.changes };
-    } catch (error) {
-      logger.error('移除项目成员失败:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * 更新项目成员角色
-   */
-  async updateProjectMemberRole(projectId, userId, role) {
+  async updateMemberRole(projectId, userId, role) {
     try {
       const sql = 'UPDATE project_members SET role = ? WHERE project_id = ? AND user_id = ?';
       const result = await this.run(sql, [role, projectId, userId]);
@@ -338,18 +322,13 @@ export class ProjectModel extends BaseModel {
     }
   }
 
-  /**
-   * 检查用户是否为项目所有者
-   */
-  async isProjectOwner(projectId, userId) {
+  async removeProjectMember(projectId, userId) {
     try {
-      const result = await this.get(
-        'SELECT id FROM project_members WHERE project_id = ? AND user_id = ? AND role = ?',
-        [projectId, userId, 'owner']
-      );
-      return !!result;
+      const sql = 'DELETE FROM project_members WHERE project_id = ? AND user_id = ?';
+      const result = await this.run(sql, [projectId, userId]);
+      return { changes: result.changes };
     } catch (error) {
-      logger.error('检查项目所有者失败:', error);
+      logger.error('移除项目成员失败:', error);
       throw error;
     }
   }
@@ -384,22 +363,6 @@ export class ProjectModel extends BaseModel {
   }
 
   /**
-   * 获取项目所有者数量
-   */
-  async getProjectOwnerCount(projectId) {
-    try {
-      const result = await this.get(
-        'SELECT COUNT(*) as count FROM project_members WHERE project_id = ? AND role = ?',
-        [projectId, 'owner']
-      );
-      return result.count || 0;
-    } catch (error) {
-      logger.error('获取项目所有者数量失败:', error);
-      throw error;
-    }
-  }
-
-  /**
    * 根据ID获取项目基本信息（用于权限检查）
    */
   async getProjectBasicInfo(projectId) {
@@ -414,25 +377,6 @@ export class ProjectModel extends BaseModel {
       return project;
     } catch (error) {
       logger.error('获取项目基本信息失败:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * 获取项目成员角色信息
-   */
-  async getMemberRole(projectId, userId) {
-    try {
-      if (!projectId || !userId) {
-        return null;
-      }
-      const membership = await this.get(
-        'SELECT id, role FROM project_members WHERE project_id = ? AND user_id = ?',
-        [projectId, userId]
-      );
-      return membership;
-    } catch (error) {
-      logger.error('获取项目成员角色失败:', error);
       throw error;
     }
   }

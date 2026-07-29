@@ -70,14 +70,14 @@
                 <!-- <td>{{ namespace.created_by_username || '-' }}</td> -->
                 <td>{{ formatDate(namespace.created_at) }}</td>
                 <td class="action-buttons">
-                  <button class="btn-icon btn-ghost" @click="editNamespace(namespace)" :title="$t('common.edit')">
+                  <button class="btn btn-icon btn-ghost" @click="editNamespace(namespace)" :title="$t('common.edit')">
                     <span class="material-icons">edit</span>
                   </button>
-                  <button v-if="namespace.is_active" class="btn-icon btn-ghost" @click="deleteNamespace(namespace)"
+                  <button v-if="namespace.is_active" class="btn btn-icon btn-ghost" @click="deleteNamespace(namespace)"
                     :title="$t('common.delete')">
                     <span class="material-icons">delete</span>
                   </button>
-                  <button v-else class="btn-icon btn-ghost" @click="reactivateNamespace(namespace)"
+                  <button v-else class="btn btn-icon btn-ghost" @click="reactivateNamespace(namespace)"
                     :title="$t('common.reactivate')">
                     <span class="material-icons">restart</span>
                   </button>
@@ -99,6 +99,11 @@
             :disabled="currentPage === totalPages">
             {{ $t('common.nextPage') }}
           </button>
+          <select v-model="pageSize" class="page-size-select" @change="currentPage = 1">
+            <option :value="10">10</option>
+            <option :value="20">20</option>
+            <option :value="50">50</option>
+          </select>
         </div>
       </div>
 
@@ -182,14 +187,18 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
+import { useI18n } from 'vue-i18n'
 import namespaceService from '@/services/namespace.service';
 import ManagementLayout from '@/components/admin/ManagementLayout.vue';
+import { formatDate as fmtDate } from '@/utils/helpers';
 import type { Namespace } from '@/types';
 
+const { locale } = useI18n()
 const namespaces = ref<Namespace[]>([]);
 const isLoading = ref(true);
 const searchQuery = ref('');
 const currentPage = ref(1);
+const pageSize = ref(10);
 const totalPages = ref(1);
 const showCreateModal = ref(false);
 const showDeleteModal = ref(false);
@@ -197,7 +206,7 @@ const editingNamespace = ref(null);
 const deletingNamespace = ref(null);
 const isSubmitting = ref(false);
 const message = ref({ text: '', type: '' });
-const errors = ref({});
+const errors = ref<Record<string, string>>({});
 
 const namespaceForm = ref({
   name: '',
@@ -207,29 +216,20 @@ const namespaceForm = ref({
 
 // Computed properties
 const filteredNamespaces = computed(() => {
-  if (!searchQuery.value) return namespaces.value;
+  let result = namespaces.value;
 
-  const query = searchQuery.value.toLowerCase();
-  namespaces.value.filter(namespace =>
-    namespace.name.toLowerCase().includes(query) ||
-    (namespace.description && namespace.description.toLowerCase().includes(query))
-  );
-  // 处理is_active 和 截取description长度为10
-  if (namespaces.value.length > 0) {
-    namespaces.value.map(namespace => ({
-      ...namespace,
-      description: namespace.description.substring(0, 10) + '...',
-      is_active: namespace.is_active ? 'active' : 'inactive'
-    }));
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase();
+    result = result.filter(namespace =>
+      namespace.name.toLowerCase().includes(query) ||
+      (namespace.description && namespace.description.toLowerCase().includes(query))
+    );
   }
 
-  return namespaces.value
+  return result;
 });
 
-const paginatedNamespaces = computed(() => {
-  // Since we're handling pagination on the server side, this is just for UI consistency
-  return filteredNamespaces.value;
-});
+
 
 // Methods
 const loadNamespaces = async () => {
@@ -237,16 +237,17 @@ const loadNamespaces = async () => {
     isLoading.value = true;
     const response = await namespaceService.getNamespaces({
       page: currentPage.value,
+      limit: pageSize.value,
       search: searchQuery.value
     });
 
     namespaces.value = response.data || [];
-    totalPages.value = Math.ceil(response.pagination?.total / 10) || 1;
+    totalPages.value = Math.ceil(response.pagination?.total / pageSize.value) || 1;
     console.log(namespaces.value)
     console.log(filteredNamespaces.value)
-  } catch (error) {
-    console.error('Error loading namespaces:', error);
-    showMessage(error.response?.data?.message || 'Failed to load namespaces', 'error');
+  } catch (e: any) {
+    console.error('Error loading namespaces:', e);
+    showMessage(e?.message || 'Failed to load namespaces', 'error');
   } finally {
     isLoading.value = false;
   }
@@ -291,10 +292,10 @@ const confirmDelete = async () => {
 
     showDeleteModal.value = false;
     loadNamespaces();
-  } catch (error) {
-    console.error('Error deleting namespace:', error);
+  } catch (e: any) {
+    console.error('Error deleting namespace:', e);
     showMessage(
-      error.response?.data?.message || 'Failed to delete namespace',
+      e?.message || 'Failed to delete namespace',
       'error'
     );
   } finally {
@@ -316,10 +317,10 @@ const reactivateNamespace = async (namespace) => {
     );
 
     loadNamespaces();
-  } catch (error) {
-    console.error('Error reactivating namespace:', error);
+  } catch (e: any) {
+    console.error('Error reactivating namespace:', e);
     showMessage(
-      error.response?.data?.message || 'Failed to reactivate namespace',
+      e?.message || 'Failed to reactivate namespace',
       'error'
     );
   }
@@ -328,7 +329,7 @@ const reactivateNamespace = async (namespace) => {
 const saveNamespace = async () => {
 
   if (!namespaceForm.value.name || namespaceForm.value.name.trim() === '') {
-    errors.value = 'Namespace name is required';
+    errors.value = { name: 'Namespace name is required' };
     return;
   }
 
@@ -351,10 +352,10 @@ const saveNamespace = async () => {
 
     showCreateModal.value = false;
     loadNamespaces();
-  } catch (error) {
-    console.error('Error saving namespace:', error);
+  } catch (e: any) {
+    console.error('Error saving namespace:', e);
     showMessage(
-      error.response?.data?.message || 'Failed to save namespace',
+      e?.message || 'Failed to save namespace',
       'error'
     );
   } finally {
@@ -362,17 +363,13 @@ const saveNamespace = async () => {
   }
 };
 
-const formatDate = (dateString) => {
-  if (!dateString) return '-';
-  const date = new Date(dateString);
-  return date.toLocaleDateString();
-};
+const formatDate = (dateString) => dateString ? fmtDate(dateString, locale.value) : '-';
 
 const showMessage = (text, type) => {
   message.value = { text, type };
   setTimeout(() => {
     message.value = { text: '', type: '' };
-  }, 5000);
+  }, 3000);
 };
 
 // Lifecycle
@@ -385,301 +382,325 @@ watch(currentPage, () => {
   loadNamespaces();
 });
 
+// Watch for page size changes
+watch(pageSize, () => {
+  currentPage.value = 1;
+  loadNamespaces();
+});
+
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/variables' as *;
+
 .namespaces-container {
-  padding: 0px;
+    padding: 0px;
 }
 
 .page-header {
-  margin-bottom: 20px;
-}
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
 
-.page-header h1 {
-  margin-bottom: 8px;
-  color: #333;
-}
-
-.page-header p {
-  color: #666;
-  margin: 0;
+    h1 {
+        margin: 0;
+        font-size: 28px;
+    }
 }
 
 .namespaces-table-container {
-  background: var(--card-bg);
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
 }
 
 .table-controls {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px;
-  border-bottom: 1px solid var(--border-color);
-}
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
 
-.search-input {
-  padding: 8px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  width: 300px;
-  font-size: 14px;
-}
+    .search-input {
+        width: 300px;
+        padding: 10px;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        font-size: 14px;
 
-.table-actions {
-  display: flex;
-  gap: 8px;
+        &:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+    }
+
+    .table-actions {
+        display: flex;
+        gap: 8px;
+    }
 }
 
 .table-container {
-  overflow-x: auto;
+    overflow-x: auto;
 }
 
 .namespaces-table {
-  width: 100%;
-  border-collapse: collapse;
-}
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
 
-.namespaces-table th,
-.namespaces-table td {
-  padding: 12px 16px;
-  text-align: left;
-  border-bottom: 1px solid var(--border-color);
-}
+    th,
+    td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+    }
 
-.namespaces-table th {
-  background-color: var(--card-bg);
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--text-color)
-}
+    th {
+        font-weight: 600;
+        color: var(--neutral-text);
+        background-color: var(--hover-background);
+    }
 
-.namespaces-table tr:hover {
-  background-color: var(--hover-bg);
+    tr:hover {
+        background-color: var(--hover-background);
+    }
+
+    .loading-cell,
+    .empty-cell {
+        text-align: center;
+        padding: 40px 12px;
+        color: var(--neutral-text);
+    }
+
+    .loading-indicator {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+
+        .material-icons {
+            animation: spin 1s linear infinite;
+        }
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+    }
 }
 
 .empty-state {
-  text-align: center;
-  padding: 30px 0;
+    text-align: center;
+
+    .material-icons {
+        font-size: 48px;
+    }
+
+    h3 {
+        margin: 16px 0 8px;
+        color: var(--primary-text);
+    }
+
+    p {
+        color: var(--neutral-text);
+        margin: 0 0 16px;
+    }
 }
 
 .status-badge {
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    display: inline-block;
 }
 
 .status-badge.active {
-  background-color: #d4edda;
-  color: #155724;
+    background-color: var(--success-color);
+    color: white;
 }
 
 .status-badge.inactive {
-  background-color: #f8d7da;
-  color: #721c24;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 8px;
+    background-color: var(--neutral-text);
+    color: white;
 }
 
 .pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 16px;
-  padding: 16px;
-  border-top: 1px solid #eee;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    border-top: 1px solid var(--border-color);
 }
 
 .page-info {
-  color: #666;
-  font-size: 14px;
+    color: var(--neutral-text);
+    font-size: 14px;
 }
 
 /* Modal styles */
 .modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
 }
 
 .modal {
-  background: white;
-  border-radius: 8px;
-  width: 90%;
-  max-width: 500px;
-  max-height: 80vh;
-  overflow-y: auto;
+    background: var(--card-background);
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 80vh;
+    overflow-y: auto;
 }
 
 .modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px;
-  border-bottom: 1px solid #eee;
-}
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
 
-.modal-header h2 {
-  margin: 0;
-  color: #333;
+    h2 {
+        margin: 0;
+        color: var(--primary-text);
+    }
 }
 
 .modal-body {
-  padding: 16px;
+    padding: 16px;
 }
 
 .form-group {
-  margin-bottom: 16px;
-}
+    margin-bottom: 16px;
 
-.form-group label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 500;
-  color: #333;
+    label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: var(--primary-text);
+    }
 }
 
 .form-input,
 .form-textarea {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-}
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 14px;
+    background-color: var(--background);
+    color: var(--primary-text);
 
-.form-input.error,
-.form-textarea.error {
-  border-color: #dc3545;
+    &.error {
+        border-color: var(--error-color);
+    }
 }
 
 .error-message {
-  color: #dc3545;
-  font-size: 12px;
-  margin-top: 4px;
-  display: block;
+    color: var(--error-color);
+    font-size: 12px;
+    margin-top: 4px;
+    display: block;
 }
 
 .checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-}
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
 
-.checkbox-label input[type="checkbox"] {
-  margin: 0;
+    input[type="checkbox"] {
+        margin: 0;
+    }
 }
 
 .modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  padding: 16px;
-  border-top: 1px solid #eee;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 16px;
+    border-top: 1px solid var(--border-color);
 }
 
 .message {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  padding: 12px 16px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  z-index: 2000;
-  animation: fadeIn 0.3s ease-in-out;
-}
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 16px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 2000;
+    animation: fadeIn 0.3s ease-in-out;
 
-.message.success {
-  background-color: #d4edda;
-  color: #155724;
-}
+    &.success {
+        background-color: var(--success-color);
+        color: white;
+    }
 
-.message.error {
-  background-color: #f8d7da;
-  color: #721c24;
+    &.error {
+        background-color: var(--error-color);
+        color: white;
+    }
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
+    from {
+        opacity: 0;
+    }
 
-  to {
-    opacity: 1;
-  }
+    to {
+        opacity: 1;
+    }
 }
 
 .spinning {
-  animation: spin 1s linear infinite;
+    animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
+    0% {
+        transform: rotate(0deg);
+    }
 
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-.loading-cell,
-.empty-cell {
-  text-align: center;
-  padding: 32px 16px;
-}
-
-.loading-indicator,
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  color: #666;
-}
-
-.loading-indicator .material-icons,
-.empty-state .material-icons {
-  font-size: 48px;
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 .warning-message {
-  color: #856404;
-  background-color: #fff3cd;
-  padding: 10px;
-  border-radius: 4px;
-  margin-top: 10px;
+    color: var(--warning-color);
+    background-color: var(--hover-background);
+    padding: 10px;
+    border-radius: 4px;
+    margin-top: 10px;
 }
 
 .btn-danger {
-  background-color: #dc3545;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-}
+    background-color: var(--error-color);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
 
-.btn-danger:disabled {
-  background-color: #a82832;
-  cursor: not-allowed;
+    &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
 }
 </style>

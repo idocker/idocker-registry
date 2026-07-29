@@ -41,16 +41,25 @@ router.post('/login', asyncHandler(async (req, res) => {
         // Generate JWT token
         const token = AuthService.generateToken(user);
 
-        // Log login
-        await authModel.logAudit({
-            user_id: user.id,
-            action: 'LOGIN',
-            resource_type: 'user',
-            resource_id: user.id.toString(),
-            details: { username },
-            ip_address: req.ip,
-            user_agent: req.headers['user-agent']
-        });
+        // Log login and update last login
+        try {
+            await authModel.logAudit({
+                user_id: user.id,
+                action: 'LOGIN',
+                resource_type: 'user',
+                resource_id: user.id.toString(),
+                details: { username },
+                ip_address: req.ip,
+                user_agent: req.headers['user-agent']
+            });
+        } catch (e) {
+            logger.error('Failed to log audit:', e);
+        }
+        try {
+            await authModel.updateLastLogin(user.id);
+        } catch (e) {
+            logger.error('Failed to update last login:', e);
+        }
 
         // Return user information and token
         res.status(200).json(success({
@@ -63,8 +72,8 @@ router.post('/login', asyncHandler(async (req, res) => {
                     role: user.role
                 }
         }, 'Login successful'));
-    } catch (error) {
-        logger.error('Error during login:', error);
+    } catch (e) {
+        logger.error('Error during login:', e);
         res.status(500).json(error('Internal server error'));
     }
 }));
@@ -96,7 +105,7 @@ router.post('/logout', asyncHandler(async (req, res) => {
                     user_agent: req.headers['user-agent']
                 });
             }
-        } catch (error) {
+        } catch (e) {
             // Token invalid, ignore error
         }
     }
@@ -162,8 +171,8 @@ router.post('/register', asyncHandler(async (req, res) => {
         });
 
         res.status(201).json(success(null, 'Registration successful, please login with your new account'));
-    } catch (error) {
-        logger.error('Error during registration:', error);
+    } catch (e) {
+        logger.error('Error during registration:', e);
         res.status(500).json(error('Internal server error'));
     }
 }));
@@ -197,8 +206,8 @@ router.get('/profile', asyncHandler(async (req, res) => {
             isActive: user.is_active,
             createdAt: user.created_at
         }));
-    } catch (error) {
-        logger.error('Error getting user information:', error);
+    } catch (e) {
+        logger.error('Error getting user information:', e);
         return res.status(401).json(error('Authentication failed', 401));
     }
 }));
@@ -264,8 +273,8 @@ router.put('/change-password', asyncHandler(async (req, res) => {
         });
 
         res.status(200).json(success(null, 'Password changed successfully'));
-    } catch (error) {
-        logger.error('Error changing password:', error);
+    } catch (e) {
+        logger.error('Error changing password:', e);
         return res.status(500).json(error('Internal server error'));
     }
 }));
@@ -297,8 +306,8 @@ router.get('/refresh', asyncHandler(async (req, res) => {
         res.status(200).json(success({
             token: newToken
         }, 'Token refreshed successfully'));
-    } catch (error) {
-        logger.error('Error refreshing token:', error);
+    } catch (e) {
+        logger.error('Error refreshing token:', e);
         return res.status(401).json(error('Authentication failed', 401));
     }
 }));
