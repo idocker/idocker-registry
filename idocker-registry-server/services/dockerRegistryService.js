@@ -300,15 +300,39 @@ class DockerRegistryService {
       };
 
 
-      if (response.data.layers) {
-        imageInfo.size = response.data.layers.reduce((acc, layer) => acc + (layer.size || 0), 0);
+      const data = response.data;
+
+      if (Array.isArray(data.layers) && data.layers.length) {
+        // Single-platform manifest (docker v2 / OCI image manifest)
+        imageInfo.size = data.layers.reduce((acc, layer) => acc + (layer.size || 0), 0);
+      } else if (Array.isArray(data.manifests) && data.manifests.length) {
+        // OCI index / docker manifest list (multi-platform): aggregate child
+        // platform manifests so size / created / arch / os are populated.
+        let childCount = 0;
+        for (const child of data.manifests) {
+          try {
+            const childInfo = await this.getManifest(repository, child.digest, registryConfig);
+            imageInfo.size += childInfo.size || 0;
+            if (childCount === 0) {
+              imageInfo.created = childInfo.created || null;
+              imageInfo.architecture = childInfo.architecture || 'unknown';
+              imageInfo.os = childInfo.os || 'unknown';
+            }
+            childCount++;
+          } catch (error) {
+            logger.warn(`Get child manifest failed: ${error.message}`);
+          }
+        }
+        if (childCount > 1) {
+          imageInfo.architecture = 'multi';
+        }
       }
 
       // Get image config and get image info
-      if (response.data.config) {
+      if (data.config) {
         try {
           const configResponse = await axios.get(
-            `${registryUrl}/v2/${repository}/blobs/${response.data.config.digest}`,
+            `${registryUrl}/v2/${repository}/blobs/${data.config.digest}`,
             {
               headers: this.getAuthHeaders(registryConfig),
               timeout: this.timeout
