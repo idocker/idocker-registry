@@ -56,7 +56,7 @@
           </div>
           <div class="info-item">
             <div class="info-label">{{ $t('imageDetail.project') }}</div>
-            <div class="info-value">{{ image.repository?.projectName || 'N/A' }}</div>
+            <div class="info-value">{{ image.repository?.project_name || image.repository?.projectName || 'N/A' }}</div>
           </div>
           <div class="info-item">
             <div class="info-label">{{ $t('imageDetail.namespace') }}</div>
@@ -117,7 +117,7 @@
                     <span v-if="tag.os" class="chip">{{ tag.os }}</span>
                   </div>
                 </td>
-                <td>{{ formatDate(tag.createdAt) }}</td>
+                <td>{{ formatDate(tag.createdAt || tag.created_at) }}</td>
                 <td>
                   <div class="actions-cell">
                     <button
@@ -142,6 +142,7 @@
                       <span class="material-icons">delete</span>
                       {{ $t('imageDetail.delete') }}
                     </button>
+                    <LinkPopover :pull="pullCommand(tag)" :push="pushCommand(tag)" />
                   </div>
                 </td>
               </tr>
@@ -304,6 +305,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useNotifications } from '@/composables/useNotifications'
+import { useRegistryStore } from '@/stores/registry'
+import LinkPopover from '@/components/LinkPopover.vue'
 import repositoryService from '@/services/repository.service'
 import authService from '@/services/auth.service'
 import { formatDateTime as fmtDT } from '@/utils/helpers'
@@ -313,6 +316,7 @@ const route = useRoute()
 const router = useRouter()
 const { t, locale } = useI18n()
 const { showSuccess, showError, showInfo } = useNotifications()
+const registryStore = useRegistryStore()
 
 // State management
 const isLoading = ref(false)
@@ -479,6 +483,20 @@ const deleteTag = async () => {
 }
 
 // Copy to clipboard
+// Docker pull/push commands shown in the tag list "link" popover
+// Host follows the UI registry URL; repository path is <project>/<image>.
+const registryHost = computed(() => registryStore.registryName || window.location.host)
+const repositoryPath = computed(() => {
+  const repo = image.value?.repository
+  const project = repo?.project_name || repo?.projectName || repo?.project || ''
+  const name = repo?.name || ''
+  return [project, name].filter(Boolean).join('/')
+})
+const pullCommand = (tag: ImageTag) =>
+  `docker pull ${registryHost.value}/${repositoryPath.value}:${tag.tag || tag.name || ''}`
+const pushCommand = (tag: ImageTag) =>
+  `docker push ${registryHost.value}/${repositoryPath.value}:${tag.tag || tag.name || ''}`
+
 const copyToClipboard = async (text: string) => {
   try {
     await navigator.clipboard.writeText(text)

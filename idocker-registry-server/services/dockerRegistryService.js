@@ -18,7 +18,7 @@ import { parseRepositoryName } from '../utils/dockerUtils.js';
 
 class DockerRegistryService {
   constructor() {
-    this.baseURL = env.DEFAULT_REGISTRY_URL;
+    this.baseURL = env.DOCKER_REGISTRY_URL;
     this.username = env.DOCKER_REGISTRY_USERNAME;
     this.password = env.DOCKER_REGISTRY_PASSWORD;
     this.timeout = parseInt(env.DOCKER_REGISTRY_TIMEOUT);
@@ -58,7 +58,7 @@ class DockerRegistryService {
   */
   getRegistryConfig() {
     const registryConfig = {
-      url: env.DEFAULT_REGISTRY_URL,
+      url: env.DOCKER_REGISTRY_URL,
       username: env.DOCKER_REGISTRY_USERNAME || null,
       password: env.DOCKER_REGISTRY_PASSWORD || null
     };
@@ -79,7 +79,7 @@ class DockerRegistryService {
       const checkUrl = `${registryUrl}/v2/`;
       logger.info(`log level :${env.LOG_LEVEL}`);
       logger.info(`Checking registry connection: ${checkUrl}`);
-      const response = await axios.get(`${checkUrl}/v2/`, {
+      const response = await axios.get(checkUrl, {
         headers: this.getAuthHeaders(registryConfig),
         timeout: 5000
       })
@@ -212,6 +212,57 @@ class DockerRegistryService {
   }
 
   /**
+   * Fetch the raw manifest content of a repository reference (tag or digest),
+   * preserving the original body and Content-Type so it can be re-pushed
+   * under a different tag.
+   * @returns {Promise<{body: Object, contentType: string}>}
+   */
+  async getRawManifest(repository, reference, registryConfig = null) {
+    try {
+      const registryUrl = registryConfig?.url || this.baseURL;
+      const headers = this.getAuthHeaders(registryConfig);
+      headers['Accept'] = [
+        'application/vnd.docker.distribution.manifest.v2+json',
+        'application/vnd.docker.distribution.manifest.v1+json',
+        'application/vnd.oci.image.manifest.v1+json',
+        'application/vnd.oci.image.index.v1+json'
+      ].join(',');
+      const response = await axios.get(`${registryUrl}/v2/${repository}/manifests/${reference}`, {
+        headers,
+        timeout: this.timeout
+      });
+      const contentType = (response.headers['content-type'] || '').split(';')[0];
+      return { body: response.data, contentType };
+    } catch (error) {
+      logger.error(`Failed to get raw manifest ${repository}:${reference}:`, error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Push a raw manifest under a reference (used to mirror the newest tag as 'latest')
+   * @returns {Promise<{status: number, digest: string}>}
+   */
+  async putManifest(repository, reference, body, contentType, registryConfig = null) {
+    try {
+      const registryUrl = registryConfig?.url || this.baseURL;
+      const headers = this.getAuthHeaders(registryConfig);
+      headers['Content-Type'] = contentType;
+      const response = await axios.put(`${registryUrl}/v2/${repository}/manifests/${reference}`, body, {
+        headers,
+        timeout: this.timeout
+      });
+      return {
+        status: response.status,
+        digest: response.headers['docker-content-digest']
+      };
+    } catch (error) {
+      logger.error(`Failed to put manifest ${repository}:${reference}:`, error.message);
+      throw error;
+    }
+  }
+
+  /**
    * Get Manifest for a Repository
    * @param {string} repository - Respository Name
    * @param {string} tag - Tag Name
@@ -223,8 +274,14 @@ class DockerRegistryService {
       const registryUrl = registryConfig?.url || this.baseURL;
       const headers = this.getAuthHeaders(registryConfig);
 
-      // Remove the Accept header to get the manifest in both v1 and v2 formats
-      headers['Accept'] = 'application/vnd.docker.distribution.manifest.v2+json,application/vnd.docker.distribution.manifest.v1+json';
+      // Ask for both docker and OCI manifest formats so modern clients that push
+      // OCI manifests (docker buildx / podman / newer node images) resolve too.
+      headers['Accept'] = [
+        'application/vnd.docker.distribution.manifest.v2+json',
+        'application/vnd.docker.distribution.manifest.v1+json',
+        'application/vnd.oci.image.manifest.v1+json',
+        'application/vnd.oci.image.index.v1+json'
+      ].join(',');
 
       const response = await axios.get(`${registryUrl}/v2/${repository}/manifests/${tag}`, {
         headers,
@@ -392,7 +449,9 @@ class DockerRegistryService {
    * @returns {string} Docker pull command
    */
   getPullCommand(repository, tag, registryConfig = null) {
-    const registryUrl = registryConfig?.url || this.baseURL;
+    // Use the externally reachable registry URL for client-facing commands;
+    // registryConfig.url points to the internal registry used by the backend.
+    const registryUrl = env.IDOCKER_REGISTRY_URL || registryConfig?.url || this.baseURL;
     const registryHost = new URL(registryUrl).host;
     return `docker pull ${registryHost}/${repository}:${tag}`;
   }
@@ -405,7 +464,9 @@ class DockerRegistryService {
    * @returns {string} Docker push command
    */
   getPushCommand(repository, tag, registryConfig = null) {
-    const registryUrl = registryConfig?.url || this.baseURL;
+    // Use the externally reachable registry URL for client-facing commands;
+    // registryConfig.url points to the internal registry used by the backend.
+    const registryUrl = env.IDOCKER_REGISTRY_URL || registryConfig?.url || this.baseURL;
     const registryHost = new URL(registryUrl).host;
     return `docker push ${registryHost}/${repository}:${tag}`;
   }

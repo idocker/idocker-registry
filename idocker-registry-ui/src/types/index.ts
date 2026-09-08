@@ -304,6 +304,7 @@ export interface Repository {
   isPublic: boolean
   projectId: number
   projectName: string
+  project_name?: string // 后端字段（sql alias）
   project?: string  // 兼容字段
   namespace: string
   fullName: string

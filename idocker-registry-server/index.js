@@ -138,6 +138,27 @@ const dockerRegistryProxy = createProxyMiddleware({
         });
       }
     }
+
+    // After a successful manifest push, sync this single repository so its new
+    // tag shows up in the Web UI immediately (no manual sync needed).
+    // Note: the manifest route params are multi-segment (<project>/<repo>), so
+    // they never reach the :name route handlers; we parse the name here instead.
+    const manifestMatch =
+      req.method === 'PUT' &&
+      proxyRes.statusCode >= 200 &&
+      proxyRes.statusCode < 300 &&
+      req.path &&
+      req.path.match(/^\/v2\/(.+)\/manifests\/[^/]+$/);
+    if (manifestMatch) {
+      const repositoryName = manifestMatch[1];
+      import('./services/dockerSyncService.js')
+        .then(({ default: dockerSyncService }) =>
+          dockerSyncService.processRepository({ name: repositoryName }, null)
+        )
+        .catch(err => {
+          logger.error('Failed to auto-record pushed tag:', err);
+        });
+    }
   },
   onError: (err, req, res) => {
     logger.error(`Docker Registry proxy error for ${req.method} ${req.path}:`, err);

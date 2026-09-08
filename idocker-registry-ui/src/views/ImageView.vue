@@ -153,20 +153,7 @@
                       </td>
                       <td>
                         <div class="actions-cell">
-                          <button
-                            class="btn btn-ghost btn-small"
-                            @click.stop="copyPullLink(image)"
-                          >
-                            <span class="material-icons">content_copy</span>
-                            {{ $t('images.copyPull') }}
-                          </button>
-                          <button
-                            class="btn btn-ghost btn-small"
-                            @click.stop="copyPushLink(image)"
-                          >
-                            <span class="material-icons">content_copy</span>
-                            {{ $t('images.copyPush') }}
-                          </button>
+                          <LinkPopover :pull="buildPullCommand(image)" :push="buildPushCommand(image)" />
                           <button
                             v-if="hasPermission"
                             class="btn btn-ghost btn-small"
@@ -215,6 +202,8 @@ import { ref, computed, onMounted, watch, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useNotifications } from '@/composables/useNotifications'
+import { useRegistryStore } from '@/stores/registry'
+import LinkPopover from '@/components/LinkPopover.vue'
 import repositoryService from '@/services/repository.service'
 import projectService from '@/services/project.service'
 import authService from '@/services/auth.service'
@@ -225,6 +214,7 @@ import type { Image, Project } from '@/types'
 const router = useRouter()
 const { t, locale } = useI18n()
 const { showSuccess, showError, showInfo } = useNotifications()
+const registryStore = useRegistryStore()
 
 // State management
 const projects = ref<Project[]>([])
@@ -402,46 +392,16 @@ const refreshAll = async () => {
   }
 }
 
-// Copy pull link
-const copyPullLink = async (image: Image) => {
-  try {
-    const projectName = image.project || ''
-    const imageName = image.name || ''
-    const namespace = image.namespace || ''
-
-    if (!projectName || !imageName) {
-      showError(t('images.imageInfoIncomplete') + ' ' + t('images.cannotGeneratePullLink'))
-      return
-    }
-
-    const pullCommand = `docker pull ${namespace ? namespace + '/' : ''}${projectName}/${imageName}:latest`
-    await navigator.clipboard.writeText(pullCommand)
-    showInfo(t('images.pullLinkCopied'))
-  } catch (error) {
-    console.error('Failed to copy pull link:', error)
-    showError(t('images.copyFailed'))
-  }
+// Build docker pull/push commands for an image row.
+// Registry path is <project>/<image> (namespace is an internal grouping and is
+// NOT part of the Docker repository name). Host follows the UI registry URL.
+const buildPullCommand = (image: Image): string => {
+  const registryHost = registryStore.registryName || window.location.host
+  return `docker pull ${registryHost}/${image.project || ''}/${image.name || ''}:latest`
 }
-
-// Copy push link
-const copyPushLink = async (image: Image) => {
-  try {
-    const projectName = image.project || ''
-    const imageName = image.name || ''
-    const namespace = image.namespace || ''
-
-    if (!projectName || !imageName) {
-      showError(t('images.imageInfoIncomplete') + ' ' + t('images.cannotGeneratePushLink'))
-      return
-    }
-
-    const pushCommand = `docker push ${namespace ? namespace + '/' : ''}${projectName}/${imageName}:latest`
-    await navigator.clipboard.writeText(pushCommand)
-    showInfo(t('images.pushLinkCopied'))
-  } catch (error) {
-    console.error('Failed to copy push link:', error)
-    showError(t('images.copyFailed'))
-  }
+const buildPushCommand = (image: Image): string => {
+  const registryHost = registryStore.registryName || window.location.host
+  return `docker push ${registryHost}/${image.project || ''}/${image.name || ''}:latest`
 }
 
 // View image details

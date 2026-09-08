@@ -330,6 +330,8 @@ export default {
     actions: '操作',
     details: '详情',
     dockerfile: 'Dockerfile',
+    link: '链接',
+    copyCommand: '拷贝命令',
     delete: '删除',
     copyDigest: '复制摘要',
     // Tag Details Dialog
@@ -1025,5 +1027,26 @@ export default {
     practice5Desc: '不使用 prod/app、dev/app 的方式创建重复仓库。开发、测试、生产环境共用同一仓库，通过 docker-compose / K8s 配置文件中的 tag 来区分部署版本。减少仓库数量，简化管理。',
     practice6Title: '审计追踪与定期维护',
     practice6Desc: '定期检查审计日志，关注异常的 pull / push 操作和权限变更。清理过期的旧版本 tag，保持仓库整洁。定期同步确保平台镜像列表与实际 Registry 一致。'
+  },
+  repoMembers: {
+    title: '仓库成员管理',
+    noMembers: '暂无成员，点击下方添加',
+    addMember: '添加成员',
+    selectUser: '选择用户',
+    role: '角色',
+    projectManager: '项目管理者',
+    developer: '开发者',
+    operator: '运维人员',
+    adding: '添加中...',
+    addSuccess: '成员添加成功',
+    addFailed: '添加成员失败',
+    userRequired: '请选择要添加的用户',
+    roleUpdated: '角色已更新',
+    roleUpdateFailed: '角色更新失败',
+    removeConfirm: '确定要移除成员 {name} 吗？',
+    removeSuccess: '成员已移除',
+    removeFailed: '移除成员失败',
+    loadFailed: '加载成员列表失败',
+    loadUsersFailed: '加载用户列表失败'
   }
 }

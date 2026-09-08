@@ -245,6 +245,27 @@ npm run format
 
 ---
 
+## 线上运行位置（事实源，务必区分）
+
+**iDocker 的实际运行/启动由 `/data/docker/idocker` 目录下的 compose 管理**，而非本源码仓库内的 compose：
+
+- 线上目录：`/data/docker/idocker/docker-compose.yaml`（生产 compose，唯一事实源）
+- 服务/容器：服务名 `idocker-registry`，容器名 `idocker`，镜像 `idocker-registry:latest`
+- 端口：容器内 7518（iDocker Web/API），对外映射 `7588:7518`；容器内 7519 为内部 docker-registry，未映射宿主机
+- 卷挂载：`./registry → /var/lib/registry`（镜像 blob）、`./data → /app/data`（SQLite `registry.db`）、`./logs → /app/logs`
+- 该目录**只含 compose 与运行时数据，不含应用源码**（代码在镜像内 `/app/idocker`）
+- 启动/停止/重启/查状态/看日志，均以 `/data/docker/idocker` 为工作目录执行，例如：
+  ```bash
+  cd /data/docker/idocker && docker compose up -d    # 启动
+  docker compose down                                # 停止
+  docker compose ps                                  # 状态
+  docker logs -f idocker                             # 容器日志
+  ```
+
+本仓库（源码区）根目录的 `docker-compose.yaml` / `docker-compose.dev.yaml` 用于**构建镜像与开发调试**，不是线上启动文件；线上改动代码后需重建镜像 `idocker-registry:latest` 并到 `/data/docker/idocker` 重启 compose 才生效。
+
+---
+
 ## Docker 开发模式（热更新，推荐）
 
 首次启动：

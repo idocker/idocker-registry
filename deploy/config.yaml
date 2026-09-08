@@ -2,6 +2,8 @@ version: 0.1
 log:
   level: info
 storage:
+  delete:
+    enabled: true
   cache:
     blobdescriptor: inmemory
   filesystem:
@@ -9,6 +11,9 @@ storage:
 http:
   addr: :7519
   net: tcp
+  # Return relative Location URLs so the Docker client resolves them against its
+  # own registry base URL instead of the internal localhost:7519 address
+  relativeurls: true
   # No authentication required, internal access only
   headers:
     X-Content-Type-Options: [nosniff]

@@ -35,6 +35,31 @@ export class ImageTagModel extends BaseModel {
   }
 
   /**
+   * Get the newest tag of a repository (by created_at desc, id desc as tie-break)
+   */
+  async getNewestTag(repositoryId) {
+    try {
+      if (!repositoryId) {
+        return null;
+      }
+
+      const tag = await this.get(
+        `SELECT id, tag, digest, size, architecture, os, created_at
+         FROM image_tags
+         WHERE repository_id = ?
+         ORDER BY created_at DESC, id DESC
+         LIMIT 1`,
+        [repositoryId]
+      );
+
+      return tag || null;
+    } catch (error) {
+      logger.error('Failed to get newest tag:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get a single tag by ID and repository ID
    */
   async getTagById(tagId, repositoryId) {

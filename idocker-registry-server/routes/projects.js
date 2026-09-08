@@ -1,6 +1,6 @@
 import express from 'express';
 import { asyncHandler } from '../middleware/errorHandler.js';
-import { authMiddleware, requireAdmin } from '../middleware/auth.js';
+import { requireAdmin } from '../middleware/auth.js';
 import { logger } from '../utils/logger.js';
 import { ProjectModel } from '../models/ProjectModel.js';
 import { UserModel } from '../models/UserModel.js';
@@ -10,7 +10,7 @@ const projectModel = new ProjectModel();
 const userModel = new UserModel();
 const router = express.Router();
 
-router.get('/', authMiddleware, asyncHandler(async (req, res) => {
+router.get('/', asyncHandler(async (req, res) => {
   const { page = 1, limit = 20, search = '', isActive='all'} = req.query;
   const { id: userId, role: userRole } = req.user;
   try {
@@ -22,7 +22,7 @@ router.get('/', authMiddleware, asyncHandler(async (req, res) => {
   }
 }));
 
-router.get('/all', authMiddleware, requireAdmin, asyncHandler(async (req, res) => {
+router.get('/all', requireAdmin, asyncHandler(async (req, res) => {
   const { isActive='all', page = 1, limit = 20, search = '' } = req.query;
   try {
     const result = await projectModel.getProjectsAllList(isActive, { page, limit, search });
@@ -33,7 +33,7 @@ router.get('/all', authMiddleware, requireAdmin, asyncHandler(async (req, res) =
   }
 }));
 
-router.get('/:id', authMiddleware, asyncHandler(async (req, res) => {
+router.get('/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { id: userId, role: userRole } = req.user;
 
@@ -60,7 +60,7 @@ router.get('/:id', authMiddleware, asyncHandler(async (req, res) => {
   }
 }));
 
-router.post('/', authMiddleware, requireAdmin, asyncHandler(async (req, res) => {
+router.post('/', requireAdmin, asyncHandler(async (req, res) => {
   const { name, description, namespace } = req.body;
   const { id: createdBy } = req.user;
 
@@ -97,7 +97,7 @@ router.post('/', authMiddleware, requireAdmin, asyncHandler(async (req, res) => 
   }
 }));
 
-router.put('/:id', authMiddleware, requireAdmin, asyncHandler(async (req, res) => {
+router.put('/:id', requireAdmin, asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { name, description, isActive } = req.body;
 
@@ -132,7 +132,7 @@ router.put('/:id', authMiddleware, requireAdmin, asyncHandler(async (req, res) =
   }
 }));
 
-router.delete('/:id', authMiddleware, requireAdmin, asyncHandler(async (req, res) => {
+router.delete('/:id', requireAdmin, asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   try {

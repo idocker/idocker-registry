@@ -64,6 +64,41 @@ export class RepositoryModel extends BaseModel {
   }
 
   /**
+   * Get repository list visible to a user (paginated)
+   * - admin: all active repositories across projects
+   * - other users: repositories where the user is a repository member
+   */
+  async getRepositoriesList(userId, userRole, { page = 1, limit = 20, search = '' } = {}) {
+    try {
+      const select = `
+        SELECT r.id, r.name, r.project_id, r.description, r.is_public, r.is_active,
+               p.name as project_name, p.namespace, r.created_at, r.updated_at,
+               (SELECT COUNT(*) FROM image_tags t WHERE t.repository_id = r.id) as tag_count
+        FROM repositories r
+        JOIN projects p ON r.project_id = p.id
+      `;
+      let where = 'WHERE r.is_active = 1';
+      const params = [];
+
+      if (userRole !== 'admin') {
+        where += ' AND r.id IN (SELECT repository_id FROM repository_members WHERE user_id = ?)';
+        params.push(userId);
+      }
+
+      if (search) {
+        where += ' AND (r.name LIKE ? OR p.name LIKE ? OR p.namespace LIKE ?)';
+        params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+      }
+
+      const query = `${select} ${where} ORDER BY p.namespace, p.name, r.name`;
+      return await this.paginate(query, params, page, limit);
+    } catch (error) {
+      logger.error('Failed to get user repository list:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get image list under project
    */
   async getProjectRepositories(projectId, { page = 1, limit = 20, search = '' } = {}) {

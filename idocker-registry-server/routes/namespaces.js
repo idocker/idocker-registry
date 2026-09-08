@@ -10,7 +10,7 @@
 
 import express from 'express';
 import { asyncHandler } from '../middleware/errorHandler.js';
-import { authMiddleware, requireAdmin } from '../middleware/auth.js';
+import { requireAdmin } from '../middleware/auth.js';
 import { logger } from '../utils/logger.js';
 import { NamespaceModel } from '../models/NamespaceModel.js';
 import { paginated, success, error } from '../utils/apiResponse.js';
@@ -23,7 +23,7 @@ const router = express.Router();
  * Get namespace list
  * Supports pagination and search
  */
-router.get('/', authMiddleware, asyncHandler(async (req, res) => {
+router.get('/', asyncHandler(async (req, res) => {
   const { page = 1, limit = 20, search = '', isActive = 'all' } = req.query;
 
   try {
@@ -49,7 +49,7 @@ router.get('/', authMiddleware, asyncHandler(async (req, res) => {
  * GET /api/namespaces/:id
  * Get namespace details by ID
  */
-router.get('/:id', authMiddleware, asyncHandler(async (req, res) => {
+router.get('/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -70,7 +70,7 @@ router.get('/:id', authMiddleware, asyncHandler(async (req, res) => {
  * POST /api/namespaces
  * Create new namespace (admin only)
  */
-router.post('/', authMiddleware, requireAdmin, asyncHandler(async (req, res) => {
+router.post('/', requireAdmin, asyncHandler(async (req, res) => {
   const { name, description } = req.body;
   const { id: userId } = req.user;
 
@@ -109,7 +109,7 @@ router.post('/', authMiddleware, requireAdmin, asyncHandler(async (req, res) => 
  * PUT /api/namespaces/:id
  * Update namespace (admin only)
  */
-router.put('/:id', authMiddleware, requireAdmin, asyncHandler(async (req, res) => {
+router.put('/:id', requireAdmin, asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { name, description, isActive } = req.body;
 
@@ -162,7 +162,7 @@ router.put('/:id', authMiddleware, requireAdmin, asyncHandler(async (req, res) =
  * DELETE /api/namespaces/:id
  * Delete namespace (admin only)
  */
-router.delete('/:id', authMiddleware, requireAdmin, asyncHandler(async (req, res) => {
+router.delete('/:id', requireAdmin, asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -194,7 +194,7 @@ router.delete('/:id', authMiddleware, requireAdmin, asyncHandler(async (req, res
  * POST /api/namespaces/:id/reactivate
  * Reactivate namespace (admin only)
  */
-router.post('/:id/reactivate', authMiddleware, requireAdmin, asyncHandler(async (req, res) => {
+router.post('/:id/reactivate', requireAdmin, asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   try {

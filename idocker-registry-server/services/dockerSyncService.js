@@ -166,6 +166,9 @@ class DockerSyncService {
             // 同步仓库的标签信息
             await this.syncRepositoryTags(repository, repo.name, registryConfig);
 
+            // 镜像最新标签为 latest（按 created_at），保证 docker pull 默认 tag 能拉到最新版
+            await this.ensureLatestMirror(repository, repo.name, registryConfig);
+
         } catch (error) {
             logger.error(`处理仓库 ${repo ? repo.name : 'unknown'} 失败:`, error);
             throw error;
@@ -268,6 +271,50 @@ class DockerSyncService {
      * @param {number} tagId - Tag ID
      * @param {Object} updateData - Data to update
      */
+    /**
+     * If the newest tag of a repository (by created_at) is not 'latest', mirror it
+     * as 'latest' in the registry so a plain `docker pull <repo>` fetches the
+     * newest version. Keeps the DB 'latest' row in sync afterwards.
+     */
+    async ensureLatestMirror(repository, repoName, registryConfig = null) {
+        try {
+            if (!repository || !repository.id || !repoName) {
+                return;
+            }
+            const newest = await this.imageTagModel.getNewestTag(repository.id);
+            if (!newest || !newest.digest || newest.tag === 'latest') {
+                return;
+            }
+
+            const raw = await dockerRegistryService.getRawManifest(repoName, newest.digest, registryConfig);
+            await dockerRegistryService.putManifest(repoName, 'latest', raw.body, raw.contentType, registryConfig);
+
+            // Keep the DB 'latest' row pointing at the same digest
+            const tags = await this.imageTagModel.getTagsByRepositoryId(repository.id);
+            const latestRow = tags.find(t => t && t.tag === 'latest');
+            const tagData = {
+                digest: newest.digest,
+                size: newest.size || 0,
+                architecture: newest.architecture || '',
+                os: newest.os || ''
+            };
+            if (latestRow) {
+                await this.imageTagModel.updateTag(latestRow.id, tagData);
+            } else {
+                await this.imageTagModel.createTag({
+                    repository_id: repository.id,
+                    tag: 'latest',
+                    ...tagData
+                });
+            }
+
+            logger.info(`Auto-mirrored newest tag ${repoName}:${newest.tag} -> latest (${newest.digest})`);
+        } catch (error) {
+            // Never break the sync flow because the latest mirror failed
+            logger.warn(`Auto-latest mirror failed for ${repoName || 'unknown'}:`, error.message);
+        }
+    }
+
     async updateTag(tagId, updateData) {
         return await this.imageTagModel.updateTag(tagId, updateData);
     }

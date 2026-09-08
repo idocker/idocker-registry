@@ -328,6 +328,8 @@ export default {
     actions: 'Actions',
     details: 'Details',
     dockerfile: 'Dockerfile',
+    link: 'Link',
+    copyCommand: 'Copy command',
     delete: 'Delete',
     copyDigest: 'Copy Digest',
     // Tag Details Dialog
@@ -1023,5 +1025,26 @@ export default {
     practice5Desc: 'Do not create duplicate repos like prod/app, dev/app. Dev, test, and prod share the same repository and use docker-compose / K8s config files to differentiate deployment versions by tag. Fewer repos, simpler management.',
     practice6Title: 'Audit Trail & Regular Maintenance',
     practice6Desc: 'Regularly check audit logs for unusual pull/push operations and permission changes. Clean up outdated tag versions to keep repos tidy. Run periodic syncs to ensure the platform matches the actual Registry.'
+  },
+  repoMembers: {
+    title: 'Repository Members',
+    noMembers: 'No members yet. Add one below.',
+    addMember: 'Add Member',
+    selectUser: 'Select User',
+    role: 'Role',
+    projectManager: 'Project Manager',
+    developer: 'Developer',
+    operator: 'Operator',
+    adding: 'Adding...',
+    addSuccess: 'Member added successfully',
+    addFailed: 'Failed to add member',
+    userRequired: 'Please select a user to add',
+    roleUpdated: 'Role updated',
+    roleUpdateFailed: 'Failed to update role',
+    removeConfirm: 'Remove member {name}?',
+    removeSuccess: 'Member removed',
+    removeFailed: 'Failed to remove member',
+    loadFailed: 'Failed to load members',
+    loadUsersFailed: 'Failed to load users'
   }
 }

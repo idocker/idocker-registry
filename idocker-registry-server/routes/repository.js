@@ -10,7 +10,6 @@
 import express from 'express';
 import dockerRegistryService from '../services/dockerRegistryService.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
-import { authMiddleware, requireProjectPermission, requireAdmin } from '../middleware/auth.js';
 import { logger } from '../utils/logger.js';
 import { ProjectModel } from '../models/ProjectModel.js';
 import { RepositoryModel } from '../models/RepositoryModel.js';
@@ -26,7 +25,7 @@ const imageTagModel = new ImageTagModel();
 const registryConfigModel = new RegistryConfigModel();
 const authModel = new AuthModel();
 
-router.get('/all', authMiddleware, asyncHandler(async (req, res) => {
+router.get('/all', asyncHandler(async (req, res) => {
   try {
     const repos = await repositoryModel.all(
       `SELECT r.id, r.name, r.project_id, r.description, r.is_public, r.is_active,
@@ -45,18 +44,11 @@ router.get('/all', authMiddleware, asyncHandler(async (req, res) => {
 }));
 
 router.get('/', asyncHandler(async (req, res) => {
-  //获取用户的项目列表（不分页）
+  // 获取当前用户可见的仓库列表（一次拉取，不分页返回）
   const { id: userId, role: userRole } = req.user;
-  const projects = await projectModel.getProjectsList(userId, userRole, { page: 1, limit: 1000, search: '' });  
-  //循环项目列表，获取每个项目的镜像仓库列表（不分页）
-  let allRepositories = [];
-  for (const project of projects.data) {
-    const repositories = await repositoryModel.getRepositoriesList(userId, userRole, { page: 1, limit: 1000, search: '' });
-    allRepositories = allRepositories.concat(repositories.data);
-  }
+  const result = await repositoryModel.getRepositoriesList(userId, userRole, { page: 1, limit: 1000, search: '' });
 
-  res.status(200).json(success(allRepositories));
-
+  res.status(200).json(success(result.data || []));
 }));
 
 /**
@@ -203,12 +195,12 @@ router.get('/images/:imageId', asyncHandler(async (req, res) => {
 
     for (const tag of tags) {
       tag.pullCommand = dockerRegistryService.getPullCommand(
-        repository.name,
+        `${repository.project_name}/${repository.name}`,
         tag.tag,
         repositoryConfig
       );
       tag.pushCommand = dockerRegistryService.getPushCommand(
-        repository.name,
+        `${repository.project_name}/${repository.name}`,
         tag.tag,
         repositoryConfig
       );
@@ -219,7 +211,7 @@ router.get('/images/:imageId', asyncHandler(async (req, res) => {
       data: {
         repository: {
           ...repository,
-          fullName: `${repository.namespace ? repository.namespace + '/' : ''}${repository.project_name}/${repository.name}`
+          fullName: `${repository.project_name}/${repository.name}`
         },
         tags
       }
@@ -279,7 +271,7 @@ router.get('/images/:imageId/tags/:tagId', asyncHandler(async (req, res) => {
       const repositoryConfig = await registryConfigModel.getDefaultActiveConfig();
 
       buildHistory = await dockerRegistryService.getBuildHistory(
-        repository.name,
+        `${repository.project_name}/${repository.name}`,
         tag.tag,
         repositoryConfig
       );
@@ -292,12 +284,12 @@ router.get('/images/:imageId/tags/:tagId', asyncHandler(async (req, res) => {
     const repositoryConfig = await registryConfigModel.getDefaultActiveConfig();
 
     const pullCommand = dockerRegistryService.getPullCommand(
-      repository.name,
+      `${repository.project_name}/${repository.name}`,
       tag.tag,
       repositoryConfig
     );
     const pushCommand = dockerRegistryService.getPushCommand(
-      repository.name,
+      `${repository.project_name}/${repository.name}`,
       tag.tag,
       repositoryConfig
     );
@@ -307,7 +299,7 @@ router.get('/images/:imageId/tags/:tagId', asyncHandler(async (req, res) => {
       data: {
         repository: {
           ...repository,
-          fullName: `${repository.namespace ? repository.namespace + '/' : ''}${repository.project_name}/${repository.name}`
+          fullName: `${repository.project_name}/${repository.name}`
         },
         tag: {
           ...tag,
@@ -414,7 +406,7 @@ router.delete('/images/:imageId/tags/:tagId', asyncHandler(async (req, res) => {
  * POST /api/repository/create
  * 创建仓库
  */
-router.post('/create', authMiddleware, asyncHandler(async (req, res) => {
+router.post('/create', asyncHandler(async (req, res) => {
   const { projectId, name, description } = req.body;
 
   if (!projectId || !name) {
@@ -621,7 +613,7 @@ router.get('/config', asyncHandler(async (req, res) => {
 
 // ===== Repository Members =====
 
-router.get('/:id/members', authMiddleware, asyncHandler(async (req, res) => {
+router.get('/:id/members', asyncHandler(async (req, res) => {
   const { id } = req.params;
   try {
     const members = await repositoryModel.getMembers(id);
@@ -632,7 +624,7 @@ router.get('/:id/members', authMiddleware, asyncHandler(async (req, res) => {
   }
 }));
 
-router.post('/:id/members', authMiddleware, asyncHandler(async (req, res) => {
+router.post('/:id/members', asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { userId, role = 'developer' } = req.body;
 
@@ -664,7 +656,7 @@ router.post('/:id/members', authMiddleware, asyncHandler(async (req, res) => {
   }
 }));
 
-router.put('/:id/members/:userId', authMiddleware, asyncHandler(async (req, res) => {
+router.put('/:id/members/:userId', asyncHandler(async (req, res) => {
   const { id, userId } = req.params;
   const { role } = req.body;
 
@@ -688,7 +680,7 @@ router.put('/:id/members/:userId', authMiddleware, asyncHandler(async (req, res)
   }
 }));
 
-router.delete('/:id/members/:userId', authMiddleware, asyncHandler(async (req, res) => {
+router.delete('/:id/members/:userId', asyncHandler(async (req, res) => {
   const { id, userId } = req.params;
   try {
     if (req.user.role !== 'admin') {
@@ -706,7 +698,7 @@ router.delete('/:id/members/:userId', authMiddleware, asyncHandler(async (req, r
   }
 }));
 
-router.put('/:id/public', authMiddleware, asyncHandler(async (req, res) => {
+router.put('/:id/public', asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { isPublic } = req.body;
 

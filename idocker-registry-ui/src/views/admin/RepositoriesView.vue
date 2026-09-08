@@ -47,7 +47,7 @@
                 </td>
                 <td>{{ repo.memberCount || 0 }}</td>
                 <td class="action-buttons">
-                  <button class="btn btn-icon btn-ghost" :title="$t('projectDetail.manageMembers')">
+                  <button class="btn btn-icon btn-ghost" :title="$t('projectDetail.manageMembers')" @click="openMembers(repo)">
                     <span class="material-icons">group</span>
                   </button>
                 </td>
@@ -102,12 +102,67 @@
           </form>
         </div>
       </div>
+
+      <!-- Member Management Modal -->
+      <div v-if="showMembersModal" class="modal-overlay" @click.self="closeMembers">
+        <div class="modal modal-lg">
+          <div class="modal-header">
+            <h2>{{ $t('repoMembers.title') }}：{{ activeRepo?.name }}</h2>
+            <button class="btn btn-ghost btn-icon" @click="closeMembers">
+              <span class="material-icons">close</span>
+            </button>
+          </div>
+          <div class="modal-content">
+            <div v-if="membersLoading" class="members-loading">{{ $t('projectDetail.loadingRepositories') }}</div>
+            <template v-else>
+              <ul v-if="repoMembers.length > 0" class="member-list">
+                <li v-for="m in repoMembers" :key="m.user_id" class="member-item">
+                  <div class="member-info">
+                    <div class="member-name">{{ m.username }}<template v-if="m.full_name">（{{ m.full_name }}）</template></div>
+                    <div class="member-meta">{{ m.email || '—' }}</div>
+                  </div>
+                  <select class="form-select role-select" :value="m.role" @change="handleRoleChange(m, $event)">
+                    <option value="project_manager">{{ $t('repoMembers.projectManager') }}</option>
+                    <option value="developer">{{ $t('repoMembers.developer') }}</option>
+                    <option value="operator">{{ $t('repoMembers.operator') }}</option>
+                  </select>
+                  <button class="btn btn-icon btn-ghost member-remove" :title="$t('common.delete')" @click="handleRemoveMember(m)">
+                    <span class="material-icons">delete</span>
+                  </button>
+                </li>
+              </ul>
+              <div v-else class="members-empty">{{ $t('repoMembers.noMembers') }}</div>
+
+              <div v-if="membersError" class="form-error">{{ membersError }}</div>
+
+              <div class="add-member-row">
+                <select v-model="memberForm.userId" class="form-select">
+                  <option value="" disabled>{{ $t('repoMembers.selectUser') }}</option>
+                  <option v-for="u in availableUsers" :key="u.id" :value="u.id">
+                    {{ u.username }}<template v-if="u.full_name">（{{ u.full_name }}）</template>
+                  </option>
+                </select>
+                <select v-model="memberForm.role" class="form-select role-select">
+                  <option value="project_manager">{{ $t('repoMembers.projectManager') }}</option>
+                  <option value="developer">{{ $t('repoMembers.developer') }}</option>
+                  <option value="operator">{{ $t('repoMembers.operator') }}</option>
+                </select>
+                <button class="btn btn-primary" :disabled="addingMember || availableUsers.length === 0" @click="handleAddMember">
+                  <span class="material-icons">person_add</span>
+                  {{ addingMember ? $t('repoMembers.adding') : $t('repoMembers.addMember') }}
+                </button>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
     </div>
   </ManagementLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { http } from '@/utils/http'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
 import { useNotifications } from '@/composables/useNotifications'
@@ -127,6 +182,26 @@ const addForm = ref({
   name: '',
   description: ''
 })
+
+// ===== 仓库成员管理 =====
+const { t } = useI18n()
+const showMembersModal = ref(false)
+const activeRepo = ref<any>(null)
+const repoMembers = ref<any[]>([])
+const userOptions = ref<any[]>([])
+const membersLoading = ref(false)
+const membersError = ref('')
+const addingMember = ref(false)
+const memberForm = ref({ userId: '', role: 'developer' })
+
+const availableUsers = computed(() =>
+  userOptions.value.filter(
+    (u: any) =>
+      u.is_active !== 0 &&
+      u.role !== 'admin' &&
+      !repoMembers.value.some((m: any) => m.user_id === u.id)
+  )
+)
 
 const filteredRepos = computed(() => {
   if (!searchQuery.value) return repos.value
@@ -195,6 +270,91 @@ async function handleAddRepository() {
 onMounted(async () => {
   await Promise.all([fetchRepos(), fetchProjects()])
 })
+
+// ===== 仓库成员管理逻辑 =====
+async function openMembers(repo: any) {
+  activeRepo.value = repo
+  showMembersModal.value = true
+  membersError.value = ''
+  memberForm.value = { userId: '', role: 'developer' }
+  membersLoading.value = true
+  try {
+    const [membersRes, usersRes] = await Promise.all([
+      http.get(`/api/repository/${repo.id}/members`),
+      http.get('/api/users?page=1&limit=1000')
+    ])
+    repoMembers.value = membersRes.data?.members || []
+    userOptions.value = usersRes.data || []
+  } catch (e: any) {
+    membersError.value = e.response?.data?.message || e.message || t('repoMembers.loadFailed')
+  } finally {
+    membersLoading.value = false
+  }
+}
+
+function closeMembers() {
+  showMembersModal.value = false
+  activeRepo.value = null
+}
+
+async function loadMembers() {
+  if (!activeRepo.value) return
+  try {
+    const res = await http.get(`/api/repository/${activeRepo.value.id}/members`)
+    repoMembers.value = res.data?.members || []
+  } catch (e: any) {
+    membersError.value = e.response?.data?.message || e.message || t('repoMembers.loadFailed')
+  }
+}
+
+async function handleAddMember() {
+  if (!activeRepo.value) return
+  if (!memberForm.value.userId) {
+    membersError.value = t('repoMembers.userRequired')
+    return
+  }
+  addingMember.value = true
+  membersError.value = ''
+  try {
+    await http.post(`/api/repository/${activeRepo.value.id}/members`, {
+      userId: Number(memberForm.value.userId),
+      role: memberForm.value.role
+    })
+    showSuccess(t('repoMembers.addSuccess'))
+    memberForm.value = { userId: '', role: 'developer' }
+    await loadMembers()
+  } catch (e: any) {
+    membersError.value = e.response?.data?.message || e.message || t('repoMembers.addFailed')
+  } finally {
+    addingMember.value = false
+  }
+}
+
+async function handleRoleChange(member: any, event: Event) {
+  if (!activeRepo.value) return
+  const role = (event.target as HTMLSelectElement).value
+  if (member.role === role) return
+  try {
+    await http.put(`/api/repository/${activeRepo.value.id}/members/${member.user_id}`, { role })
+    member.role = role
+    showSuccess(t('repoMembers.roleUpdated'))
+  } catch (e: any) {
+    showError(e.response?.data?.message || e.message || t('repoMembers.roleUpdateFailed'))
+    await loadMembers()
+  }
+}
+
+async function handleRemoveMember(member: any) {
+  if (!activeRepo.value) return
+  if (!window.confirm(t('repoMembers.removeConfirm', { name: member.username }))) return
+  try {
+    await http.delete(`/api/repository/${activeRepo.value.id}/members/${member.user_id}`)
+    repoMembers.value = repoMembers.value.filter((m: any) => m.user_id !== member.user_id)
+    showSuccess(t('repoMembers.removeSuccess'))
+  } catch (e: any) {
+    showError(e.response?.data?.message || e.message || t('repoMembers.removeFailed'))
+  }
+}
 </script>
 
 <style lang="scss" scoped>
@@ -387,5 +547,87 @@ onMounted(async () => {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+/* Member management modal */
+.modal-lg {
+  width: 680px;
+}
+
+.member-list {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.member-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.member-item:last-child {
+  border-bottom: none;
+}
+
+.member-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.member-name {
+  font-weight: 500;
+  color: var(--primary-text);
+  word-break: break-all;
+}
+
+.member-meta {
+  font-size: 12px;
+  color: var(--neutral-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.role-select {
+  width: 150px;
+  padding: 8px;
+  flex-shrink: 0;
+}
+
+.member-remove {
+  color: var(--error-color, #f44336);
+  flex-shrink: 0;
+}
+
+.members-empty,
+.members-loading {
+  padding: 24px 12px;
+  text-align: center;
+  color: var(--neutral-text);
+}
+
+.add-member-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-color);
+
+  .form-select {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .btn-primary {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
 }
 </style>

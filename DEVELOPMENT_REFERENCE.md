@@ -701,7 +701,7 @@ npm run format
 | 数据库操作 | 通过 Model 层，继承 `BaseModel` |
 | 复杂逻辑 | 抽到 Service 层 |
 | 日志记录 | 重要操作记录到 `audit_logs` 表 |
-| 消息常量 | 使用 `utils/messages.js` 中的集中消息 |
+| 消息常量 | `utils/messages.js` 中定义了集中消息常量，但**尚未接线**（当前 0 引用）；各 route 实际为硬编码消息（中/英混杂）。新代码跟随所在文件风格即可，整体迁移属独立重构 |
 | 文件命名 | 小写驼峰 + 首字母大写类名 |
 | 模块引入 | ESM (`import/export`) |
 | 控制器 | 不再使用 controllers，逻辑集中在 routes |

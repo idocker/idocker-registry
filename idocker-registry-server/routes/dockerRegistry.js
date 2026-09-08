@@ -19,13 +19,11 @@ import { extractRepositoryAndAction, generateAuthChallenge, generateDockerError 
 
 const router = express.Router();
 
-// Docker Registry API authentication middleware (with /v2/ public access exception)
+// Docker Registry API authentication middleware
+// Note: GET /v2/ is intentionally NOT anonymous: returning a 401 challenge here
+// tells clients (docker, podman/skopeo, ...) that credentials are required so
+// that every subsequent request (incl. blob existence HEAD checks) carries auth.
 router.use(async (req, res, next) => {
-  // GET /v2/ is a public endpoint for API version check
-  if (req.method === 'GET' && (req.path === '/' || req.path === '')) {
-    return next();
-  }
-  
   // Handle token service request
   if (req.path === '/token') {
     return handleTokenService(req, res);
