@@ -23,19 +23,16 @@ function hasPermission(userRole, action) {
 export class DockerAuthzService {
   static async checkRepositoryPermission(user, repositoryName, action) {
     try {
-      const repoParts = repositoryName.split('/');
-      if (repoParts.length < 2) {
+      const repoParts = repositoryName.split('/').filter(Boolean);
+      if (repoParts.length === 0) {
         return { allowed: false, reason: 'Invalid repository name format' };
       }
 
-      let projectName, repoName;
-      if (repoParts.length === 2) {
-        projectName = repoParts[0];
-        repoName = repoParts[1];
-      } else {
-        projectName = repoParts[1];
-        repoName = repoParts.slice(2).join('/');
-      }
+      // Image path is project/repo: first segment = project, rest = repo.
+      // A single-segment name (idocker.vip/nginx) belongs to the built-in 'default' project.
+      // Namespaces are an organizational label only and never part of the path.
+      const projectName = repoParts.length === 1 ? 'default' : repoParts[0];
+      const repoName = repoParts.length === 1 ? repoParts[0] : repoParts.slice(1).join('/');
 
       const projectModel = new ProjectModel();
       const project = await projectModel.findByName(projectName);
@@ -67,6 +64,17 @@ export class DockerAuthzService {
           projectName: project.name,
           repositoryName: repoName,
           isPublic: true,
+        };
+      }
+
+      // Images in the built-in 'default' project are visible/pullable by every authenticated user
+      if (project.name === 'default' && action === ACTION_PULL) {
+        return {
+          allowed: true,
+          repositoryId: repository.id,
+          projectName: project.name,
+          repositoryName: repoName,
+          isDefaultProject: true,
         };
       }
 
@@ -121,20 +129,18 @@ export class DockerAuthzService {
           if (scope.type === 'repository') {
             let effectiveRole = user.role;
             if (user.role !== 'admin') {
-              const repoParts = scope.name.split('/');
-              let projectName, repoName;
-              if (repoParts.length === 2) {
-                projectName = repoParts[0];
-                repoName = repoParts[1];
-              } else {
-                projectName = repoParts[1];
-                repoName = repoParts.slice(2).join('/');
-              }
+              const repoParts = (scope.name || '').split('/').filter(Boolean);
+              if (repoParts.length === 0) continue;
+              // Image path is project/repo: first segment = project, rest = repo.
+              // A single-segment name belongs to the built-in 'default' project.
+              const projectName = repoParts.length === 1 ? 'default' : repoParts[0];
+              const repoName = repoParts.length === 1 ? repoParts[0] : repoParts.slice(1).join('/');
               const project = await projectModel.findByName(projectName);
               if (project) {
                 const repo = await repositoryModel.findByProjectIdAndName(project.id, repoName);
                 if (repo) {
-                  if (repo.is_public) {
+                  // Images in the built-in 'default' project are pullable by every authenticated user
+                  if (repo.is_public || project.name === 'default') {
                     effectiveRole = 'operator';
                   } else {
                     const membership = await repositoryModel.getUserMembership(repo.id, user.id);

@@ -56,7 +56,7 @@ router.post('/all', asyncHandler(async (req, res) => {
     // });
     
     // Start syncing all repositories
-    const result = await dockerSyncService.syncAllRepositories({ stopOnError });
+    const result = await dockerSyncService.syncAllRepositories({ stopOnError, userId: req.user.id });
     
     // Log sync completion
     await dockerSyncService.logSync({
@@ -108,7 +108,7 @@ router.post('/project/:projectId', asyncHandler(async (req, res) => {
       details: { stopOnError }
     });
     
-    const result = await dockerSyncService.syncProjectRepositories(parseInt(projectId), { stopOnError });
+    const result = await dockerSyncService.syncProjectRepositories(parseInt(projectId), { stopOnError, userId: req.user.id });
     
     // Log sync completion
     await dockerSyncService.logSync({

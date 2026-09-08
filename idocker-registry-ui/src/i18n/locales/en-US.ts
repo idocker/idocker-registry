@@ -243,7 +243,6 @@ export default {
   images: {
     title: 'Image Repository',
     subtitle: 'Browse and manage Docker image repositories by project',
-    imageList: 'Image List',
     searchImages: 'Search Images',
     imageName: 'Image Name',
     latestTag: 'Latest Tag',
@@ -255,8 +254,6 @@ export default {
     copyPush: 'Copy Push',
     deleteImage: 'Delete Image',
     deleteTag: 'Delete Tag',
-    imageDetails: 'Image Details',
-    tagDetails: 'Tag Details',
     manifest: 'Manifest',
     layers: 'Layers',
     size: 'Size',
@@ -276,8 +273,6 @@ export default {
     architecture: 'Architecture',
     unknown: 'Unknown',
     imageTags: 'Image Tags',
-    commandExample: 'Command Example',
-    imageId: 'Image ID',
     os: 'Operating System',
     pullLink: 'Pull Link',
     pushLink: 'Push Link',
@@ -298,10 +293,6 @@ export default {
     loading: 'Loading...',
     refresh: 'Refresh',
     actions: 'Actions',
-    tagDetailsTitle: 'Tag Details',
-    imageIdLabel: 'Image ID',
-    tagIdLabel: 'Tag ID',
-    tagDetailsInDevelopment: 'Tag details feature under development...'
   },
 
   // Image Detail View
@@ -570,9 +561,7 @@ export default {
     passwordMismatch: 'Password mismatch',
     passwordRequirements: 'Password Requirements:',
     requirementLength: 'At least 6 characters',
-    requirementUppercase: 'Contains uppercase',
-    requirementLowercase: 'Contains lowercase',
-    requirementNumber: 'Contains number',
+    requirementSpecial: 'At least one special character (e.g. !@#$%^&*)',
     strengthWeak: 'Weak',
     strengthMedium: 'Medium',
     strengthStrong: 'Strong',
@@ -935,31 +924,6 @@ export default {
         registryRemoved: 'Registry removed: {name}'
       }
     },
-    
-    // Image Details Dialog
-    imageDetails: {
-      title: 'Image Details',
-      imageName: 'Image Name',
-      tagCount: 'Tag Count',
-      imageTags: 'Image Tags',
-      tagSize: 'Size',
-      tagDigest: 'Digest',
-      loadingFailed: 'Loading Failed',
-      close: 'Close'
-    },
-    
-    // Tag Details Dialog
-    tagDetails: {
-      title: 'Tag Details',
-      tagName: 'Tag Name',
-      tagDigest: 'Digest',
-      imageSize: 'Image Size',
-      createdAt: 'Created At',
-      architecture: 'Architecture',
-      os: 'Operating System',
-      loadingFailed: 'Loading Failed',
-      close: 'Close'
-    }
   },
   guide: {
     intro: 'Introduction',
@@ -1012,6 +976,13 @@ export default {
     envNoteArrow: ' → ',
     envNoteTag2: ':v1.2.3',
     envNoteSuffix: ') to distinguish release stages.',
+    defaultTitle: '默认公共库（default 项目）',
+    defaultIntro: '系统内置 default 项目（从属于 default 命名空间），用于存放 nginx、mysql、redis、jdk 等团队共用的基础镜像。default 项目中的镜像对所有登录用户可见、可拉取；推送基础镜像需要管理员权限。',
+    defaultPathRule: 'default 项目中的镜像使用单段名称，路径中不包含项目层：',
+    defaultPullCmd: 'docker pull idocker.vip/nginx:latest',
+    defaultMore: '同理可拉取 mysql、redis、jdk 等基础镜像：docker pull idocker.vip/mysql:latest',
+    defaultPushNote: '推送基础镜像（需管理员权限）：先 docker tag nginx:latest idocker.vip/nginx:latest，再 docker push idocker.vip/nginx:latest',
+    defaultProjNote: '其他项目的镜像路径仍为 项目/仓库 两段，例如：docker pull idocker.vip/wvp/media-worker:latest',
     practices: 'Best Practices',
     practice1Title: 'Namespaces by Team',
     practice1Desc: 'Create namespaces like backend-team, frontend-team to isolate resources by team. Each team creates projects within its own namespace to avoid resource confusion.',

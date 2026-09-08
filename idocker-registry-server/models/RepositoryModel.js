@@ -344,7 +344,9 @@ export class RepositoryModel extends BaseModel {
         params.push(`%${search}%`, `%${search}%`, `%${search}%`);
       }
       
-      query += ' ORDER BY r.name, t.tag';
+      // Tags newest-first by insert order (id DESC): latest pushed tag comes first,
+      // which the UI shows as the "latest tag".
+      query += ' ORDER BY r.name, t.id DESC';
       
       const result = await this.paginate(query, params, page, limit);
       return result;

@@ -46,7 +46,12 @@
           <span class="material-icons">folder</span>
           <span>{{ $t('projects.title') }}</span>
         </button>
-        
+
+        <button class="menu-item" @click="navigateToRepositories">
+          <span class="material-icons">inventory_2</span>
+          <span>{{ $t('nav.repositories') }}</span>
+        </button>
+
         <button class="menu-item" @click="navigateToUsers">
           <span class="material-icons">people</span>
           <span>{{ $t('users.title') }}</span>
@@ -169,6 +174,12 @@ const navigateToLogs = () => {
 const navigateToNamespaces = () => {
   emit('close')
   router.push('/admin/namespaces')
+}
+
+// Navigate to repositories (image management)
+const navigateToRepositories = () => {
+  emit('close')
+  router.push('/admin/repositories')
 }
 
 // Navigate to user guide

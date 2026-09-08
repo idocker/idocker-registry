@@ -12,27 +12,32 @@ import { logger } from '../utils/logger.js';
 
 export class DockerLogService {
   /**
-   * Log a Docker operation
-   * @param {Object} logData - Log data object
-   * @param {number} logData.userId - User ID
-   * @param {string} logData.username - Username
-   * @param {string} logData.action - Docker action (pull, push, delete, etc.)
-   * @param {string} logData.repository - Repository name
-   * @param {string} logData.tag - Tag name (optional)
-   * @param {string} logData.status - Operation status (success, error)
-   * @param {string} logData.ipAddress - Client IP address
-   * @param {string} logData.userAgent - Client user agent
-   * @param {string} logData.errorMessage - Error message (if status is error)
-   * @param {Object} logData.additionalData - Additional data (JSON string)
-   * @returns {Promise<Object>} Log entry result
+   * Log a Docker operation into the audit_logs table.
+   * Never throws: audit failures must not break the registry request flow.
    */
   static async logOperation(logData) {
     try {
-      const result = await DockerLogModel.logOperation(logData);
-      return result;
+      const { AuthModel } = await import('../models/AuthModel.js');
+      await new AuthModel().logAudit({
+        user_id: logData.userId,
+        action: `docker:${logData.action}`,
+        resource_type: 'repository',
+        resource_id: logData.repository || '',
+        details: {
+          username: logData.username,
+          repository: logData.repository || '',
+          tag: logData.tag || null,
+          status: logData.status,
+          ip_address: logData.ipAddress,
+          user_agent: logData.userAgent,
+          error_message: logData.errorMessage || null,
+          ...(logData.additionalData || {})
+        },
+        ip_address: logData.ipAddress,
+        user_agent: logData.userAgent
+      });
     } catch (error) {
       logger.error('Failed to log Docker operation:', error);
-      throw error;
     }
   }
   
@@ -52,7 +57,7 @@ export class DockerLogService {
    */
   static async getOperationLogs(filters = {}, pagination = { page: 1, limit: 20 }) {
     try {
-      const result = await DockerLogModel.getOperationLogs(filters, pagination);
+      const result = await new DockerLogModel().getOperationLogs(filters, pagination);
       return result;
     } catch (error) {
       logger.error('Failed to get Docker operation logs:', error);
@@ -67,7 +72,7 @@ export class DockerLogService {
    */
   static async getOperationStatistics(filters = {}) {
     try {
-      const result = await DockerLogModel.getOperationStatistics(filters);
+      const result = await new DockerLogModel().getOperationStatistics(filters);
       return result;
     } catch (error) {
       logger.error('Failed to get Docker operation statistics:', error);

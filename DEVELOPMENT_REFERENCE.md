@@ -166,9 +166,8 @@ request → rateLimit → helmet → cors → logging → bodyParser
 - `developer`: pull + push + delete
 - `operator`: pull only
 
-**仓库名解析**（2 段或 3 段）:
-- `project-name/repo-name` → projectName=project-name, repoName=repo-name
-- `namespace/project-name/repo-name` → projectName=project-name, repoName=repo-name
+**仓库名解析**: `project-name/repo-name` → projectName=project-name, repoName=repo-name
+（首段恒为项目名；命名空间仅作管理分组/环境标签，不参与镜像仓库路径）
 
 ### 3.8 BaseModel 通用方法
 

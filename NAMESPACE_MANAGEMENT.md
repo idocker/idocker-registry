@@ -165,8 +165,8 @@ The admin interface provides:
 Namespaces are integrated with Docker Registry operations through:
 
 1. **Repository Name Format**
-   - Repositories follow pattern: `namespace/project-name/repo-name`
-   - Namespace extraction for permission checks
+   - Repositories follow pattern: `project-name/repo-name` (the first segment is the project name)
+   - Namespaces are an organizational grouping only (team/environment); they are NOT part of the image repository path
 
 2. **Permission Scope**
    - Namespaces provide an additional organizational layer

@@ -66,7 +66,7 @@ class AuthService {
     this.validateRequired(passwordData.currentPassword, '当前密码');
     this.validateRequired(passwordData.newPassword, '新密码');
     
-    return http.post('/api/auth/change-password', passwordData);
+    return http.put('/api/auth/change-password', passwordData);
   }
 
   /**

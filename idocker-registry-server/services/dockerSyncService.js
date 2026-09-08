@@ -56,7 +56,7 @@ class DockerSyncService {
             // 处理每个仓库
             for (const repo of repositories) {
                 try {
-                    await this.processRepository(repo, config);
+                    await this.processRepository(repo, config, options.userId);
                     processedCount++;
                 } catch (error) {
                     logger.error(`处理仓库 ${repo.name} 失败:`, error.message);
@@ -90,7 +90,7 @@ class DockerSyncService {
      * @param {Object} repo - Repository Object
      * @param {Object} registryConfig - RegistryConfig
      */
-    async processRepository(repo, registryConfig) {
+    async processRepository(repo, registryConfig, userId) {
         try {
             // 容错检查：确保 repo 对象存在且 name 属性是字符串
             if (!repo || !repo.name || typeof repo.name !== 'string') {
@@ -103,8 +103,11 @@ class DockerSyncService {
             let projectName = null;
             let imageName = repo.name;
 
-            // 仓库名称格式: project/imagename 或 namespace/project/imagename
-            if (repoParts.length >= 2) {
+            // 仓库名称格式: project/imagename（首段为项目名；命名空间不进入镜像路径）
+            // 单段仓库名（idocker.vip/nginx）归属内置 default 项目
+            if (repoParts.length === 1) {
+                projectName = 'default';
+            } else if (repoParts.length >= 2) {
                 projectName = repoParts[0];
                 imageName = repoParts.slice(1).join('/');
             }
@@ -115,13 +118,16 @@ class DockerSyncService {
                 project = await this.projectModel.findByName(projectName);
 
                 if (!project) {
-                    // 创建新项目
+                    // 创建新项目：命名空间字符串沿用仓库名首段派生值（历史行为），
+                    // namespace_id 解析到同名活跃命名空间，否则归入 default
+                    const nsName = projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-');
                     await this.projectModel.createProject({
                         name: projectName,
-                        namespace: projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-'),
+                        namespace: nsName,
                         description: `同步程序自动创建`,
+                        namespace_id: await this.projectModel.resolveNamespaceId(nsName),
                         is_active: 1
-                    });
+                    }, userId);
                     project = await this.projectModel.findByName(projectName);
                     logger.info(`创建新项目: ${projectName}`);
                 }
@@ -223,17 +229,20 @@ class DockerSyncService {
                     if (existingTag) {
                         // 更新现有标签 - 需要在 ImageTagModel 中添加 updateTag 方法
                         // TODO: 在 ImageTagModel 中添加 updateTag 方法
+                        // Keep the original created_at (first-seen insert time): rewriting it
+                        // every sync would corrupt the newest-first ordering of tags.
                         await this.updateTag(existingTag.id, {
                             digest: tagInfo.digest || '',
                             size: tagInfo.size || 0,
                             architecture: tagInfo.architecture || 'unknown',
                             os: tagInfo.os || 'unknown',
-                            created_at: tagInfo.created || new Date().toISOString(),
                             updated_at: new Date().toISOString()
                         });
                         updatedCount++;
                     } else {
                         // 创建新标签
+                        // created_at = time this tag was recorded (push order), NOT the
+                        // manifest build time: 'newest' must mean 'most recently pushed'.
                         await this.imageTagModel.createTag({
                             repository_id: repository.id,
                             tag: tagInfo.name,
@@ -241,7 +250,7 @@ class DockerSyncService {
                             size: tagInfo.size || 0,
                             architecture: tagInfo.architecture || 'unknown',
                             os: tagInfo.os || 'unknown',
-                            created_at: tagInfo.created || new Date().toISOString()
+                            created_at: new Date().toISOString()
                         });
                         addedCount++;
                     }
@@ -364,7 +373,7 @@ class DockerSyncService {
             // 处理每个仓库
             for (const repo of projectRepositories) {
                 try {
-                    await this.processRepository(repo, repositoryConfig);
+                    await this.processRepository(repo, repositoryConfig, options.userId);
                     processedCount++;
                 } catch (error) {
                     logger.error(`处理仓库 ${repo.name} 失败:`, error.message);

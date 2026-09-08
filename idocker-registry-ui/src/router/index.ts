@@ -66,16 +66,6 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
-    path: '/images/:imageId/tags/:tagId',
-    name: 'image-tag-detail',
-    component: () => import('@/views/ImageTagDetailView.vue'),
-    props: true,
-    meta: {
-      title: 'Tag Details',
-      requiresAuth: true
-    }
-  },
-  {
     path: '/admin',
     redirect: '/admin/profile'
   },

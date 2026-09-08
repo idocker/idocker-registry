@@ -245,7 +245,6 @@ export default {
   images: {
     title: '镜像仓库',
     subtitle: '按项目浏览和管理Docker镜像仓库',
-    imageList: '镜像列表',
     searchImages: '搜索镜像',
     imageName: '镜像名称',
     latestTag: '最新标签',
@@ -257,8 +256,6 @@ export default {
     copyPush: '复制推送',
     deleteImage: '删除镜像',
     deleteTag: '删除标签',
-    imageDetails: '镜像详情',
-    tagDetails: '标签详情',
     manifest: '清单',
     layers: '层',
     size: '大小',
@@ -278,8 +275,6 @@ export default {
     architecture: '架构',
     unknown: '未知',
     imageTags: '镜像标签',
-    commandExample: '命令示例',
-    imageId: '镜像ID',
     os: '操作系统',
     pullLink: '拉取链接',
     pushLink: '推送链接',
@@ -300,10 +295,6 @@ export default {
     loading: '加载中...',
     refresh: '刷新',
     actions: '操作',
-    tagDetailsTitle: '标签详情',
-    imageIdLabel: '镜像ID',
-    tagIdLabel: '标签ID',
-    tagDetailsInDevelopment: '标签详情功能开发中...'
   },
 
   // Image Detail View
@@ -572,9 +563,7 @@ export default {
     passwordMismatch: '密码不匹配',
     passwordRequirements: '密码要求：',
     requirementLength: '至少6个字符',
-    requirementUppercase: '包含大写字母',
-    requirementLowercase: '包含小写字母',
-    requirementNumber: '包含数字',
+    requirementSpecial: '至少1个特殊符号（如 !@#$%^&* 等）',
     strengthWeak: '弱',
     strengthMedium: '中等',
     strengthStrong: '强',
@@ -938,30 +927,6 @@ export default {
       }
     },
     
-    // 镜像详情对话框
-    imageDetails: {
-      title: '镜像详情',
-      imageName: '镜像名称',
-      tagCount: '标签数量',
-      imageTags: '镜像标签',
-      tagSize: '大小',
-      tagDigest: 'Digest',
-      loadingFailed: '加载失败',
-      close: '关闭'
-    },
-    
-    // 标签详情对话框
-    tagDetails: {
-      title: '标签详情',
-      tagName: '标签名称',
-      tagDigest: 'Digest',
-      imageSize: '镜像大小',
-      createdAt: '创建时间',
-      architecture: '架构',
-      os: '操作系统',
-      loadingFailed: '加载失败',
-      close: '关闭'
-    }
   },
   guide: {
     intro: '项目介绍',
@@ -1014,6 +979,13 @@ export default {
     envNoteArrow: ' → ',
     envNoteTag2: ':v1.2.3',
     envNoteSuffix: '）来区分发布阶段。',
+    defaultTitle: '默认公共库（default 项目）',
+    defaultIntro: '系统内置 default 项目（从属于 default 命名空间），用于存放 nginx、mysql、redis、jdk 等团队共用的基础镜像。default 项目中的镜像对所有登录用户可见、可拉取；推送基础镜像需要管理员权限。',
+    defaultPathRule: 'default 项目中的镜像使用单段名称，路径中不包含项目层：',
+    defaultPullCmd: 'docker pull idocker.vip/nginx:latest',
+    defaultMore: '同理可拉取 mysql、redis、jdk 等基础镜像：docker pull idocker.vip/mysql:latest',
+    defaultPushNote: '推送基础镜像（需管理员权限）：先 docker tag nginx:latest idocker.vip/nginx:latest，再 docker push idocker.vip/nginx:latest',
+    defaultProjNote: '其他项目的镜像路径仍为 项目/仓库 两段，例如：docker pull idocker.vip/wvp/media-worker:latest',
     practices: '最佳实践',
     practice1Title: '按团队划分命名空间',
     practice1Desc: '建议创建 backend-team、frontend-team 等命名空间，以团队为维度隔离资源。每个团队在各自命名空间下创建项目，避免跨团队资源混淆。',

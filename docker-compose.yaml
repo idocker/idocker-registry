@@ -1,6 +1,6 @@
 services:
   idocker-registry:
-    image: idocker-registry:1.0.1
+    image: idocker-registry:1.0.2
     container_name: idocker-registry
     ports:
       - "7588:7518"
@@ -12,6 +12,7 @@ services:
       - NODE_ENV=production
       - PORT=7518
       - DOCKER_REGISTRY_URL=http://localhost:7519
+      - TZ=Asia/Shanghai
       - IDOCKER_REGISTRY_URL=https://idocker.vip
       - DB_PATH=/app/data/registry.db
       - LOG_DIR=/app/logs

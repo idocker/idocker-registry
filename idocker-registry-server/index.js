@@ -153,7 +153,7 @@ const dockerRegistryProxy = createProxyMiddleware({
       const repositoryName = manifestMatch[1];
       import('./services/dockerSyncService.js')
         .then(({ default: dockerSyncService }) =>
-          dockerSyncService.processRepository({ name: repositoryName }, null)
+          dockerSyncService.processRepository({ name: repositoryName }, null, req.user ? req.user.id : null)
         )
         .catch(err => {
           logger.error('Failed to auto-record pushed tag:', err);

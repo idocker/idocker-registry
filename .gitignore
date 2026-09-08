@@ -20,3 +20,6 @@ idocker-registry-server/node_modules/
 idocker-registry-ui/package-lock.json
 idocker-registry-ui/node_modules/
 
+
+# Codewhale runtime files (agent tooling, not project code)
+.codewhale/

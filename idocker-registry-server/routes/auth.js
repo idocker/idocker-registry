@@ -136,6 +136,11 @@ router.post('/register', asyncHandler(async (req, res) => {
         return res.status(400).json(error('Password must be at least 6 characters', 400));
     }
 
+    // New password must contain at least one special character
+    if (!/[\p{P}\p{S}]/u.test(password)) {
+        return res.status(400).json(error('Password must contain at least one special character', 400));
+    }
+
     try {
         // Check if username already exists
         const usernameExists = await AuthService.usernameExists(username);
@@ -228,6 +233,11 @@ router.put('/change-password', asyncHandler(async (req, res) => {
     // Validate new password strength
     if (newPassword.length < 6) {
         return res.status(400).json(error('New password must be at least 6 characters', 400));
+    }
+
+    // New password must contain at least one special character
+    if (!/[\p{P}\p{S}]/u.test(newPassword)) {
+        return res.status(400).json(error('New password must contain at least one special character', 400));
     }
 
     // Get token from request header

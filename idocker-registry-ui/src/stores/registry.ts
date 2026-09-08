@@ -106,7 +106,9 @@ export const useRegistryStore = defineStore('registry', {
         }
       } else {
         // Default to current origin
-        this.registryUrl = `${window.location.origin}${window.location.pathname.replace(/\/$/, '')}`
+        // Host only (no page path): pages like /admin/user must never leak into the
+        // registry host shown in pull/push commands.
+        this.registryUrl = window.location.origin
       }
       
       this.registryName = stripHttps(this.registryUrl)

@@ -484,13 +484,14 @@ const deleteTag = async () => {
 
 // Copy to clipboard
 // Docker pull/push commands shown in the tag list "link" popover
-// Host follows the UI registry URL; repository path is <project>/<image>.
+// Host follows the UI registry URL; the built-in 'default' project has no
+// project path segment (docker pull idocker.vip/nginx), others keep <project>/<image>.
 const registryHost = computed(() => registryStore.registryName || window.location.host)
 const repositoryPath = computed(() => {
   const repo = image.value?.repository
   const project = repo?.project_name || repo?.projectName || repo?.project || ''
   const name = repo?.name || ''
-  return [project, name].filter(Boolean).join('/')
+  return project === 'default' ? name : [project, name].filter(Boolean).join('/')
 })
 const pullCommand = (tag: ImageTag) =>
   `docker pull ${registryHost.value}/${repositoryPath.value}:${tag.tag || tag.name || ''}`

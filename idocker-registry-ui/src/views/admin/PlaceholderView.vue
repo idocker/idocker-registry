@@ -136,6 +136,34 @@
         </div>
       </section>
 
+      <!-- 默认公共库（default 项目） -->
+      <section class="guide-section">
+        <h2 class="guide-section-title">
+          <span class="material-icons">inventory_2</span>
+          {{ t('guide.defaultTitle') }}
+        </h2>
+        <div class="guide-card">
+          <div class="env-note">
+            <span class="material-icons">info</span>
+            <div>{{ t('guide.defaultIntro') }}</div>
+          </div>
+          <div class="hierarchy-desc" style="margin-top: 12px">
+            {{ t('guide.defaultPathRule') }}
+            <code>{{ t('guide.defaultPullCmd') }}</code>
+          </div>
+          <div class="hierarchy-desc" style="margin-top: 8px">
+            <code>{{ t('guide.defaultMore') }}</code>
+          </div>
+          <div class="path-example">
+            <span class="material-icons">upload</span>
+            {{ t('guide.defaultPushNote') }}
+          </div>
+          <div class="hierarchy-desc">
+            <code>{{ t('guide.defaultProjNote') }}</code>
+          </div>
+        </div>
+      </section>
+
       <!-- 最佳实践 -->
       <section class="guide-section">
         <h2 class="guide-section-title">

@@ -24,57 +24,64 @@ export function extractRepositoryAndAction(req) {
     // /v2/<name>/blobs/uploads/
     // /v2/<name>/blobs/<digest>
     // /v2/<name>/tags/list
-    
+    //
+    // Note: when mounted under app.use('/v2', router) Express strips the '/v2'
+    // prefix from req.path inside the router, so we must tolerate both forms.
     if (pathParts.length < 2) {
       return { repositoryName: null, action: null };
     }
-    
-    // Get repository name (everything after /v2/ and before the next API segment)
+
+    let idx = 0;
+    if (pathParts[0] === 'v2') {
+      idx = 1;
+    }
+    if (pathParts.length - idx < 2) {
+      return { repositoryName: null, action: null };
+    }
+
+    // Get repository name (everything after the /v2 prefix and before the next API segment)
     let repositoryName = null;
     let action = null;
-    
-    if (pathParts[0] === 'v2') {
-      // Find the API segment to determine the end of the repository name
-      let nameEndIndex = 1;
-      for (let i = 1; i < pathParts.length; i++) {
-        if (['manifests', 'blobs', 'tags'].includes(pathParts[i])) {
-          nameEndIndex = i;
-          break;
-        }
+
+    let nameEndIndex = idx + 1;
+    for (let i = idx; i < pathParts.length; i++) {
+      if (['manifests', 'blobs', 'tags'].includes(pathParts[i])) {
+        nameEndIndex = i;
+        break;
       }
-      
-      if (nameEndIndex > 1) {
-        repositoryName = pathParts.slice(1, nameEndIndex).join('/');
-        
-        // Determine action based on HTTP method and API segment
-        const apiSegment = pathParts[nameEndIndex];
-        
-        if (apiSegment === 'manifests') {
-          if (req.method === 'GET') {
-            action = 'pull';
+    }
+
+    if (nameEndIndex > idx) {
+      repositoryName = pathParts.slice(idx, nameEndIndex).join('/');
+
+      // Determine action based on HTTP method and API segment
+      const apiSegment = pathParts[nameEndIndex];
+
+      if (apiSegment === 'manifests') {
+        if (req.method === 'GET' || req.method === 'HEAD') {
+          action = 'pull';
+        } else if (req.method === 'PUT') {
+          action = 'push';
+        } else if (req.method === 'DELETE') {
+          action = 'delete';
+        }
+      } else if (apiSegment === 'blobs') {
+        if (pathParts[nameEndIndex + 1] === 'uploads') {
+          if (req.method === 'POST') {
+            action = 'push';  // Initiate upload
+          } else if (req.method === 'PATCH') {
+            action = 'push';  // Upload chunk
           } else if (req.method === 'PUT') {
-            action = 'push';
-          } else if (req.method === 'DELETE') {
-            action = 'delete';
+            action = 'push';  // Complete upload
           }
-        } else if (apiSegment === 'blobs') {
-          if (pathParts[nameEndIndex + 1] === 'uploads') {
-            if (req.method === 'POST') {
-              action = 'push';  // Initiate upload
-            } else if (req.method === 'PATCH') {
-              action = 'push';  // Upload chunk
-            } else if (req.method === 'PUT') {
-              action = 'push';  // Complete upload
-            }
-          } else {
-            if (req.method === 'GET') {
-              action = 'pull';  // Get blob
-            }
+        } else {
+          if (req.method === 'GET' || req.method === 'HEAD') {
+            action = 'pull';  // Get blob
           }
-        } else if (apiSegment === 'tags') {
-          if (req.method === 'GET') {
-            action = 'pull';
-          }
+        }
+      } else if (apiSegment === 'tags') {
+        if (req.method === 'GET' || req.method === 'HEAD') {
+          action = 'pull';
         }
       }
     }
@@ -118,23 +125,22 @@ export function generateDockerError(res, status, code, message) {
  * @returns {Object} Object containing project name and repository name
  */
 export function parseRepositoryName(repositoryName) {
-  const repoParts = repositoryName.split('/');
-  
-  if (repoParts.length < 2) {
-    throw new Error('Invalid repository name format. Expected: project-name/repo-name or namespace/project-name/repo-name');
+  const repoParts = repositoryName.split('/').filter(Boolean);
+
+  if (repoParts.length === 0) {
+    throw new Error('Invalid repository name format');
   }
-  
-  let projectName, repoName;
-  
-  if (repoParts.length === 2) {
-    // Format: project-name/repo-name
-    projectName = repoParts[0];
-    repoName = repoParts[1];
-  } else {
-    // Format: namespace/project-name/repo-name
-    projectName = repoParts[1];
-    repoName = repoParts.slice(2).join('/');
+
+  if (repoParts.length === 1) {
+    // Single-segment name (e.g. idocker.vip/nginx) belongs to the built-in 'default' project
+    return { projectName: 'default', repoName: repoParts[0] };
   }
-  
+
+  // Image repository path is project-name/repo-name: the first segment is the
+  // project name, the rest forms the repository name. Namespaces are only an
+  // organizational grouping (team/environment) and never part of the path.
+  const projectName = repoParts[0];
+  const repoName = repoParts.slice(1).join('/');
+
   return { projectName, repoName };
 }

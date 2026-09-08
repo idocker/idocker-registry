@@ -55,9 +55,10 @@ CREATE TABLE IF NOT EXISTS docker_operation_logs (
 
 ### Repository Name Format
 
-Docker repository names are expected to follow these formats:
-1. `project-name/repo-name`
-2. `namespace/project-name/repo-name`
+Docker repository names follow this format:
+- `project-name/repo-name` (first segment = project name)
+
+The namespace is an organizational grouping (team/environment) only; it is not part of the image repository path.
 
 ### User Roles and Permissions
 

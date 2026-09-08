@@ -21,8 +21,8 @@ RUN cd /app/ui && npm run build
 FROM node:22-alpine
 WORKDIR /app
 
-# Install Docker Registry
-RUN apk add --no-cache docker-registry
+# Install Docker Registry (+ tzdata so the container honours TZ=Asia/Shanghai)
+RUN apk add --no-cache docker-registry tzdata
 
 # Copy backend build artifacts
 COPY --from=builder /app/idocker /app/idocker

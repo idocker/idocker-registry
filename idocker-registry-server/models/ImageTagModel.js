@@ -23,7 +23,7 @@ export class ImageTagModel extends BaseModel {
         `SELECT id, tag, digest, size, architecture, os, created_at
          FROM image_tags
          WHERE repository_id = ?
-         ORDER BY created_at DESC`,
+         ORDER BY id DESC`,
         [repositoryId]
       );
 
@@ -35,7 +35,7 @@ export class ImageTagModel extends BaseModel {
   }
 
   /**
-   * Get the newest tag of a repository (by created_at desc, id desc as tie-break)
+   * Get the newest tag of a repository (by insert order: id desc)
    */
   async getNewestTag(repositoryId) {
     try {
@@ -47,7 +47,7 @@ export class ImageTagModel extends BaseModel {
         `SELECT id, tag, digest, size, architecture, os, created_at
          FROM image_tags
          WHERE repository_id = ?
-         ORDER BY created_at DESC, id DESC
+         ORDER BY id DESC
          LIMIT 1`,
         [repositoryId]
       );

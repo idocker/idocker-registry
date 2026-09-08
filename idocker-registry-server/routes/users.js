@@ -91,6 +91,11 @@ router.post('/', asyncHandler(async (req, res) => {
     return res.status(400).json(error('Password must be at least 6 characters', 400));
   }
 
+  // New password must contain at least one special character
+  if (!/[\p{P}\p{S}]/u.test(password)) {
+    return res.status(400).json(error('Password must contain at least one special character', 400));
+  }
+
   try {
     // Check if username is unique
     const isUsernameUnique = await userModel.isUsernameUnique(username);
@@ -208,6 +213,11 @@ router.put('/:id/password', asyncHandler(async (req, res) => {
     return res.status(400).json(error('Password must be at least 6 characters', 400));
   }
 
+  // New password must contain at least one special character
+  if (!/[\p{P}\p{S}]/u.test(password)) {
+    return res.status(400).json(error('Password must contain at least one special character', 400));
+  }
+
   try {
     // Check if user exists
     const userExists = await userModel.userExists(id);
@@ -295,82 +305,5 @@ router.get('/:id/projects', asyncHandler(async (req, res) => {
   }
 }));
 
-/**
- * POST /api/users/:id/projects/:projectId
- * Add user to project
- */
-router.post('/:id/projects/:projectId', asyncHandler(async (req, res) => {
-  const { id, projectId } = req.params;
-  const { role = 'viewer' } = req.body;
-
-  // Validate role
-  if (!['owner', 'maintainer', 'viewer'].includes(role)) {
-    return res.status(400).json(error('Invalid project role', 400));
-  }
-
-  try {
-    // Check if user exists and is active
-    const user = await userModel.findById(id);
-    if (!user || user.is_active === 0) {
-      return res.status(404).json(error('User not found or has been disabled', 404));
-    }
-
-    // Check if project exists
-    const projectExists = await projectModel.projectExists(projectId);
-    if (!projectExists) {
-      return res.status(404).json(error('Project not found', 404));
-    }
-
-    // Check if user is already a project member
-    const memberExists = await projectModel.memberExists(projectId, id);
-    if (memberExists) {
-      return res.status(409).json(error('User is already a project member', 409, 'MEMBER_EXISTS'));
-    }
-
-    // Add user to project
-    await projectModel.addProjectMember(projectId, id, role);
-
-    res.status(201).json(success(null, 'User added to project'));
-  } catch (e) {
-    logger.error('Error adding user to project:', e);
-    res.status(500).json(error('Failed to add user to project'));
-  }
-}));
-
-/**
- * DELETE /api/users/:id/projects/:projectId
- * Remove user from project
- */
-router.delete('/:id/projects/:projectId', asyncHandler(async (req, res) => {
-  const { id, projectId } = req.params;
-
-  try {
-    // Check if user exists
-    const userExists = await userModel.userExists(id);
-    if (!userExists) {
-      return res.status(404).json(error('User not found', 404));
-    }
-
-    // Check if project exists
-    const projectExists = await projectModel.projectExists(projectId);
-    if (!projectExists) {
-      return res.status(404).json(error('Project not found', 404));
-    }
-
-    // Check if user is a project member
-    const memberExists = await projectModel.memberExists(projectId, id);
-    if (!memberExists) {
-      return res.status(404).json(error('User is not a project member', 404));
-    }
-
-    // Remove user from project
-    await projectModel.removeProjectMember(projectId, id);
-
-    res.status(200).json(success(null, 'User removed from project'));
-  } catch (e) {
-    logger.error('Error removing user from project:', e);
-    res.status(500).json(error('Failed to remove user from project'));
-  }
-}));
 
 export default router;

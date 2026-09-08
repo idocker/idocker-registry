@@ -23,21 +23,6 @@ export class ProjectModel extends BaseModel {
   }
 
   /**
-   * Check if user is a member of project
-   * @param {number} projectId - Project ID
-   * @param {number} userId - User ID
-   * @returns {Promise<Object|null>} User membership information
-   */
-  async getUserMembership(projectId, userId) {
-    return await this.get(
-      `SELECT pm.id, pm.role
-       FROM project_members pm
-       WHERE pm.project_id = ? AND pm.user_id = ?`,
-      [projectId, userId]
-    );
-  }
-
-  /**
    * Get all projects list (for admin management, without permission filtering)
    * @param {*} isActive Whether active 
    * @returns 
@@ -107,9 +92,12 @@ export class ProjectModel extends BaseModel {
                  u.username as created_by_username, u.full_name as created_by_name
           FROM projects p
           LEFT JOIN users u ON p.created_by = u.id
-          JOIN repositories r ON p.id = r.project_id
-          JOIN repository_members rm ON r.id = rm.repository_id
-          WHERE rm.user_id = ? AND p.is_active = 1
+          WHERE p.is_active = 1
+            AND (p.name = 'default'
+                 OR EXISTS (SELECT 1
+                              FROM repositories r
+                              JOIN repository_members rm ON rm.repository_id = r.id
+                             WHERE r.project_id = p.id AND rm.user_id = ?))
         `;
         params = [userId];
 
@@ -156,10 +144,17 @@ export class ProjectModel extends BaseModel {
   }
 
   /**
-   * Get project member count
+   * Get project member count (distinct users across the project's repositories)
    */
   async getProjectMemberCount(projectId) {
-    return { count: 0 };
+    const result = await this.get(
+      `SELECT COUNT(DISTINCT rm.user_id) as count
+         FROM repository_members rm
+         JOIN repositories r ON r.id = rm.repository_id
+        WHERE r.project_id = ? AND r.is_active = 1`,
+      [projectId]
+    );
+    return { count: result ? result.count : 0 };
   }
 
   /**
@@ -179,7 +174,7 @@ export class ProjectModel extends BaseModel {
     try {
       const data = {
         ...projectData,
-        created_by: createdBy,
+        created_by: createdBy ?? null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
@@ -248,7 +243,8 @@ export class ProjectModel extends BaseModel {
   }
 
   /**
-   * Check if user has project access permission
+   * Check if user has project access permission.
+   * project_members 表已废弃；项目成员 = 该项目下任一仓库的成员（repository_members）
    */
   async checkProjectPermission(projectId, userId, userRole) {
     try {
@@ -256,79 +252,18 @@ export class ProjectModel extends BaseModel {
         return true;
       }
 
-      const result = await this.get(`
-        SELECT COUNT(*) as count FROM project_members 
-        WHERE project_id = ? AND user_id = ?
-      `, [projectId, userId]);
+      const result = await this.get(
+        `SELECT rm.id
+           FROM repository_members rm
+           JOIN repositories r ON r.id = rm.repository_id
+          WHERE r.project_id = ? AND rm.user_id = ? AND r.is_active = 1
+          LIMIT 1`,
+        [projectId, userId]
+      );
 
-      return result.count > 0;
+      return !!result;
     } catch (error) {
       logger.error('检查项目权限失败:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * 添加项目成员
-   */
-  async addProjectMember(projectId, userId, role) {
-    try {
-      const sql = `
-        INSERT INTO project_members (project_id, user_id, role, created_at) 
-        VALUES (?, ?, ?, ?)
-      `;
-      const params = [projectId, userId, role || 'developer', new Date().toISOString()];
-
-      const result = await this.run(sql, params);
-      return { id: result.lastID, projectId, userId, role: role || 'developer' };
-    } catch (error) {
-      logger.error('添加项目成员失败:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * 获取项目成员列表
-   */
-  async getProjectMembers(projectId) {
-    try {
-      const sql = `
-        SELECT pm.id, pm.project_id, pm.user_id, pm.role, pm.created_at,
-               u.username, u.full_name, u.email, u.role as user_role, u.is_active
-        FROM project_members pm
-        JOIN users u ON pm.user_id = u.id
-        WHERE pm.project_id = ?
-        ORDER BY pm.created_at
-      `;
-
-      return await this.all(sql, [projectId]);
-    } catch (error) {
-      logger.error('获取项目成员列表失败:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * 移除项目成员
-   */
-  async updateMemberRole(projectId, userId, role) {
-    try {
-      const sql = 'UPDATE project_members SET role = ? WHERE project_id = ? AND user_id = ?';
-      const result = await this.run(sql, [role, projectId, userId]);
-      return { changes: result.changes };
-    } catch (error) {
-      logger.error('更新项目成员角色失败:', error);
-      throw error;
-    }
-  }
-
-  async removeProjectMember(projectId, userId) {
-    try {
-      const sql = 'DELETE FROM project_members WHERE project_id = ? AND user_id = ?';
-      const result = await this.run(sql, [projectId, userId]);
-      return { changes: result.changes };
-    } catch (error) {
-      logger.error('移除项目成员失败:', error);
       throw error;
     }
   }
@@ -348,11 +283,16 @@ export class ProjectModel extends BaseModel {
 
   /**
    * 检查成员是否存在
+   * project_members 表已废弃；项目成员 = 该项目下任一仓库的成员（repository_members）
    */
   async memberExists(projectId, userId) {
     try {
       const result = await this.get(
-        'SELECT id FROM project_members WHERE project_id = ? AND user_id = ?',
+        `SELECT rm.id
+           FROM repository_members rm
+           JOIN repositories r ON r.id = rm.repository_id
+          WHERE r.project_id = ? AND rm.user_id = ? AND r.is_active = 1
+          LIMIT 1`,
         [projectId, userId]
       );
       return !!result;
@@ -383,6 +323,7 @@ export class ProjectModel extends BaseModel {
 
   /**
    * 检查成员ID是否存在
+   * project_members 表已废弃；项目成员 = 该项目下任一仓库的成员（repository_members）
    */
   async getMemberId(projectId, userId) {
     try {
@@ -390,7 +331,11 @@ export class ProjectModel extends BaseModel {
         return null;
       }
       const membership = await this.get(
-        'SELECT id FROM project_members WHERE project_id = ? AND user_id = ?',
+        `SELECT rm.id
+           FROM repository_members rm
+           JOIN repositories r ON r.id = rm.repository_id
+          WHERE r.project_id = ? AND rm.user_id = ? AND r.is_active = 1
+          LIMIT 1`,
         [projectId, userId]
       );
       return membership ? membership.id : null;
@@ -420,6 +365,33 @@ export class ProjectModel extends BaseModel {
   }
 
   /**
+   * 解析命名空间名称为对应的命名空间 ID（供同步自动创建项目使用）
+   * 优先匹配活跃的同名命名空间；找不到时回退到 default 命名空间，再兜底 ID 1
+   * @param {string} namespaceName - 命名空间名称，可为空字符串
+   * @returns {Promise<number>} 命名空间 ID
+   */
+  async resolveNamespaceId(namespaceName) {
+    try {
+      if (namespaceName) {
+        const ns = await this.get(
+          'SELECT id FROM namespaces WHERE name = ? AND is_active = 1',
+          [namespaceName]
+        );
+        if (ns) {
+          return ns.id;
+        }
+      }
+      const defaultNs = await this.get(
+        "SELECT id FROM namespaces WHERE name = 'default' AND is_active = 1"
+      );
+      return defaultNs ? defaultNs.id : 1;
+    } catch (error) {
+      logger.error('解析命名空间 ID 失败:', error);
+      throw error;
+    }
+  }
+
+  /**
    * 简单创建项目（用于同步功能）
    */
   async createSimpleProject(projectName, description, namespace, createdBy) {
@@ -428,9 +400,12 @@ export class ProjectModel extends BaseModel {
         throw new Error('项目名称不能为空');
       }
 
+      const namespaceId = await this.resolveNamespaceId(namespace);
+
       const result = await this.run(
-        'INSERT INTO projects (name, description, namespace, created_by, is_active) VALUES (?, ?, ?, ?, 1)',
-        [projectName, description || '', namespace || '', createdBy]
+        `INSERT INTO projects (name, description, namespace, namespace_id, created_by, is_active)
+         VALUES (?, ?, ?, ?, ?, 1)`,
+        [projectName, description || '', namespace || '', namespaceId, createdBy ?? null]
       );
 
       return { id: result.lastID };

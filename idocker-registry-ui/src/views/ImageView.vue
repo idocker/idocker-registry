@@ -178,22 +178,7 @@
 
 
 
-      <!-- Tag Details Dialog -->
-      <div v-if="showTagDetailDialog" class="modal-overlay" @click="showTagDetailDialog = false">
-        <div class="modal" @click.stop>
-          <div class="modal-header">
-            <h2>{{ $t('images.tagDetailsTitle') }}</h2>
-            <button class="btn btn-ghost btn-icon" @click="showTagDetailDialog = false">
-              <span class="material-icons">close</span>
-            </button>
-          </div>
-          <div class="modal-content">
-            <p>{{ $t('images.imageIdLabel') }}: {{ selectedImageId }}</p>
-            <p>{{ $t('images.tagIdLabel') }}: {{ selectedTagId }}</p>
-            <p>{{ $t('images.tagDetailsInDevelopment') }}</p>
-          </div>
-        </div>
-      </div>
+      <!-- Tag Details Dialog: removed placeholder (real tag details live in the image detail page) -->
     </div>
 </template>
 
@@ -204,6 +189,7 @@ import { useI18n } from 'vue-i18n'
 import { useNotifications } from '@/composables/useNotifications'
 import { useRegistryStore } from '@/stores/registry'
 import LinkPopover from '@/components/LinkPopover.vue'
+import { http } from '@/utils/http'
 import repositoryService from '@/services/repository.service'
 import projectService from '@/services/project.service'
 import authService from '@/services/auth.service'
@@ -225,11 +211,6 @@ const isLoading = ref(false)
 const isRefreshing = ref(false)
 const searchTerm = ref('')
 const isActive = ref("1")
-
-// Dialog state
-const showTagDetailDialog = ref(false)
-const selectedImageId = ref('')
-const selectedTagId = ref('')
 
 // Computed properties
 const hasPermission = computed(() => {
@@ -379,6 +360,9 @@ const refreshAll = async () => {
       showSuccess(t('images.imageSyncSuccess'))
     }
 
+    // Drop the 5-minute GET cache so the reloaded list reflects the fresh tags
+    http.clearCache()
+
     // Reload all expanded projects
     for (const projectId of expandedProjects) {
       await loadProjectImages(projectId)
@@ -393,15 +377,18 @@ const refreshAll = async () => {
 }
 
 // Build docker pull/push commands for an image row.
-// Registry path is <project>/<image> (namespace is an internal grouping and is
-// NOT part of the Docker repository name). Host follows the UI registry URL.
+// The built-in 'default' project uses a single-segment docker name (no project path);
+// other projects keep <project>/<image>. Host follows the UI registry URL.
+const dockerImageName = (image: Image): string =>
+  image.project === 'default' ? image.name || '' : `${image.project || ''}/${image.name || ''}`
+
 const buildPullCommand = (image: Image): string => {
   const registryHost = registryStore.registryName || window.location.host
-  return `docker pull ${registryHost}/${image.project || ''}/${image.name || ''}:latest`
+  return `docker pull ${registryHost}/${dockerImageName(image)}:latest`
 }
 const buildPushCommand = (image: Image): string => {
   const registryHost = registryStore.registryName || window.location.host
-  return `docker push ${registryHost}/${image.project || ''}/${image.name || ''}:latest`
+  return `docker push ${registryHost}/${dockerImageName(image)}:latest`
 }
 
 // View image details
@@ -409,11 +396,9 @@ const viewImageDetails = (imageId: string) => {
   router.push(`/images/${imageId}`)
 }
 
-// View tag details
-const viewTagDetails = (imageId: string, tagId: string) => {
-  selectedImageId.value = imageId
-  selectedTagId.value = tagId
-  showTagDetailDialog.value = true
+// View tag details: navigate to the image detail page (tag list with details/links)
+const viewTagDetails = (imageId: string, _tagId?: string) => {
+  router.push(`/images/${imageId}`)
 }
 
 

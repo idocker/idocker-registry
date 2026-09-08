@@ -38,20 +38,10 @@
                                     'radio_button_unchecked' }}</span>
                                 {{ $t('password.requirementLength') }}
                             </li>
-                            <li :class="{ 'requirement-met': passwordRequirements.uppercase }">
-                                <span class="material-icons">{{ passwordRequirements.uppercase ? 'check_circle' :
+                            <li :class="{ 'requirement-met': passwordRequirements.special }">
+                                <span class="material-icons">{{ passwordRequirements.special ? 'check_circle' :
                                     'radio_button_unchecked' }}</span>
-                                {{ $t('password.requirementUppercase') }}
-                            </li>
-                            <li :class="{ 'requirement-met': passwordRequirements.lowercase }">
-                                <span class="material-icons">{{ passwordRequirements.lowercase ? 'check_circle' :
-                                    'radio_button_unchecked' }}</span>
-                                {{ $t('password.requirementLowercase') }}
-                            </li>
-                            <li :class="{ 'requirement-met': passwordRequirements.number }">
-                                <span class="material-icons">{{ passwordRequirements.number ? 'check_circle' :
-                                    'radio_button_unchecked' }}</span>
-                                {{ $t('password.requirementNumber') }}
+                                {{ $t('password.requirementSpecial') }}
                             </li>
                         </ul>
                     </div>
@@ -85,7 +75,7 @@
 import { ref, reactive, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
-import userService from '@/services/user.service'
+import authService from '@/services/auth.service'
 import type { Message } from '@/types'
 
 const { t } = useI18n()
@@ -106,17 +96,19 @@ const isPasswordMatch = computed(() => {
     return passwordForm.newPassword === passwordForm.confirmPassword
 })
 
+// Password must be at least 6 chars and contain at least one special character
+// (no uppercase/lowercase/digit requirement)
+const hasSpecialCharacter = (password: string) => /[\p{P}\p{S}]/u.test(password)
+
 const isPasswordValid = computed(() => {
-    return passwordForm.newPassword.length >= 6
+    return passwordForm.newPassword.length >= 6 && hasSpecialCharacter(passwordForm.newPassword)
 })
 
 const passwordRequirements = computed(() => {
     const password = passwordForm.newPassword
     return {
         length: password.length >= 6,
-        uppercase: /[A-Z]/.test(password),
-        lowercase: /[a-z]/.test(password),
-        number: /[0-9]/.test(password)
+        special: hasSpecialCharacter(password)
     }
 })
 
@@ -156,8 +148,9 @@ const changePassword = async () => {
     try {
         isChangingPassword.value = true
 
-        const response = await userService.resetUserPassword('me', {
-            password: passwordForm.newPassword
+        const response = await authService.changePassword({
+            currentPassword: passwordForm.currentPassword,
+            newPassword: passwordForm.newPassword
         })
         
         if (response.success) {

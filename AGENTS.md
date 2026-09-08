@@ -164,7 +164,7 @@ iDocker是一个Docker Registry管理平台，提供Web UI来管理Docker镜像�
 - `http-proxy-middleware` 将 `/v2/*` 请求代理到内部Registry（默认 localhost:7519）
 - 请求经过：鉴权 → 权限校验 → 代理转发 → 操作日志记录
 - `/v2/token` 端点处理Docker客户端的Token认证请求
-- URL中仓库名称格式：`project-name/repo-name` 或 `namespace/project-name/repo-name`
+- URL中仓库名称格式：`project-name/repo-name`（首段为项目名；命名空间仅用于团队/环境等管理分组，不参与镜像仓库路径）
 
 ### 7. 日志
 - Winston：控制台 + 文件（error.log, combined.log, exceptions.log, rejections.log）

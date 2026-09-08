@@ -25,6 +25,11 @@ const imageTagModel = new ImageTagModel();
 const registryConfigModel = new RegistryConfigModel();
 const authModel = new AuthModel();
 
+// Built-in 'default' project images use a single-segment docker name (no project path),
+// e.g. idocker.vip/nginx instead of idocker.vip/default/nginx.
+const dockerRepoName = (projectName, repoName) =>
+  projectName === 'default' ? repoName : `${projectName}/${repoName}`;
+
 router.get('/all', asyncHandler(async (req, res) => {
   try {
     const repos = await repositoryModel.all(
@@ -124,8 +129,8 @@ router.get('/projects/:projectId/images', asyncHandler(async (req, res) => {
       });
     }
 
-    // 检查权限
-    if (req.user.role !== 'admin') {
+    // 检查权限（default 项目镜像对登录用户可见）
+    if (req.user.role !== 'admin' && project.name !== 'default') {
       const membership = await projectModel.getMemberId(projectId, req.user.id);
 
       if (!membership) {
@@ -175,8 +180,8 @@ router.get('/images/:imageId', asyncHandler(async (req, res) => {
       });
     }
 
-    // 检查权限
-    if (req.user.role !== 'admin' && !repository.is_public) {
+    // 检查权限（default 项目镜像对登录用户可见）
+    if (req.user.role !== 'admin' && !repository.is_public && repository.project_name !== 'default') {
       const membership = await projectModel.getMemberId(repository.project_id, req.user.id);
 
       if (!membership) {
@@ -195,12 +200,12 @@ router.get('/images/:imageId', asyncHandler(async (req, res) => {
 
     for (const tag of tags) {
       tag.pullCommand = dockerRegistryService.getPullCommand(
-        `${repository.project_name}/${repository.name}`,
+        dockerRepoName(repository.project_name, repository.name),
         tag.tag,
         repositoryConfig
       );
       tag.pushCommand = dockerRegistryService.getPushCommand(
-        `${repository.project_name}/${repository.name}`,
+        dockerRepoName(repository.project_name, repository.name),
         tag.tag,
         repositoryConfig
       );
@@ -211,7 +216,7 @@ router.get('/images/:imageId', asyncHandler(async (req, res) => {
       data: {
         repository: {
           ...repository,
-          fullName: `${repository.project_name}/${repository.name}`
+          fullName: dockerRepoName(repository.project_name, repository.name)
         },
         tags
       }
@@ -243,8 +248,8 @@ router.get('/images/:imageId/tags/:tagId', asyncHandler(async (req, res) => {
       });
     }
 
-    // 检查权限
-    if (req.user.role !== 'admin' && !repository.is_public) {
+    // 检查权限（default 项目镜像对登录用户可见）
+    if (req.user.role !== 'admin' && !repository.is_public && repository.project_name !== 'default') {
       const membership = await projectModel.getMemberId(repository.project_id, req.user.id);
 
       if (!membership) {
@@ -271,7 +276,7 @@ router.get('/images/:imageId/tags/:tagId', asyncHandler(async (req, res) => {
       const repositoryConfig = await registryConfigModel.getDefaultActiveConfig();
 
       buildHistory = await dockerRegistryService.getBuildHistory(
-        `${repository.project_name}/${repository.name}`,
+        dockerRepoName(repository.project_name, repository.name),
         tag.tag,
         repositoryConfig
       );
@@ -284,12 +289,12 @@ router.get('/images/:imageId/tags/:tagId', asyncHandler(async (req, res) => {
     const repositoryConfig = await registryConfigModel.getDefaultActiveConfig();
 
     const pullCommand = dockerRegistryService.getPullCommand(
-      `${repository.project_name}/${repository.name}`,
+      dockerRepoName(repository.project_name, repository.name),
       tag.tag,
       repositoryConfig
     );
     const pushCommand = dockerRegistryService.getPushCommand(
-      `${repository.project_name}/${repository.name}`,
+      dockerRepoName(repository.project_name, repository.name),
       tag.tag,
       repositoryConfig
     );
@@ -299,7 +304,7 @@ router.get('/images/:imageId/tags/:tagId', asyncHandler(async (req, res) => {
       data: {
         repository: {
           ...repository,
-          fullName: `${repository.project_name}/${repository.name}`
+          fullName: dockerRepoName(repository.project_name, repository.name)
         },
         tag: {
           ...tag,
@@ -361,7 +366,7 @@ router.delete('/images/:imageId/tags/:tagId', asyncHandler(async (req, res) => {
     // 从Docker Repository删除标签
     const repositoryConfig = await registryConfigModel.getDefaultActiveConfig();
 
-    const repositoryFullName = `${repository.project_name}/${repository.name}`;
+    const repositoryFullName = dockerRepoName(repository.project_name, repository.name);
     const deleteResult = await dockerRegistryService.deleteTag(
       repositoryFullName,
       tag.tag,

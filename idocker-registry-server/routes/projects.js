@@ -4,10 +4,12 @@ import { requireAdmin } from '../middleware/auth.js';
 import { logger } from '../utils/logger.js';
 import { ProjectModel } from '../models/ProjectModel.js';
 import { UserModel } from '../models/UserModel.js';
+import { NamespaceModel } from '../models/NamespaceModel.js';
 import { paginated, success, error } from '../utils/apiResponse.js';
 
 const projectModel = new ProjectModel();
 const userModel = new UserModel();
+const namespaceModel = new NamespaceModel();
 const router = express.Router();
 
 router.get('/', asyncHandler(async (req, res) => {
@@ -78,14 +80,20 @@ router.post('/', requireAdmin, asyncHandler(async (req, res) => {
       return res.status(409).json(error('Project name already exists', 409, 'UNIQUE_VIOLATION'));
     }
 
-    const existingNamespace = await projectModel.get(
-      'SELECT id FROM projects WHERE namespace = ? AND is_active = 1', [namespace]
-    );
-    if (existingNamespace) {
-      return res.status(409).json(error('Namespace already exists', 409, 'UNIQUE_VIOLATION'));
+    // Namespace is a first-class entity (namespaces table): multiple projects may
+    // share one namespace, so only verify the selected one exists and is active.
+    const namespaceRecord = await namespaceModel.findByName(namespace);
+    if (!namespaceRecord || namespaceRecord.is_active !== 1) {
+      return res.status(400).json(error('Namespace does not exist or is inactive', 400));
     }
 
-    const projectData = { name, description: description || '', namespace, is_active: 1 };
+    const projectData = {
+      name,
+      description: description || '',
+      namespace,
+      namespace_id: namespaceRecord.id,
+      is_active: 1
+    };
     const newProject = await projectModel.createProject(projectData, createdBy);
 
     const projectDetails = await projectModel.findById(newProject.id);
@@ -99,7 +107,7 @@ router.post('/', requireAdmin, asyncHandler(async (req, res) => {
 
 router.put('/:id', requireAdmin, asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { name, description, isActive } = req.body;
+  const { name, description, namespace, isActive } = req.body;
 
   try {
     const projectExists = await projectModel.projectExists(id);
@@ -118,6 +126,29 @@ router.put('/:id', requireAdmin, asyncHandler(async (req, res) => {
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
     if (isActive !== undefined) updateData.is_active = isActive ? 1 : 0;
+
+    // Allow changing the project's namespace (validated like creation).
+    // An empty value (legacy sync-created projects) falls back to the default namespace.
+    if (namespace !== undefined) {
+      if (namespace === '') {
+        const defaultNs = await namespaceModel.findByName('default');
+        if (!defaultNs || defaultNs.is_active !== 1) {
+          return res.status(400).json(error('Namespace does not exist or is inactive', 400));
+        }
+        updateData.namespace = 'default';
+        updateData.namespace_id = defaultNs.id;
+      } else {
+        if (!/^[a-z0-9-]+$/.test(namespace)) {
+          return res.status(400).json(error('Namespace can only contain lowercase letters, numbers, and hyphens', 400));
+        }
+        const namespaceRecord = await namespaceModel.findByName(namespace);
+        if (!namespaceRecord || namespaceRecord.is_active !== 1) {
+          return res.status(400).json(error('Namespace does not exist or is inactive', 400));
+        }
+        updateData.namespace = namespace;
+        updateData.namespace_id = namespaceRecord.id;
+      }
+    }
 
     if (Object.keys(updateData).length > 0) {
       await projectModel.updateProject(id, updateData);

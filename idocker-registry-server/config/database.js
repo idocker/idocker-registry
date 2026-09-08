@@ -391,6 +391,28 @@ export async function initDatabase() {
                 }
               });
 
+              // Initialize the built-in default project (shared base images, single-segment path)
+              db.get('SELECT COUNT(*) as count FROM projects WHERE name = ?', ['default'], (err, row) => {
+                if (err) {
+                  logger.error('check default project error:', err);
+                  return;
+                }
+                if (row.count === 0) {
+                  db.run(
+                    `INSERT INTO projects (name, description, namespace, is_active, created_by, namespace_id)
+                     VALUES (?, ?, ?, ?, ?, (SELECT id FROM namespaces WHERE name = 'default' LIMIT 1))`,
+                    ['default', 'Default project for shared base images (pull/push without project path)', 'default', 1, 1],
+                    (err2) => {
+                      if (err2) {
+                        logger.error('create default project error:', err2);
+                      } else {
+                        logger.info('Default project created: default');
+                      }
+                    }
+                  );
+                }
+              });
+
               // Docker Registry setting
               db.get('SELECT COUNT(*) as count FROM registry_configs', [], (err, row) => {
                 if (err) {
