@@ -20,9 +20,10 @@ iDocker Registry is an enterprise Docker image registry management platform with
 | Feature | Description |
 |---------|-------------|
 | Three-tier hierarchy | Namespace → Project → Repository for team isolation |
+| Default shared library | Built-in `default` project for base images (mysql/redis/nginx/jdk) with **single-segment path** (`idocker.vip/nginx`), visible to all users |
 | Fine-grained RBAC | 4 roles (admin / project_manager / developer / operator) at repository level |
 | Docker proxy | Full Docker Registry v2 API proxy with auth and audit |
-| Image sync | Sync Registry data to the platform database |
+| Instant sync | Tags appear right after push; newest tag auto-mirrored as `latest` |
 | Audit logs | Complete operation trail with search, filter, export |
 | i18n | Chinese / English bilingual UI |
 | Theme | Light / Dark / Auto |
@@ -88,6 +89,42 @@ docker compose up -d
 
 - Username: `admin`
 - Password: `admin123`
+
+---
+
+## Pulling & Pushing Images
+
+Login first (Web users are registry users):
+
+```bash
+docker login idocker.vip
+```
+
+### Default shared library (single-segment path)
+
+The built-in `default` project (under the default namespace) holds shared base images (mysql / redis / nginx / jdk). These use a **single-segment name without a project layer** and are visible/pullable by every logged-in user:
+
+```bash
+docker pull idocker.vip/nginx:latest
+```
+
+Pushing base images defaults to administrators only:
+
+```bash
+docker tag nginx:latest idocker.vip/nginx:latest
+docker push idocker.vip/nginx:latest
+```
+
+### Project images (two-segment path)
+
+All other projects use `project/repository` paths:
+
+```bash
+docker pull idocker.vip/wvp/media-worker:latest
+docker push idocker.vip/wvp/media-worker:latest
+```
+
+> Tags are recorded automatically right after push. When a repository has several tags, the one with the newest `created_at` is auto-mirrored as `latest`, so a plain `docker pull <repo>` always fetches the newest version.
 
 ---
 

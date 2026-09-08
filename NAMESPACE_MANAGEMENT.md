@@ -66,6 +66,12 @@ ALTER TABLE projects ADD COLUMN namespace_id INTEGER DEFAULT 1;
 CREATE INDEX idx_projects_namespace_id ON projects(namespace_id);
 ```
 
+### Built-in default project
+
+- A **default** namespace is created on first boot; a built-in **default project** (belonging to the default namespace) is also auto-created (idempotent) for shared base images (nginx / mysql / redis / jdk...).
+- Images in the default project use a **single-segment docker name without the project layer** (`docker pull idocker.vip/nginx:latest`), are visible/pullable by every logged-in user, and are pushable by admins only.
+- Other projects keep the two-segment path `project/repository` regardless of their namespace.
+
 ## API Endpoints
 
 The following RESTful API endpoints are available for namespace management:

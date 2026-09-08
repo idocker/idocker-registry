@@ -57,20 +57,24 @@ CREATE TABLE IF NOT EXISTS docker_operation_logs (
 
 Docker repository names follow this format:
 - `project-name/repo-name` (first segment = project name)
+- **single-segment name** (`nginx`) — belongs to the built-in **default** project (under the default namespace), used for shared base images; its pull/push path omits the project layer, e.g. `docker pull idocker.vip/nginx:latest`
 
 The namespace is an organizational grouping (team/environment) only; it is not part of the image repository path.
 
 ### User Roles and Permissions
 
-- **admin**: Full access to all projects and repositories
-- **owner**: Full access to repositories within their projects
-- **maintainer**: Can push and pull repositories within their projects
-- **member**: Can only pull repositories within their projects
+Repository membership roles (stored in `repository_members`):
+- **admin** (system): Full access to all projects and repositories
+- **project_manager**: pull / push / delete + member management on the repository
+- **developer**: pull / push / delete
+- **operator**: pull only
 
 ### Repository Visibility
 
-- **Public**: Anyone can pull (no authentication required)
-- **Private**: Only project members can pull/push based on their role
+- The v2 endpoint always requires authentication (anonymous → 401 challenge; even `/v2/` pings are challenged).
+- **Public** or images in the built-in **default** project: any logged-in user can pull; the default project is also visible in every user's web image list.
+- **Private**: only repository members can pull/push/delete based on their role.
+- Pushing into the **default** project is restricted to admin / explicitly granted members (non-members get 403).
 
 ## Docker Operations
 

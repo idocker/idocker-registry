@@ -169,6 +169,8 @@ request → rateLimit → helmet → cors → logging → bodyParser
 **仓库名解析**: `project-name/repo-name` → projectName=project-name, repoName=repo-name
 （首段恒为项目名；命名空间仅作管理分组/环境标签，不参与镜像仓库路径）
 
+**单段名**: `nginx` → 归属内置 **default 项目**（default 命名空间），用于共用基础镜像，docker 路径不含项目层（`docker pull idocker.vip/nginx:latest`）；default 项目镜像对所有登录用户可见可拉，push 仅限 admin/被授权成员。
+
 ### 3.8 BaseModel 通用方法
 
 | 方法 | 说明 |
@@ -404,10 +406,9 @@ vue-i18n + 非 legacy 模式 + globalInjection
 | 表名 | 用途 | 关键字段 |
 |------|------|---------|
 | `users` | 用户 | id, username(UNIQUE), password, email, full_name, role, is_active, last_login |
-| `projects` | 项目 | id, name(UNIQUE), description, namespace, is_active, created_by(FK→users) |
-| `project_members` | 项目成员 | id, project_id(FK), user_id(FK), role(CHECK: project_manager/developer/operator) |
-| `repositories` | 仓库 | id, name, project_id(FK), description, is_public, is_active, UNIQUE(name, project_id) |
+| `projects` | 项目 | id, name(UNIQUE), description, namespace, namespace_id, is_active, created_by(FK→users) |
 | `repository_members` | 仓库成员 | id, repository_id(FK), user_id(FK), role, UNIQUE(repository_id, user_id) |
+| `repositories` | 仓库 | id, name, project_id(FK), description, is_public, is_active, UNIQUE(name, project_id) |
 | `image_tags` | 镜像标签 | id, repository_id(FK), tag, digest, size, architecture, os, UNIQUE(repository_id, tag) |
 | `audit_logs` | 审计日志 | id, user_id(FK), action, resource_type, resource_id, details(JSON), ip_address, user_agent |
 | `registry_configs` | Registry配置 | id, name, url, username, password, is_default, is_active |
@@ -501,10 +502,7 @@ PRAGMA temp_store = MEMORY;
 | POST | `/api/projects` | 创建 (需 admin) |
 | PUT | `/api/projects/:id` | 更新 (需 admin) |
 | DELETE | `/api/projects/:id` | 删除 (需 admin) |
-| GET | `/api/projects/:id/members` | 项目成员 |
-| POST | `/api/projects/:id/members` | 添加成员 |
-| PUT | `/api/projects/:id/members/:userId` | 修改成员角色 |
-| DELETE | `/api/projects/:id/members/:userId` | 移除成员 |
+| ｜项目级成员管理｜已废弃（v1.1 移除，原基于 project_members 表）｜成员管理统一走仓库级 `/api/repository/:id/members` ｜
 
 ### 6.6 仓库/镜像 (`/api/repository`)
 

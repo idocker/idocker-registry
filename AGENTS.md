@@ -28,12 +28,11 @@ iDocker是一个Docker Registry管理平台，提供Web UI来管理Docker镜像�
 │   │   ├── ImageTagModel.js     # 镜像标签CRUD
 │   │   ├── AuditModel.js        # 审计日志、统计、导出、清理
 │   │   ├── DockerLogModel.js    # Docker操作日志
-│   │   ├── DockerRegistryModel.js # Registry权限检查、项目查找
 │   │   ├── RegistryConfigModel.js # Registry配置CRUD
 │   │   └── SyncLogModel.js      # 同步日志
 │   ├── routes/
 │   │   ├── auth.js              # /api/auth (login/logout/register/profile/change-password/refresh)
-│   │   ├── users.js             # /api/users (CRUD + 项目成员管理)
+│   │   ├── users.js             # /api/users (CRUD + 用户仓库成员关系查询)
 │   │   ├── namespaces.js        # /api/namespaces (CRUD + reactivate)
 │   │   ├── projects.js          # /api/projects (CRUD + 成员管理 + role管理)
 │   │   ├── repository.js        # /api/repository (images/tags/sync/config)
@@ -165,6 +164,13 @@ iDocker是一个Docker Registry管理平台，提供Web UI来管理Docker镜像�
 - 请求经过：鉴权 → 权限校验 → 代理转发 → 操作日志记录
 - `/v2/token` 端点处理Docker客户端的Token认证请求
 - URL中仓库名称格式：`project-name/repo-name`（首段为项目名；命名空间仅用于团队/环境等管理分组，不参与镜像仓库路径）
+- **内置 default 项目**（从属 default 命名空间）：存放 nginx/mysql/redis/jdk 等共用基础镜像，**使用单段名称、路径不带项目层**，例如 `idocker.vip/nginx:latest`（单段自动归属 default 项目，多段照常 `project/repo`）
+- default 项目镜像对**所有登录用户**可见、可拉取（pull 放行）；**推送仅管理员/被授权成员**（非成员 push 一律 403）
+- 密码规则：至少 6 字符且**必须包含至少 1 个特殊符号**（大小写/数字不强制）
+- 服务器统一时区 **Asia/Shanghai**（宿主 + 容器 TZ + 镜像内置 tzdata）；SQLite 存 UTC ISO，Web 按浏览器时区展示
+- 镜像 push 成功后**即时同步 tag 入库**（无需手动 sync）；若最新 tag（按 `image_tags.created_at`）非 latest，会自动把该 digest 再以 `latest` 引用推送（`docker pull <repo>` 恒为最新）
+- 内部 registry 配置：`relativeurls: true`（Location 相对化，避免回传内部 localhost 地址）、`storage.delete.enabled: true`（标签删除可用）、manifest 解析 Accept 含 OCI（`vnd.oci.image.*`）
+- /v2 仓库权限校验基于 `repository_members`（角色 project_manager/developer/operator），admin 全权；普通用户镜像列表 = 成员项目 ∪ default 项目
 
 ### 7. 日志
 - Winston：控制台 + 文件（error.log, combined.log, exceptions.log, rejections.log）

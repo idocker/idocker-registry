@@ -18,9 +18,10 @@ iDocker Registry 是一款企业级 Docker 镜像仓库管理平台，提供 Web
 | 特性 | 说明 |
 |------|------|
 | 三层架构 | 命名空间 → 项目 → 仓库，清晰隔离团队资源 |
+| 默认公共库 | 内置 default 项目存放 mysql/redis/nginx/jdk 等基础镜像，**单段路径**拉取（`idocker.vip/nginx`），全员可见 |
 | 细粒度权限 | 4 种角色（admin / project_manager / developer / operator），仓库级权限控制 |
 | Docker 代理 | 对 Docker Registry v2 API 的完整代理，集成鉴权与审计 |
-| 镜像同步 | 将 Registry 数据同步到平台数据库 |
+| 即时同步 | push 后标签自动入库；最新标签自动同步为 `latest` |
 | 审计日志 | 完整的操作记录，支持搜索、筛选、导出 |
 | 国际化 | 中文 / 英文双语界面 |
 | 主题切换 | 浅色 / 深色 / 跟随系统 |
@@ -87,6 +88,42 @@ docker compose up -d
 
 - 用户名：`admin`
 - 密码：`admin123`
+
+---
+
+## 镜像拉取与推送
+
+所有 Docker 操作需先登录（Web 用户即仓库用户）：
+
+```bash
+docker login idocker.vip
+```
+
+### 默认公共库（基础镜像，单段路径）
+
+default 项目（default 命名空间）存放 mysql / redis / nginx / jdk 等团队共用基础镜像，路径**不带项目层**，对所有登录用户可见、可拉取：
+
+```bash
+docker pull idocker.vip/nginx:latest
+```
+
+推送基础镜像默认仅管理员，需先打标签：
+
+```bash
+docker tag nginx:latest idocker.vip/nginx:latest
+docker push idocker.vip/nginx:latest
+```
+
+### 项目镜像（两段路径）
+
+其余项目镜像路径为 `项目/仓库`：
+
+```bash
+docker pull idocker.vip/wvp/media-worker:latest
+docker push idocker.vip/wvp/media-worker:latest
+```
+
+> push 后标签自动入库并即时可见；当仓库存在多个标签时，系统会把 `created_at` 最新的标签自动同步为 `latest`，保证 `docker pull <repo>` 始终拉到最新版本。
 
 ---
 
