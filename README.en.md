@@ -64,24 +64,28 @@ iDocker Registry is an enterprise Docker image registry management platform with
 ### Development
 
 ```bash
-# Install dependencies
+# Install dependencies (each subsystem is independent)
 cd idocker-registry-server && npm install
 cd idocker-registry-ui && npm install
 
 # Build frontend
 cd idocker-registry-ui && npm run build
 
-# Docker dev mode (hot reload)
-docker compose -f docker-compose.yaml -f docker-compose.dev.yaml up -d
+# Local dev: backend with nodemon (reads .env, PORT=8031)
+cd idocker-registry-server && npm run dev
+# Local dev: frontend Vite dev server (8030, proxies /api and /v2 to 8031)
+cd idocker-registry-ui && npm run dev:client
 ```
 
-Development workflow:
-- Frontend: edit → `npm run build` (~5s) → refresh browser
-- Backend: nodemon auto-restarts on file changes
+> ⚠️ The previously documented `docker compose -f docker-compose.yaml -f docker-compose.dev.yaml up -d`
+> is **not usable**: `docker-compose.dev.yaml` does not exist in this repository (which also leaves
+> `deploy/dev-entrypoint.sh` unreferenced). To verify changes inside a container, build the image first.
 
 ### Production
 
 ```bash
+cd /workspace/idocker-registry
+docker build -t idocker-registry:1.0.2 .   # tag declared in compose; compose has no build section
 docker compose up -d
 ```
 

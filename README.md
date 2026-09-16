@@ -62,25 +62,28 @@ iDocker Registry 是一款企业级 Docker 镜像仓库管理平台，提供 Web
 ### 开发环境
 
 ```bash
-# 安装依赖
+# 安装依赖（两个子系统各自独立）
 cd idocker-registry-server && npm install
 cd idocker-registry-ui && npm install
 
 # 编译前端
 cd idocker-registry-ui && npm run build
 
-# Docker 开发模式（源码热更新）
-cd /workspace/idocker
-docker compose -f docker-compose.yaml -f docker-compose.dev.yaml up -d
+# 本地开发：后端 nodemon（读 .env，PORT=8031）
+cd idocker-registry-server && npm run dev
+# 本地开发：前端 Vite dev server（8030，/api 与 /v2 代理到 8031）
+cd idocker-registry-ui && npm run dev:client
 ```
 
-开发模式下：
-- 前端：修改 → `npm run build`（~5s）→ 刷新浏览器
-- 后端：nodemon 自动检测文件变更并重启
+> ⚠️ 此前的 `docker compose -f docker-compose.yaml -f docker-compose.dev.yaml up -d`
+> **当前不可用**：`docker-compose.dev.yaml` 在本仓库中不存在（`deploy/dev-entrypoint.sh` 也因此无引用者）。
+> 要在容器内验证改动，需先构建镜像再启动。
 
 ### 生产环境
 
 ```bash
+cd /workspace/idocker-registry
+docker build -t idocker-registry:1.0.2 .   # compose 声明的 tag；compose 无 build 段
 docker compose up -d
 ```
 

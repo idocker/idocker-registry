@@ -1,7 +1,9 @@
 # iDocker Registry - 开发参考手册
 
-> 基于 `idocker-registry-server 0.9.0` + `idocker-registry-ui 0.9.0` 梳理
-> 生成日期: 2026-07-29 | 用途: 提升后续开发效率
+> 基于 `idocker-registry-server 1.1.0` + `idocker-registry-ui 1.0.2` 梳理（版本号已按 package.json 校正）
+> 初版生成日期: 2026-07-29 | 校正日期: 2026-09-16 | 用途: 提升后续开发效率
+>
+> **校正说明**：原版多处与实际代码不符，已逐条核对修正。文中标 ⚠️ 处均为「已验证的代码事实」。
 
 ---
 
@@ -273,7 +275,6 @@ src/
 | `/` | catalog | 是 | - |
 | `/images` | images | 是 | - |
 | `/images/:id` | image-detail | 是 | - |
-| `/images/:imageId/tags/:tagId` | image-tag-detail | 是 | - |
 | `/admin/login` | admin-login | 否 | - |
 | `/admin/profile` | admin-profile | 是 | - |
 | `/admin/password` | admin-password | 是 | - |
@@ -286,6 +287,12 @@ src/
 | `/admin/repositories` | admin-repositories | 是 | 是 |
 | `/admin/sync` | admin-sync | 是 | 是 |
 | `/:pathMatch(.*)*` | not-found | - | - |
+
+⚠️ 与代码的差异（已核对 `router/index.ts`）：
+- 原版列出的 `/images/:imageId/tags/:tagId`（`image-tag-detail`）**不存在**，
+  `views/ImageTagDetailView.vue` 也不存在（实际有 `views/admin/RepositoriesView.vue`、`PlaceholderView.vue`）。
+- `meta.title` 多为硬编码英文（不走 i18n），全表只有 `admin-repositories` 用了 `meta.titleKey`。
+- 守卫除 `requiresAuth` 外还会检查 `requiresAdmin`：非 admin 访问会重定向 `/admin/profile`（不是 403 页）。
 
 **路由守卫逻辑**: `router.beforeEach` 检查 `meta.requiresAuth`
 - 未认证 → 显示登录提示 + 重定向 `/admin/login`
@@ -311,14 +318,15 @@ src/
 
 ### 4.4 Composables
 
-| Composable | 用途 |
-|------------|------|
-| `useApi<T>()` | API 调用状态管理 (data/isLoading/error/isSuccess/execute) |
-| `usePaginatedApi<T>()` | 分页 API 调用 (items/pagination/loadPage) |
-| `useConfirmation()` | 确认弹窗 |
-| `useAuthListener()` | 令牌过期检测 + 自动刷新 |
-| `useAuthCheck()` | 认证状态快捷检查 |
-| `useNotifications()` | 通知系统 (showSuccess/showError/showWarning/showInfo) |
+| Composable | 实际导出 | 引用情况 |
+|------------|----------|----------|
+| `useApi.ts` | `useApi<T>()`、`usePaginatedApi<T>()`、`useConfirmAction()`、`useSearchAndFilter()` | ⚠️ **全项目零引用** |
+| `useAuthListener.ts` | `useAuthListener()`：JWT 过期检测 + 60s 定期检查 | 仅 `App.vue` 使用 |
+| `useNotifications.ts` | `showSuccess/showError/showWarning/showInfo`、`useNotifications()` | 6 个组件使用 |
+| `useAuthCheck.js` | 认证状态快捷检查（纯 JS） | ⚠️ **零引用** |
+
+⚠️ 原版写的 `useConfirmation()` **不存在**，实际叫 `useConfirmAction()`（内部用原生
+`window.confirm`，默认文案硬编码中文）。
 
 **useApi 使用示例**:
 ```typescript
@@ -332,8 +340,12 @@ async function load() {
 ### 4.5 API 调用层 (`services/*.service.ts`)
 
 ```
-组件/View → composables/useApi → services/*.service.ts → utils/http.ts (Axios)
+组件/View → services/*.service.ts → utils/http.ts 的 `http` 单例 (Axios)
 ```
+
+⚠️ 实际**不经过** `composables/useApi`（它零引用）；service 内部直接 `return http.get<T>('/api/...')`。
+`utils/http.ts` 必须**具名导入**：`import { http } from '@/utils/http'`——该文件的默认导出是
+`getHttpService` 函数，不是实例。
 
 **服务文件清单**:
 | 文件 | 对应后端路由 |
@@ -345,7 +357,7 @@ async function load() {
 | `repository.service.ts` | `/api/repository/*` |
 | `audit.service.ts` | `/api/audit/*` |
 | `sync.service.ts` | `/api/sync/*` |
-| `dashboard.service.ts` | `/api/dashboard/*` (?) |
+| `dashboard.service.ts` | ⚠️ `/api/dashboard/*` —— **后端根本没有这组路由**（`index.js` 未注册，`routes/` 下无对应文件），调用会落到 Express 默认 404 |
 
 ### 4.6 HTTP 拦截器 (`utils/http.ts`)
 
@@ -353,7 +365,8 @@ async function load() {
 - **请求**: 注入 Bearer token（UI 认证 + Registry 认证）
 - **响应 401 (API)**: 清除认证 + 重定向登录
 - **响应 401 (Registry)**: 解析 `www-authenticate` 头 → 自动获取 Token → 重试
-- **缓存**: GET 请求 5 分钟 TTL
+- **缓存**: ⚠️ 成功响应会写入内存 Map（TTL 5 分钟），但 `getCachedResponse()` **无任何调用方**——
+  缓存**只写不读**，`clearCache()` 不影响数据新鲜度。不要拿它解释「改了数据看不到新值」。
 - **错误格式化**: RegistryError 标准化
 
 ### 4.7 国际化 (i18n)
@@ -429,9 +442,14 @@ vue-i18n + 非 legacy 模式 + globalInjection
 
 `CHECK (role IN ('admin', 'project_manager', 'developer', 'operator'))`
 
-### 5.4 项目成员角色枚举
+### 5.4 仓库成员角色枚举（`repository_members`）
 
 `CHECK (role IN ('project_manager', 'developer', 'operator'))`
+
+⚠️ 旧的 `project_members` 表已废弃：schema 迁移 v2 会 `DROP TABLE IF EXISTS project_members`，
+全新数据库直接置 `user_version = 2`，不会创建该表。`ProjectModel` 中名字带 project 的
+`checkProjectPermission()` / `memberExists()` / `getMemberId()` 实际都 JOIN `repositories`
+查 `repository_members`——“项目成员”是派生概念。
 
 ### 5.5 PRAGMA 配置
 
@@ -460,37 +478,40 @@ PRAGMA temp_store = MEMORY;
 | POST | `/api/auth/login` | 登录 |
 | POST | `/api/auth/logout` | 登出 |
 | POST | `/api/auth/register` | 注册 (需 ALLOW_USER_REGISTRATION) |
-| GET | `/v2/` | Docker Registry API 版本检查 |
+| GET | `/v2/` | Docker Registry API 版本检查 —— ⚠️ **故意返回 401 挑战**（非匿名），以驱动 docker/podman/skopeo 在后续请求都带上凭证，代码注释有明确说明 |
 
 ### 6.2 认证路由 (`/api/auth`)
 
 | 方法 | 路径 | 用途 |
 |------|------|------|
 | GET | `/api/auth/profile` | 获取用户信息 |
-| PUT | `/api/auth/password` | 修改密码 |
-| POST | `/api/auth/refresh` | 刷新 Token |
+| PUT | `/api/auth/change-password` | 修改密码（原版误写为 `/password`） |
+| GET | `/api/auth/refresh` | 刷新 Token（原版误写为 POST） |
 
 ### 6.3 用户管理 (`/api/users` - 需 admin)
 
 | 方法 | 路径 | 用途 |
 |------|------|------|
 | GET | `/api/users` | 用户列表 (分页/搜索) |
-| GET | `/api/users/all` | 所有用户 |
 | GET | `/api/users/:id` | 用户详情 |
+| GET | `/api/users/:id/projects` | 该用户参与的项目 / 仓库成员关系 |
 | POST | `/api/users` | 创建用户 |
 | PUT | `/api/users/:id` | 更新用户 |
-| DELETE | `/api/users/:id` | 删除用户 |
+| DELETE | `/api/users/:id` | 删除用户（软删除） |
 | PUT | `/api/users/:id/password` | 重置密码 |
+
+⚠️ 原版列出的 `GET /api/users/all` **不存在**（`routes/users.js` 中没有该路由）。
 
 ### 6.4 命名空间 (`/api/namespaces`)
 
 | 方法 | 路径 | 用途 |
 |------|------|------|
 | GET | `/api/namespaces` | 列表 (分页/搜索) |
-| POST | `/api/namespaces` | 创建 |
-| PUT | `/api/namespaces/:id` | 更新 |
-| DELETE | `/api/namespaces/:id` | 删除 |
-| PUT | `/api/namespaces/:id/reactivate` | 重新激活 |
+| GET | `/api/namespaces/:id` | 详情 |
+| POST | `/api/namespaces` | 创建（需 admin） |
+| PUT | `/api/namespaces/:id` | 更新（需 admin） |
+| DELETE | `/api/namespaces/:id` | 删除（需 admin） |
+| POST | `/api/namespaces/:id/reactivate` | 重新激活（需 admin；原版误写为 PUT） |
 
 ### 6.5 项目 (`/api/projects`)
 
@@ -502,33 +523,49 @@ PRAGMA temp_store = MEMORY;
 | POST | `/api/projects` | 创建 (需 admin) |
 | PUT | `/api/projects/:id` | 更新 (需 admin) |
 | DELETE | `/api/projects/:id` | 删除 (需 admin) |
-| ｜项目级成员管理｜已废弃（v1.1 移除，原基于 project_members 表）｜成员管理统一走仓库级 `/api/repository/:id/members` ｜
+
+> **项目级成员管理已废弃**（原基于 `project_members` 表，schema v2 已 DROP）：成员管理统一走仓库级
+> `/api/repository/:id/members`。“项目成员”现为派生概念（= 该项目下任一仓库的成员）。
 
 ### 6.6 仓库/镜像 (`/api/repository`)
 
 | 方法 | 路径 | 用途 |
 |------|------|------|
+| GET | `/api/repository` | 仓库列表（分页/搜索） |
+| GET | `/api/repository/all` | 全部仓库 |
 | GET | `/api/repository/images` | 镜像列表 |
-| GET | `/api/repository/images/:id` | 镜像详情 |
-| GET | `/api/repository/project/:projectId/images` | 项目镜像列表 |
+| GET | `/api/repository/images/:imageId` | 镜像详情 |
+| GET | `/api/repository/projects/:projectId/images` | 项目镜像列表（注意是 `projects`，原版误写为 `project`） |
 | GET | `/api/repository/images/:imageId/tags/:tagId` | 标签详情 |
-| GET | `/api/repository/images/:imageId/config` | Registry 配置 |
+| DELETE | `/api/repository/images/:imageId/tags/:tagId` | 删除标签 |
+| POST | `/api/repository/create` | 创建仓库（⚠️ 非 admin 必须先有仓库才能 push，入口就在这里） |
+| POST | `/api/repository/sync` | 触发仓库同步 |
+| GET | `/api/repository/config` | Registry 配置（原版误写为 `/images/:imageId/config`） |
+| GET | `/api/repository/:id/members` | 仓库成员列表 |
+| POST | `/api/repository/:id/members` | 添加仓库成员 |
+| PUT | `/api/repository/:id/members/:userId` | 修改成员角色 |
+| DELETE | `/api/repository/:id/members/:userId` | 移除成员 |
+| PUT | `/api/repository/:id/public` | 切换仓库公开状态 |
 
 ### 6.7 审计 (`/api/audit`)
 
 | 方法 | 路径 | 用途 |
 |------|------|------|
 | GET | `/api/audit/logs` | 审计日志列表 |
+| GET | `/api/audit/logs/:id` | 单条日志详情 |
 | GET | `/api/audit/statistics` | 审计统计 |
-| GET | `/api/audit/export` | 导出日志 |
+| DELETE | `/api/audit/logs/cleanup` | 清理日志 |
+| GET | `/api/audit/actions` | 可选动作枚举 |
+| GET | `/api/audit/resource-types` | 可选资源类型枚举 |
+| POST | `/api/audit/export` | 导出日志（原版误写为 GET） |
 
 ### 6.8 同步 (`/api/sync`)
 
 | 方法 | 路径 | 用途 |
 |------|------|------|
 | GET | `/api/sync/status` | 同步状态 |
-| GET | `/api/sync/all` | 全部同步 |
-| POST | `/api/sync/project` | 项目同步 |
+| POST | `/api/sync/all` | 全部同步（原版误写为 GET） |
+| POST | `/api/sync/project/:projectId` | 项目同步（原版误写为 `/api/sync/project`） |
 | GET | `/api/sync/logs` | 同步日志 |
 
 ### 6.9 Docker Registry (`/v2/*`)
@@ -628,17 +665,26 @@ PRAGMA temp_store = MEMORY;
 
 ## 9. 部署与开发流程
 
-### 9.1 开发模式 (热更新)
+### 9.1 开发模式 (本地前后端)
+
+⚠️ **原版描述的热更新流程已不可用**：`docker-compose.dev.yaml` **在本仓库中不存在**
+（工作目录与 `git ls-files` 都没有），`-f docker-compose.dev.yaml` 会直接报错；
+`deploy/dev-entrypoint.sh` 也因此成为无引用者。要恢复容器内热更新，需先补回这份 dev override。
+
+当前可用的本地开发方式：
 
 ```bash
-# 首次
-cd idocker-registry-ui && npm run build
-cd /workspace/idocker && docker compose -f docker-compose.yaml -f docker-compose.dev.yaml up -d
+# 前端：Vite dev server（端口 8030，/api 与 /v2 代理到 8031）
+cd idocker-registry-ui && npm run dev:client
 
-# 日常
-# 改前端 → npm run build → 刷新浏览器
-# 改后端 → 自动重启 (nodemon 检测文件变化)
+# 后端：先 npm install，再起 nodemon（读 idocker-registry-server/.env，PORT=8031）
+cd idocker-registry-server && npm run dev
+
+# 前端构建产物（仍需要）
+cd idocker-registry-ui && npm run build
 ```
+
+若要验证容器内行为，需重建镜像后 `docker compose up -d`（见 9.2）。
 
 ### 9.2 生产部署
 
@@ -659,7 +705,7 @@ docker compose up -d
 | 文件 | 作用 |
 |------|------|
 | `docker-compose.yaml` | 生产配置 |
-| `docker-compose.dev.yaml` | 开发覆盖（volume mount + nodemon） |
+| `docker-compose.dev.yaml` | ⚠️ **本仓库不存在**（仅文档引用过，实际文件缺失） |
 | `deploy/docker-entrypoint.sh` | 生产入口 |
 | `deploy/dev-entrypoint.sh` | 开发入口 |
 | `deploy/config.yaml` | Docker Registry 内部配置 |
@@ -673,15 +719,18 @@ cd idocker-registry-server && npm run dev     # nodemon 启动
 # 前端开发
 cd idocker-registry-ui && npm run dev:client  # Vite 启动 (8030)
 
-# 前后端同时
-cd idocker-registry-ui && npm run dev         # concurrently 启动
+# 前后端同时：⚠️ 不可用——dev:server 会 cd 到 UI 下不存在的 idocker-registry-server 目录
+# cd idocker-registry-ui && npm run dev
 
 # 构建
-cd idocker-registry-ui && npm run build       # → dist/
+cd idocker-registry-ui && npm run build       # → dist/（含 vue-tsc --noEmit 类型检查）
 
-# 代码检查
-npm run lint
-npm run format
+# 后端冒烟测试（仅覆盖 apiResponse / messages）
+cd idocker-registry-server && npm test
+
+# 代码检查：⚠️ 不可用——.eslintrc.cjs 依赖 @rushstack/eslint-patch，该包不在 devDependencies
+# cd idocker-registry-ui && npm run lint
+cd idocker-registry-ui && npm run format
 ```
 
 ---
@@ -710,7 +759,7 @@ npm run format
 | 组件风格 | Composition API + `<script setup>` |
 | 类型定义 | 集中在 `types/index.ts` |
 | 状态管理 | 通过 Pinia store |
-| API 调用 | `services/*.service.ts` → `useApi<T>()` |
+| API 调用 | `services/*.service.ts` 直接调用 `utils/http.ts` 的 `http` 单例；⚠️ `useApi<T>()` 零引用，不要按原版描述改造 |
 | HTTP | 使用 `utils/http.ts` 的 RegistryHttpService |
 | 国际化 | 所有用户可见文本走 vue-i18n |
 | 路由鉴权 | `meta.requiresAuth` + `meta.requiresAdmin` |
