@@ -337,6 +337,85 @@ export async function initDatabase() {
             }
           });
 
+          // ===== Schema Migration v3: record which user pushed each tag =====
+          // Guarded by a column check rather than user_version: the version
+          // pragma is written asynchronously above, so a fresh database may
+          // still read 0 at this point.
+          db.all("PRAGMA table_info(image_tags)", [], (err, columns) => {
+            if (err || !columns) {
+              return;
+            }
+            if (columns.some(col => col.name === 'pushed_by')) {
+              return;
+            }
+            db.run('ALTER TABLE image_tags ADD COLUMN pushed_by INTEGER', (alterErr) => {
+              if (alterErr) {
+                logger.error('Error adding pushed_by column to image_tags:', alterErr);
+              } else {
+                db.run('PRAGMA user_version = 3');
+                logger.info('Schema migration v3 completed: image_tags.pushed_by');
+              }
+            });
+          });
+
+          // ===== Data Migration v4: attribute legacy tags that never recorded a pusher =====
+          // One-off correction for image_tags rows created before pushed_by existed.
+          // Rules: project 'crm' -> wangys, every other missing row -> joe.
+          // Each UPDATE carries an EXISTS guard, so a database lacking the target
+          // account simply leaves those rows untouched instead of writing NULL.
+          // Order matters: 'crm' runs first so the catch-all cannot claim it.
+          db.all("PRAGMA table_info(image_tags)", [], (err, columns) => {
+            if (err || !columns || !columns.some(col => col.name === 'pushed_by')) {
+              return; // v3 has not finished yet
+            }
+            db.get("PRAGMA user_version", [], (getErr, versionRow) => {
+              if (getErr || (versionRow && versionRow.user_version >= 4)) {
+                return;
+              }
+
+              const crmSql = `
+                UPDATE image_tags
+                   SET pushed_by = (SELECT id FROM users WHERE username = 'wangys')
+                 WHERE pushed_by IS NULL
+                   AND repository_id IN (
+                     SELECT r.id FROM repositories r
+                       JOIN projects p ON p.id = r.project_id
+                      WHERE p.name = 'crm'
+                   )
+                   AND EXISTS (SELECT 1 FROM users WHERE username = 'wangys')
+              `;
+              const restSql = `
+                UPDATE image_tags
+                   SET pushed_by = (SELECT id FROM users WHERE username = 'joe')
+                 WHERE pushed_by IS NULL
+                   AND repository_id NOT IN (
+                     SELECT r.id FROM repositories r
+                       JOIN projects p ON p.id = r.project_id
+                      WHERE p.name = 'crm'
+                   )
+                   AND EXISTS (SELECT 1 FROM users WHERE username = 'joe')
+              `;
+
+              db.serialize(() => {
+                db.run(crmSql, function (crmErr) {
+                  if (crmErr) {
+                    logger.error('Data migration v4 (crm -> wangys) failed:', crmErr);
+                  } else if (this.changes > 0) {
+                    logger.info(`Data migration v4: attributed ${this.changes} tag(s) of project 'crm' to wangys`);
+                  }
+                });
+                db.run(restSql, function (restErr) {
+                  if (restErr) {
+                    logger.error('Data migration v4 (rest -> joe) failed:', restErr);
+                  } else if (this.changes > 0) {
+                    logger.info(`Data migration v4: attributed ${this.changes} remaining tag(s) to joe`);
+                  }
+                });
+                db.run('PRAGMA user_version = 4');
+              });
+            });
+          });
+
           // check and create default admin user
           db.get('SELECT COUNT(*) as count FROM users WHERE role = "admin"', [], async (err, row) => {
             if (err) {

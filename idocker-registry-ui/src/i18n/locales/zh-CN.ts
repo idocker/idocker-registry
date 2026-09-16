@@ -62,7 +62,6 @@ export default {
   nav: {
     home: '首页',
     images: '镜像',
-    repositories: '仓库',
     projects: '项目',
     users: '用户',
     audit: '审计日志',
@@ -250,6 +249,7 @@ export default {
     latestTag: '最新标签',
     tag: '标签',
     tags: '标签列表',
+    allTags: '全部标签',
     pullCommand: '拉取命令',
     pushCommand: '推送命令',
     copyPull: '复制拉取',
@@ -316,6 +316,7 @@ export default {
     noTags: '暂无标签',
     tagName: '标签名称',
     digest: '摘要',
+    pushedBy: '提交人',
     archOs: '架构/系统',
     createdAt: '创建时间',
     actions: '操作',

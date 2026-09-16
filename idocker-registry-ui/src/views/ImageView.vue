@@ -155,12 +155,11 @@
                         <div class="actions-cell">
                           <LinkPopover :pull="buildPullCommand(image)" :push="buildPushCommand(image)" />
                           <button
-                            v-if="hasPermission"
                             class="btn btn-ghost btn-small"
                             @click.stop="viewImageDetails(image.id.toString())"
                           >
-                            <span class="material-icons">visibility</span>
-                            {{ $t('common.details') }}
+                            <span class="material-icons">local_offer</span>
+                            {{ $t('images.allTags') }}
                           </button>
                         </div>
                       </td>
@@ -183,7 +182,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, reactive } from 'vue'
+import { ref, onMounted, watch, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useNotifications } from '@/composables/useNotifications'
@@ -192,7 +191,6 @@ import LinkPopover from '@/components/LinkPopover.vue'
 import { http } from '@/utils/http'
 import repositoryService from '@/services/repository.service'
 import projectService from '@/services/project.service'
-import authService from '@/services/auth.service'
 
 import { formatDateTime as fmtDT } from '@/utils/helpers'
 import type { Image, Project } from '@/types'
@@ -211,26 +209,6 @@ const isLoading = ref(false)
 const isRefreshing = ref(false)
 const searchTerm = ref('')
 const isActive = ref("1")
-
-// Computed properties
-const hasPermission = computed(() => {
-  try {
-    const token = authService.getToken()
-    if (!token) return false
-    
-    // 尝试从本地存储获取用户信息
-    const userData = localStorage.getItem('user_data')
-    if (userData) {
-      const user = JSON.parse(userData)
-      return user?.role === 'admin'
-    }
-    
-    return false
-  } catch (error) {
-    console.error('Permission check error:', error)
-    return false
-  }
-})
 
 // Get project list (sorted by creation time descending)
 const loadProjects = async () => {
@@ -701,86 +679,9 @@ onMounted(() => {
   }
 }
 
-// Button styles
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  color: white;
-
-  .material-icons {
-    font-size: 18px;
-    margin-right: 0.5rem;
-  }
-
-  &:last-child .material-icons {
-    margin-right: 0;
-  }
-
-  &.btn-primary {
-    background-color: var(--primary-color);
-
-    &:hover:not(:disabled) {
-      background-color: var(--primary-dark);
-    }
-  }
-
-  &.btn-ghost {
-    background-color: transparent;
-    color: var(--primary-text);
-    border: 1px solid transparent;
-
-    &:hover {
-      background-color: var(--hover-background);
-      border-color: var(--border-color);
-    }
-
-    &.btn-danger {
-      color: var(--error-color);
-
-      &:hover {
-        background-color: rgba(244, 67, 54, 0.1);
-      }
-    }
-
-    &.btn-small {
-      padding: 0.25rem 0.5rem;
-      font-size: 12px;
-      gap: 0.25rem;
-
-      .material-icons {
-        font-size: 16px;
-        margin-right: 0.25rem;
-      }
-
-      &:last-child .material-icons {
-        margin-right: 0;
-      }
-    }
-  }
-
-  &.btn-icon {
-    padding: 0.5rem;
-    width: 40px;
-    height: 40px;
-
-    .material-icons {
-      margin: 0;
-    }
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-}
+// Button styles live in the global sheet (@/styles/components.scss) — see the
+// note in ImageDetailView: local shadowing caused cross-page and cross-component
+// inconsistency (LinkPopover's trigger could not inherit scoped rules).
 
 .icon-btn {
   background: none;

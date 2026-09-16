@@ -61,7 +61,6 @@ export default {
   nav: {
     home: 'Home',
     images: 'Images',
-    repositories: 'Repositories',
     projects: 'Projects',
     users: 'Users',
     audit: 'Audit Log',
@@ -248,6 +247,7 @@ export default {
     latestTag: 'Latest Tag',
     tag: 'Tag',
     tags: 'Tags',
+    allTags: 'All Tags',
     pullCommand: 'Pull Command',
     pushCommand: 'Push Command',
     copyPull: 'Copy Pull',
@@ -314,6 +314,7 @@ export default {
     noTags: 'No tags',
     tagName: 'Tag Name',
     digest: 'Digest',
+    pushedBy: 'Pushed by',
     archOs: 'Arch/OS',
     createdAt: 'Created At',
     actions: 'Actions',

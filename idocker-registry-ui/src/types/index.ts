@@ -138,13 +138,6 @@ export interface PaginationInfo {
   itemsPerPage: number
 }
 
-export interface TagListOrder {
-  primary: 'num' | 'alpha'
-  primaryDirection: 'asc' | 'desc'
-  secondary: 'num' | 'alpha'
-  secondaryDirection: 'asc' | 'desc'
-}
-
 // Project types
 export interface Project {
   id: number
@@ -259,41 +252,9 @@ export interface ChangePassword {
   password: string
 }
 
-export interface UserProfile {
-  id: number
-  username: string
-  email: string
-  fullName: string
-  role: UserRole
-  is_active: boolean | number
-  created_at: string
-}
-
-// Auth types
-export interface LoginCredentials {
-  username: string
-  password: string
-}
-
-export interface RegisterData {
-  username: string
-  password: string
-  email?: string
-  fullName?: string
-}
-
 export interface ChangePasswordData {
   currentPassword: string
   newPassword: string
-}
-
-export interface LoginResponse {
-  success: boolean
-  message: string
-  data: {
-    token: string
-    user: UserProfile
-  }
 }
 
 // Repository/Image types
@@ -335,6 +296,10 @@ export interface ImageTag {
   created_at?: string  // 兼容字段
   pullCommand?: string
   pushCommand?: string
+  // 提交人（推送该标签的用户），由后端 LEFT JOIN users 得到
+  pushed_by?: number | null
+  pushed_by_username?: string | null
+  pushed_by_name?: string | null
 }
 
 export interface ImageDetails {
@@ -469,21 +434,6 @@ export interface ExportFilters {
   startDate?: string
   endDate?: string
   format?: 'json' | 'csv'
-}
-
-// Theme types
-export interface ThemeColors {
-  primaryText: string
-  neutralText: string
-  background: string
-  hoverBackground: string
-  accentText: string
-  headerText: string
-  headerAccentText: string
-  headerBackground: string
-  footerText: string
-  footerNeutralText: string
-  footerBackground: string
 }
 
 // 统一API响应类型

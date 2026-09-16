@@ -84,7 +84,7 @@
             <thead>
               <tr>
                 <th>{{ $t('imageDetail.tagName') }}</th>
-                <th>{{ $t('imageDetail.digest') }}</th>
+                <th>{{ $t('imageDetail.pushedBy') }}</th>
                 <th>{{ $t('imageDetail.size') }}</th>
                 <th>{{ $t('imageDetail.archOs') }}</th>
                 <th>{{ $t('imageDetail.createdAt') }}</th>
@@ -98,18 +98,7 @@
                     <div class="tag-name">{{ tag.tag }}</div>
                   </div>
                 </td>
-                <td>
-                  <div class="digest-cell">
-                    <code>{{ tag.digest.substring(0, 12) }}...</code>
-                    <button
-                      class="btn btn-ghost btn-icon"
-                      @click="copyToClipboard(tag.digest)"
-                      :title="$t('imageDetail.copyDigest')"
-                    >
-                      <span class="material-icons">content_copy</span>
-                    </button>
-                  </div>
-                </td>
+                <td>{{ tag.pushed_by_name || tag.pushed_by_username || '-' }}</td>
                 <td>{{ formatFileSize(tag.size) }}</td>
                 <td>
                   <div class="arch-os-cell">
@@ -716,20 +705,6 @@ onMounted(() => {
           }
         }
 
-        .digest-cell {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-
-          code {
-            font-family: monospace;
-            background-color: var(--hover-background);
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.875rem;
-          }
-        }
-
         .arch-os-cell {
           display: flex;
           gap: 0.5rem;
@@ -910,91 +885,10 @@ onMounted(() => {
   }
 }
 
-// Button styles
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  color: white;
-  gap: 0.5rem;
-
-  .material-icons {
-    font-size: 18px;
-  }
-
-  &:last-child .material-icons {
-    margin-right: 0;
-  }
-
-  &.btn-primary {
-    background-color: var(--primary-color);
-
-    &:hover:not(:disabled) {
-      background-color: var(--primary-dark);
-    }
-  }
-
-  &.btn-danger {
-    background-color: var(--error-color);
-
-    &:hover:not(:disabled) {
-      background-color: #d32f2f;
-    }
-  }
-
-  &.btn-ghost {
-    background-color: transparent;
-    color: var(--primary-text);
-    border: 1px solid transparent;
-
-    &:hover {
-      background-color: var(--hover-background);
-      border-color: var(--border-color);
-    }
-
-    &.btn-danger {
-      color: var(--error-color);
-
-      &:hover {
-        background-color: rgba(244, 67, 54, 0.1);
-      }
-    }
-
-    &.btn-small {
-      padding: 0.25rem 0.5rem;
-      font-size: 12px;
-      gap: 0.25rem;
-
-      .material-icons {
-        font-size: 16px;
-      }
-    }
-  }
-
-  &.btn-icon {
-    padding: 0.5rem;
-    width: 36px;
-    height: 36px;
-    gap: 0;
-
-    .material-icons {
-      margin: 0;
-      font-size: 18px;
-    }
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-}
+// Button styles live in the global sheet (@/styles/components.scss).
+// This view used to shadow the entire .btn system locally, which made its
+// buttons (14px) diverge from the rest of the app (16px) and — because scoped
+// rules never reach child components — left LinkPopover's trigger unstyled.
 
 .mr-2 {
   margin-right: 0.5rem;

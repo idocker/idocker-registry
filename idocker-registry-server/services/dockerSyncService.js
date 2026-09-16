@@ -90,7 +90,7 @@ class DockerSyncService {
      * @param {Object} repo - Repository Object
      * @param {Object} registryConfig - RegistryConfig
      */
-    async processRepository(repo, registryConfig, userId) {
+    async processRepository(repo, registryConfig, userId, pushedTag = null) {
         try {
             // 容错检查：确保 repo 对象存在且 name 属性是字符串
             if (!repo || !repo.name || typeof repo.name !== 'string') {
@@ -225,10 +225,12 @@ class DockerSyncService {
             for (const tagInfo of tags) {
                 try {
                     const existingTag = existingTagsMap.get(tagInfo.name);
+                    // Attribute the pusher only to the tag this push actually wrote;
+                    // tags merely discovered by the same sweep keep their own value.
+                    const isPushedTag = pushedTag != null && tagInfo.name === pushedTag;
 
                     if (existingTag) {
-                        // 更新现有标签 - 需要在 ImageTagModel 中添加 updateTag 方法
-                        // TODO: 在 ImageTagModel 中添加 updateTag 方法
+                        // 更新现有标签
                         // Keep the original created_at (first-seen insert time): rewriting it
                         // every sync would corrupt the newest-first ordering of tags.
                         await this.updateTag(existingTag.id, {
@@ -236,7 +238,8 @@ class DockerSyncService {
                             size: tagInfo.size || 0,
                             architecture: tagInfo.architecture || 'unknown',
                             os: tagInfo.os || 'unknown',
-                            updated_at: new Date().toISOString()
+                            updated_at: new Date().toISOString(),
+                            ...(isPushedTag ? { pushed_by: userId ?? null } : {})
                         });
                         updatedCount++;
                     } else {
@@ -250,7 +253,8 @@ class DockerSyncService {
                             size: tagInfo.size || 0,
                             architecture: tagInfo.architecture || 'unknown',
                             os: tagInfo.os || 'unknown',
-                            created_at: new Date().toISOString()
+                            created_at: new Date().toISOString(),
+                            pushed_by: isPushedTag ? (userId ?? null) : null
                         });
                         addedCount++;
                     }

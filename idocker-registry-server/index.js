@@ -148,12 +148,16 @@ const dockerRegistryProxy = createProxyMiddleware({
       proxyRes.statusCode >= 200 &&
       proxyRes.statusCode < 300 &&
       req.path &&
-      req.path.match(/^\/v2\/(.+)\/manifests\/[^/]+$/);
+      req.path.match(/^\/v2\/(.+)\/manifests\/([^/]+)$/);
     if (manifestMatch) {
       const repositoryName = manifestMatch[1];
+      const manifestReference = manifestMatch[2];
+      // A digest reference (sha256:…) is not a tag, so there is nothing to
+      // attribute the pusher to in that case.
+      const pushedTag = /^sha256:/i.test(manifestReference) ? null : manifestReference;
       import('./services/dockerSyncService.js')
         .then(({ default: dockerSyncService }) =>
-          dockerSyncService.processRepository({ name: repositoryName }, null, req.user ? req.user.id : null)
+          dockerSyncService.processRepository({ name: repositoryName }, null, req.user ? req.user.id : null, pushedTag)
         )
         .catch(err => {
           logger.error('Failed to auto-record pushed tag:', err);

@@ -20,10 +20,12 @@ export class ImageTagModel extends BaseModel {
       }
 
       const tags = await this.all(
-        `SELECT id, tag, digest, size, architecture, os, created_at
-         FROM image_tags
-         WHERE repository_id = ?
-         ORDER BY id DESC`,
+        `SELECT t.id, t.tag, t.digest, t.size, t.architecture, t.os, t.created_at,
+                t.pushed_by, u.username AS pushed_by_username, u.full_name AS pushed_by_name
+           FROM image_tags t
+           LEFT JOIN users u ON u.id = t.pushed_by
+          WHERE t.repository_id = ?
+          ORDER BY t.id DESC`,
         [repositoryId]
       );
 
@@ -69,9 +71,11 @@ export class ImageTagModel extends BaseModel {
       }
 
       const tag = await this.get(
-        `SELECT id, tag, digest, size, architecture, os, created_at
-         FROM image_tags
-         WHERE id = ? AND repository_id = ?`,
+        `SELECT t.id, t.tag, t.digest, t.size, t.architecture, t.os, t.created_at,
+                t.pushed_by, u.username AS pushed_by_username, u.full_name AS pushed_by_name
+           FROM image_tags t
+           LEFT JOIN users u ON u.id = t.pushed_by
+          WHERE t.id = ? AND t.repository_id = ?`,
         [tagId, repositoryId]
       );
 
@@ -113,8 +117,8 @@ export class ImageTagModel extends BaseModel {
       }
 
       const sql = `
-        INSERT INTO image_tags (repository_id, tag, digest, size, architecture, os, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO image_tags (repository_id, tag, digest, size, architecture, os, created_at, pushed_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       const params = [
@@ -124,7 +128,8 @@ export class ImageTagModel extends BaseModel {
         tagData.size || 0,
         tagData.architecture || '',
         tagData.os || '',
-        tagData.created_at ? new Date(tagData.created_at).toISOString() : new Date().toISOString()
+        tagData.created_at ? new Date(tagData.created_at).toISOString() : new Date().toISOString(),
+        tagData.pushed_by ?? null
       ];
 
       const result = await this.run(sql, params);

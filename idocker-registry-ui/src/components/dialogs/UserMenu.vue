@@ -49,7 +49,7 @@
 
         <button class="menu-item" @click="navigateToRepositories">
           <span class="material-icons">inventory_2</span>
-          <span>{{ $t('nav.repositories') }}</span>
+          <span>{{ $t('managementLayout.repositoryManagement') }}</span>
         </button>
 
         <button class="menu-item" @click="navigateToUsers">
