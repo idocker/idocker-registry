@@ -164,18 +164,6 @@
                 <div class="info-label">{{ $t('imageDetail.imageName') }}</div>
                 <div class="info-value">{{ tagDetails.repository?.fullName || tagDetails.repository?.name || 'N/A' }}</div>
               </div>
-              <div class="info-item wide">
-                <div class="info-label">{{ $t('imageDetail.digest') }}</div>
-                <div class="info-value">
-                  <code>{{ tagDetails.tag.digest }}</code>
-                  <button
-                    class="btn btn-ghost btn-icon"
-                    @click="copyToClipboard(tagDetails.tag.digest)"
-                  >
-                    <span class="material-icons">content_copy</span>
-                  </button>
-                </div>
-              </div>
               <div class="info-item">
                 <div class="info-label">{{ $t('imageDetail.imageSize') }}</div>
                 <div class="info-value">{{ formatFileSize(tagDetails.tag.size) }}</div>
@@ -191,6 +179,18 @@
               <div class="info-item">
                 <div class="info-label">{{ $t('imageDetail.createdTime') }}</div>
                 <div class="info-value">{{ formatDate(tagDetails.tag.createdAt || tagDetails.tag.created_at) }}</div>
+              </div>
+              <div class="info-item wide">
+                <div class="info-label">{{ $t('imageDetail.digest') }}</div>
+                <div class="info-value">
+                  <code>{{ tagDetails.tag.digest }}</code>
+                  <button
+                    class="btn btn-ghost btn-icon"
+                    @click="copyToClipboard(tagDetails.tag.digest)"
+                  >
+                    <span class="material-icons">content_copy</span>
+                  </button>
+                </div>
               </div>
             </div>
 
