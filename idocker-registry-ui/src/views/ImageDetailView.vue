@@ -160,7 +160,7 @@
                 <div class="info-label">{{ $t('imageDetail.tagName') }}</div>
                 <div class="info-value">{{ tagDetails.tag.name || tagDetails.tag.tag || 'N/A' }}</div>
               </div>
-              <div class="info-item">
+              <div class="info-item wide">
                 <div class="info-label">{{ $t('imageDetail.digest') }}</div>
                 <div class="info-value">
                   <code>{{ tagDetails.tag.digest }}</code>
@@ -675,8 +675,25 @@ onMounted(() => {
   box-shadow: var(--shadow-3);
   border: 1px solid var(--border-color);
 
+  // 标签详情弹窗按视口自适应并限制最小宽度；自身不滚动，改由
+  // .modal-content 内部滚动，使标题栏保持固定。
   &.tag-detail-modal {
-    max-width: 1000px;
+    width: min(900px, 92vw);
+    min-width: 320px;
+    max-height: min(85vh, 820px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    .modal-header {
+      flex-shrink: 0;
+    }
+
+    .modal-content {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+    }
   }
 
   .modal-header {
@@ -697,13 +714,18 @@ onMounted(() => {
     color: var(--primary-text);
 
     .tag-detail-content {
+      // 短字段两列以上并排，长字段（digest）用 .wide 独占一行，
+      // 避免 6 个字段各占一行把弹窗撑高
       .tag-info {
-        margin-bottom: 2rem;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem 1.5rem;
+        margin-bottom: 1.5rem;
 
         .info-item {
           display: flex;
           flex-direction: column;
-          margin-bottom: 1rem;
+          min-width: 0;
 
           .info-label {
             font-size: 0.875rem;
@@ -716,6 +738,7 @@ onMounted(() => {
             align-items: center;
             gap: 0.5rem;
             font-weight: 500;
+            min-width: 0;
 
             code {
               font-family: monospace;
@@ -723,7 +746,12 @@ onMounted(() => {
               padding: 0.25rem 0.5rem;
               border-radius: 4px;
               font-size: 0.875rem;
+              word-break: break-all;
             }
+          }
+
+          &.wide {
+            grid-column: 1 / -1;
           }
         }
       }
@@ -735,6 +763,9 @@ onMounted(() => {
 
         .history-table {
           overflow-x: auto;
+          // 构建历史条目可能很多，固定高度后内部滚动，避免把弹窗撑到全屏
+          max-height: 280px;
+          overflow-y: auto;
 
           .build-table {
             width: 100%;
@@ -748,6 +779,14 @@ onMounted(() => {
 
             th {
               font-weight: 600;
+            }
+
+            // 内部滚动时表头保持可见
+            thead th {
+              position: sticky;
+              top: 0;
+              background-color: var(--card-background);
+              z-index: 1;
             }
 
             tr:last-child td {
