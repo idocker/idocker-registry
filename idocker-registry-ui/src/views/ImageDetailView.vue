@@ -197,7 +197,7 @@
                   <thead>
                     <tr>
                       <th>{{ $t('imageDetail.index') }}</th>
-                      <th>{{ $t('imageDetail.creator') }}</th>
+                      <th>{{ $t('imageDetail.createdTime') }}</th>
                       <th>{{ $t('imageDetail.command') }}</th>
                       <th>{{ $t('imageDetail.size') }}</th>
                       <th>{{ $t('imageDetail.comment') }}</th>
@@ -206,9 +206,9 @@
                   <tbody>
                     <tr v-for="(layer, index) in tagDetails.buildHistory" :key="layer.id">
                       <td>{{ index + 1 }}</td>
-                      <td>{{ layer.createdBy || layer.created_by || 'N/A' }}</td>
+                      <td>{{ layer.created ? formatDate(layer.created) : 'N/A' }}</td>
                       <td>
-                        <code class="command-code">{{ layer.comment || 'N/A' }}</code>
+                        <code class="command-code" :title="layer.createdBy || layer.created_by || ''">{{ layer.createdBy || layer.created_by || 'N/A' }}</code>
                       </td>
                       <td>{{ formatFileSize(layer.size) }}</td>
                       <td>{{ layer.comment || 'N/A' }}</td>

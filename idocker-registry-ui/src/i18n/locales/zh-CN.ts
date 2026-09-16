@@ -335,7 +335,6 @@ export default {
     createdTime: '创建时间',
     buildHistory: '构建历史',
     index: '#',
-    creator: '创建者',
     command: '命令',
     size: '大小',
     comment: '注释',

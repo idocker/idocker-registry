@@ -333,7 +333,6 @@ export default {
     createdTime: 'Created At',
     buildHistory: 'Build History',
     index: '#',
-    creator: 'Creator',
     command: 'Command',
     size: 'Size',
     comment: 'Comment',
