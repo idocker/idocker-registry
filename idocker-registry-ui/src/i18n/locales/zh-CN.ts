@@ -558,7 +558,7 @@ export default {
     passwordMismatch: '密码不匹配',
     passwordRequirements: '密码要求：',
     requirementLength: '至少6个字符',
-    requirementSpecial: '至少1个特殊符号（如 !@#$%^&* 等）',
+    requirementSpecial: "至少1个特殊符号（如 !{'@'}#$%^&* 等）",
     strengthWeak: '弱',
     strengthMedium: '中等',
     strengthStrong: '强',

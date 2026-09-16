@@ -556,7 +556,7 @@ export default {
     passwordMismatch: 'Password mismatch',
     passwordRequirements: 'Password Requirements:',
     requirementLength: 'At least 6 characters',
-    requirementSpecial: 'At least one special character (e.g. !@#$%^&*)',
+    requirementSpecial: "At least one special character (e.g. !{'@'}#$%^&*)",
     strengthWeak: 'Weak',
     strengthMedium: 'Medium',
     strengthStrong: 'Strong',
