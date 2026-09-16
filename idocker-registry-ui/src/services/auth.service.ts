@@ -1,16 +1,13 @@
 /**
  * 认证服务
- * 处理用户认证相关的API调用和令牌管理
+ *
+ * 目前只有「修改密码」与「读取本地令牌」两处能力被实际引用
+ * （PasswordView、ImageView、ImageDetailView）。
+ * 登录 / 登出 / 注册等流程由 stores/auth.ts 直接用 axios 处理。
  */
 
 import { http } from '@/utils/http'
-import type {
-  LoginCredentials,
-  RegisterData,
-  UserProfile,
-  ChangePasswordData,
-  LoginResponse
-} from '@/types'
+import type { ChangePasswordData } from '@/types'
 
 class AuthService {
   /**
@@ -23,92 +20,25 @@ class AuthService {
   }
 
   /**
-   * 用户登录
-   */
-  async login(credentials: LoginCredentials): Promise<LoginResponse> {
-    this.validateRequired(credentials, '登录凭据');
-    this.validateRequired(credentials.username, '用户名');
-    this.validateRequired(credentials.password, '密码');
-    
-    return http.post('/api/auth/login', credentials);
-  }
-
-  /**
-   * 用户注册
-   */
-  async register(userData: RegisterData): Promise<{ success: boolean; message: string; data: UserProfile }> {
-    this.validateRequired(userData, '用户数据');
-    this.validateRequired(userData.username, '用户名');
-    this.validateRequired(userData.password, '密码');
-    
-    return http.post('/api/auth/register', userData);
-  }
-
-  /**
-   * 获取当前用户信息
-   */
-  async getCurrentUser(): Promise<{ success: boolean; data: UserProfile }> {
-    return http.get('/api/auth/me');
-  }
-
-  /**
-   * 更新用户信息
-   */
-  async updateProfile(userData: Partial<UserProfile>): Promise<{ success: boolean; message: string; data: UserProfile }> {
-    return http.put('/api/auth/profile', userData);
-  }
-
-  /**
    * 修改密码
    */
   async changePassword(passwordData: ChangePasswordData): Promise<{ success: boolean; message: string }> {
     this.validateRequired(passwordData, '密码数据');
     this.validateRequired(passwordData.currentPassword, '当前密码');
     this.validateRequired(passwordData.newPassword, '新密码');
-    
+
     return http.put('/api/auth/change-password', passwordData);
   }
 
   /**
-   * 登出
-   */
-  async logout(): Promise<{ success: boolean; message: string }> {
-    return http.post('/api/auth/logout');
-  }
-
-  /**
-   * 刷新令牌
-   */
-  async refreshToken(): Promise<{ success: boolean; data: { token: string } }> {
-    return http.post('/api/auth/refresh');
-  }
-
-  /**
-   * 获取存储的令牌
+   * 获取当前登录用户的令牌
+   *
+   * 登录流程（stores/auth.ts）写入的键是 'idocker_token'；此前这里误读 'auth_token'，
+   * 而全项目没有任何地方写入该键，导致恒为 null，进而使 ImageDetailView 的
+   * hasPermission 始终判定为无权限（删除标签按钮不显示）。
    */
   getToken(): string | null {
-    return localStorage.getItem('auth_token');
-  }
-
-  /**
-   * 保存令牌
-   */
-  setToken(token: string): void {
-    localStorage.setItem('auth_token', token);
-  }
-
-  /**
-   * 移除令牌
-   */
-  removeToken(): void {
-    localStorage.removeItem('auth_token');
-  }
-
-  /**
-   * 检查是否已登录
-   */
-  isAuthenticated(): boolean {
-    return !!this.getToken();
+    return localStorage.getItem('idocker_token');
   }
 }
 

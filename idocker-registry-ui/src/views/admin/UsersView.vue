@@ -113,8 +113,8 @@
                             <div class="form-group">
                                 <label for="isActive">{{ $t('users.active') }}</label>
                                 <select id="isActive" v-model="userForm.isActive" required>
-                                    <option value="true">{{ $t('common.yes') }}</option>
-                                    <option value="false">{{ $t('common.no') }}</option>
+                                    <option :value="true">{{ $t('common.yes') }}</option>
+                                    <option :value="false">{{ $t('common.no') }}</option>
                                 </select>
                             </div>
 
@@ -281,7 +281,10 @@ const editUser = (user: User) => {
             username: user.username,
             email: user.email,
             password: '',
-            role: user.role as User['role']
+            role: user.role as User['role'],
+            // The API exposes is_active (boolean|number); the form uses a real
+            // boolean so it matches the select's bound values below.
+            isActive: user.is_active === undefined ? true : Boolean(user.is_active)
         })
     showEditDialog.value = true
 }
@@ -326,22 +329,37 @@ const saveUser = async () => {
         
         if (showEditDialog.value) {
             // Edit user
-            const response = await userService.updateUser(userForm.id?.toString(), {
+            const userId = userForm.id!.toString()
+            const response = await userService.updateUser(userId, {
                 email: userForm.email,
                 role: userForm.role,
                 isActive: userForm.isActive
             })
-            
-            if (response.success) {
-                // Update user in list
-                const index = users.value.findIndex(u => u.id === userForm.id)
-                if (index !== -1) {
-                    Object.assign(users.value[index], response.data)
-                }
-                showMessage( t('userList.userUpdated'), 'success')
-            } else {
-                showMessage(response.message || t('userList.saveUserFailed'), 'error' )
+
+            if (!response.success) {
+                showMessage(response.message || t('userList.saveUserFailed'), 'error')
+                return
             }
+
+            // PUT /api/users/:id only handles email/role/isActive — it ignores
+            // username and password. The password goes through its own endpoint,
+            // and an empty value means "leave the password unchanged".
+            if (userForm.password) {
+                const passwordResponse = await userService.resetUserPassword(userId, {
+                    password: userForm.password
+                })
+                if (!passwordResponse.success) {
+                    showMessage(passwordResponse.message || t('userList.saveUserFailed'), 'error')
+                    return
+                }
+            }
+
+            // Update user in list
+            const index = users.value.findIndex(u => u.id === userForm.id)
+            if (index !== -1) {
+                Object.assign(users.value[index], response.data)
+            }
+            showMessage( t('userList.userUpdated'), 'success')
         } else {
             // Create user
             const response = await userService.createUser({

@@ -1,10 +1,31 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
 
+/**
+ * 从 localStorage 读取缓存的用户信息。
+ *
+ * 历史 bug 会把 `JSON.stringify(undefined)` 的结果（字符串 "undefined"）写进去，
+ * 而 JSON.parse("undefined") 会抛 SyntaxError。由于它发生在 store 的 state 工厂里，
+ * 异常会让整个 store 初始化失败、进而白屏，且用户自己无法恢复。
+ * 这里兜住并顺手清掉脏数据。
+ */
+function readStoredUser(): any {
+  const raw = localStorage.getItem('user_data')
+  if (!raw) {
+    return null
+  }
+  try {
+    return JSON.parse(raw)
+  } catch {
+    localStorage.removeItem('user_data')
+    return null
+  }
+}
+
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     token: localStorage.getItem('idocker_token') || '',
-    user: JSON.parse(localStorage.getItem('user_data') || 'null'),
+    user: readStoredUser(),
     isLoading: false,
     error: null as string | null,
     // 用于显示登录提示
@@ -71,52 +92,20 @@ export const useAuthStore = defineStore('auth', {
         this.isLoading = true
         
         const response = await axios.get('/api/auth/profile')
-        this.user = response.data.user
-        
-        localStorage.setItem('user_data', JSON.stringify(this.user))
+        // 后端统一返回 { success, data: {...} }。这里原先是 response.data.user，
+        // 恒为 undefined，会把用户信息清空并把 "undefined" 写进 localStorage，
+        // 下次启动 JSON.parse 报错导致白屏。
+        this.user = response.data?.data ?? null
+
+        if (this.user) {
+          localStorage.setItem('user_data', JSON.stringify(this.user))
+        } else {
+          localStorage.removeItem('user_data')
+        }
         
         return this.user
       } catch (error: any) {
         this.error = error.response?.data?.error || 'Failed to fetch profile'
-        throw new Error(this.error)
-      } finally {
-        this.isLoading = false
-      }
-    },
-    
-    async register(userData: { username: string, email: string, password: string, role?: string }) {
-      try {
-        this.isLoading = true
-        this.error = null
-        
-        const response = await axios.post('/api/auth/register', userData)
-        
-        return { 
-          success: true, 
-          message: response.data.message,
-          user: response.data.user
-        }
-      } catch (error: any) {
-        this.error = error.response?.data?.error || 'Registration failed'
-        throw new Error(this.error)
-      } finally {
-        this.isLoading = false
-      }
-    },
-    
-    async changePassword(passwords: { currentPassword: string, newPassword: string }) {
-      try {
-        this.isLoading = true
-        this.error = null
-        
-        const response = await axios.put('/api/auth/password', passwords)
-        
-        return { 
-          success: true, 
-          message: response.data.message
-        }
-      } catch (error: any) {
-        this.error = error.response?.data?.error || 'Password change failed'
         throw new Error(this.error)
       } finally {
         this.isLoading = false
