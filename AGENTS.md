@@ -264,6 +264,15 @@ iDocker是一个Docker Registry管理平台，提供Web UI来管理Docker镜像�
 - `vue-i18n`，默认 `zh-CN`，fallback `en-US`
 - 组件中使用 `$t('auth.sessionExpired')` 或 `t()` (Composition API)
 - 所有用户可见文本均应使用i18n
+- ⚠️ **消息里的 `@` / `|` / `{}` 会被 vue-i18n 当作语法解析**，字面量必须转义，
+  否则在该键**首次渲染时**抛 `SyntaxError: Invalid linked format` 之类错误，
+  导致整个页面白屏——而源码里那串文案看起来完全正常，极难定位：
+  - `@` → `{'@'}`（否则被当作 linked message，如 `@:key`）
+  - `|` → `{'|'}`（复数分隔符）
+  - `{` `}` → `{'{'}` / `{'}'}`（插值）
+- 实例：`password.requirementSpecial` 的 `!@#$%^&*` 曾使修改密码页白屏
+  （2026-09 修复）。改完 i18n 文案可用 `@intlify/message-compiler` 的
+  `baseCompile(msg, { onError })` 快速验证：无 onError 回调即通过。
 
 ### 6. 主题系统
 - 三种模式：`light` / `dark` / `auto`（跟随系统）
@@ -281,9 +290,9 @@ iDocker是一个Docker Registry管理平台，提供Web UI来管理Docker镜像�
 ## 开发常用命令
 
 ```bash
-# 安装依赖（两个子系统各自独立；仓库内没有 package-lock.json）
-cd idocker-registry-server && npm install
-cd idocker-registry-ui && npm install
+# 安装依赖（两个子系统各自独立；package-lock.json 已入库，npm ci 可复现）
+cd idocker-registry-server && npm ci
+cd idocker-registry-ui && npm ci
 
 # 前端构建（= vue-tsc --noEmit && vite build，类型不通过就没有产物）
 cd idocker-registry-ui && npm run build
@@ -307,6 +316,17 @@ cd idocker-registry-ui && npm run format
 
 ---
 
+## 提交与发布约定
+
+- **前端版本号每次推送递增**：`idocker-registry-ui/package.json` 的 `version` 是 UI
+  页脚显示的唯一来源（`vite.config.ts` 用 `define` 注入 `__APP_VERSION__`，
+  `FooterComponent.vue` 读取）。每次要推送的前端改动都把它 +1，并在**同一次提交**里
+  跑 `npm install --package-lock-only` 同步 `package-lock.json` 里的 version，
+  否则 lock 与 package.json 不一致。
+- 用户说「提交」= 仅 `git commit`；说「提交推送」= commit + push。
+
+---
+
 ## 线上运行位置（生产环境；本节未在源码区验证）
 
 > **验证状态**：本节描述的是**生产服务器**上的部署形态。在当前工作空间（源码区）中，
@@ -319,6 +339,9 @@ cd idocker-registry-ui && npm run format
 - 服务/容器：服务名 `idocker-registry`，容器名 `idocker`，镜像 `idocker-registry:latest`
 - 端口：容器内 7518（iDocker Web/API），对外映射 `7588:7518`；容器内 7519 为内部 docker-registry，未映射宿主机
 - 卷挂载：`./registry → /var/lib/registry`（镜像 blob）、`./data → /app/data`（SQLite `registry.db`）、`./logs → /app/logs`
+- ⚠️ **容器以非 root 运行（`USER node`，uid/gid 1000）**，而 bind mount 会盖掉镜像内
+  目录的属主。首次部署、或重建过这三个宿主目录后，必须先 `chown -R 1000:1000`，否则
+  内部 registry 写不了 blob（push 全失败）、后端写不了 `registry.db`（启动即挂）。
 - 该目录**只含 compose 与运行时数据，不含应用源码**（代码在镜像内 `/app/idocker`）
 - 启动/停止/重启/查状态/看日志，均以 `/data/docker/idocker` 为工作目录执行，例如：
   ```bash
