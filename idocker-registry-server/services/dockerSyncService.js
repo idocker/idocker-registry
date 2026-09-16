@@ -170,7 +170,7 @@ class DockerSyncService {
             }
 
             // 同步仓库的标签信息
-            await this.syncRepositoryTags(repository, repo.name, registryConfig);
+            await this.syncRepositoryTags(repository, repo.name, registryConfig, pushedTag, userId);
 
             // 镜像最新标签为 latest（按 created_at），保证 docker pull 默认 tag 能拉到最新版
             await this.ensureLatestMirror(repository, repo.name, registryConfig);
@@ -186,8 +186,10 @@ class DockerSyncService {
      * @param {Object} repository - Repository Object
      * @param {string} repoName - Repository Name
      * @param {Object} repositoryConfig - RepositoryConfig Object
+     * @param {string|null} pushedTag - 本次 push 具体的 tag（用于标记推送者），非 push 触发时为 null
+     * @param {number|null} userId - 触发同步的用户 id，用于写入 pushed_by
      */
-    async syncRepositoryTags(repository, repoName, repositoryConfig) {
+    async syncRepositoryTags(repository, repoName, repositoryConfig, pushedTag = null, userId = null) {
         try {
             // 容错检查：确保 repository 存在且有 id
             if (!repository || !repository.id) {
