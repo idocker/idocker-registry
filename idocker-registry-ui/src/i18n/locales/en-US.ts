@@ -792,7 +792,7 @@ export default {
   
   // Footer
   footer: {
-    copyright: 'Hyperlinked.cn All Rights Reserved © 2025-2026.',
+    copyright: 'Powered by idocker-registry.',
     versionPrefix: 'iDocker Registry v'
   },
 
