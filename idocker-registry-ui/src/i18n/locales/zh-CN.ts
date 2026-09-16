@@ -321,7 +321,6 @@ export default {
     createdAt: '创建时间',
     actions: '操作',
     details: '详情',
-    dockerfile: 'Dockerfile',
     link: '链接',
     copyCommand: '拷贝命令',
     delete: '删除',
@@ -340,10 +339,6 @@ export default {
     command: '命令',
     size: '大小',
     comment: '注释',
-    // Dockerfile Dialog
-    dockerfileTitle: 'Dockerfile',
-    dockerfileLoading: '加载中...',
-    copyDockerfile: '复制',
     // Delete Dialog
     confirmDelete: '确认删除',
     confirmDeleteTag: '确定要删除标签 {name} 吗？',

@@ -1,6 +1,6 @@
 <!--
   Image Detail View
-  Display all tags of an image with tag details, Dockerfile view, and delete tag functionality
+  Display all tags of an image with tag details and delete tag functionality
 -->
 <template>
   <div class="image-detail-view">
@@ -117,13 +117,6 @@
                       {{ $t('imageDetail.details') }}
                     </button>
                     <button
-                      class="btn btn-ghost btn-small"
-                      @click="viewDockerfile(tag)"
-                    >
-                      <span class="material-icons">description</span>
-                      {{ $t('imageDetail.dockerfile') }}
-                    </button>
-                    <button
                       v-if="hasPermission"
                       class="btn btn-ghost btn-small btn-danger"
                       @click="confirmDeleteTag(tag)"
@@ -229,42 +222,6 @@
       </div>
     </div>
 
-    <!-- Dockerfile Dialog -->
-    <div v-if="showDockerfileDialog" class="modal-overlay" @click="showDockerfileDialog = false">
-      <div class="modal dockerfile-modal" @click.stop>
-        <div class="modal-header">
-          <h2>{{ $t('imageDetail.dockerfileTitle') }}</h2>
-          <button class="btn btn-ghost btn-icon" @click="showDockerfileDialog = false">
-            <span class="material-icons">close</span>
-          </button>
-        </div>
-        <div class="modal-content">
-          <div v-if="dockerfileLoading" class="loading-container">
-            <span class="material-icons rotating">refresh</span>
-            <span>{{ $t('imageDetail.dockerfileLoading') }}</span>
-          </div>
-
-          <div v-else-if="dockerfileError" class="error-container">
-            <span class="material-icons">error</span>
-            <p>{{ dockerfileError }}</p>
-          </div>
-
-          <div v-else-if="dockerfileContent" class="dockerfile-content">
-            <div class="dockerfile-actions">
-              <button
-                class="btn btn-ghost"
-                @click="copyToClipboard(dockerfileContent)"
-              >
-                <span class="material-icons">content_copy</span>
-                {{ $t('imageDetail.copyDockerfile') }}
-              </button>
-            </div>
-            <pre><code>{{ dockerfileContent }}</code></pre>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Delete Confirmation Dialog -->
     <div v-if="showDeleteDialog" class="modal-overlay" @click="showDeleteDialog = false">
       <div class="modal" @click.stop>
@@ -316,14 +273,7 @@ const image = ref<ImageDetails | null>(null)
 const showTagDetailDialog = ref(false)
 const tagDetailLoading = ref(false)
 const tagDetailError = ref('')
-const selectedTag = ref<ImageTag | null>(null)
 const tagDetails = ref<ImageTagDetails | null>(null)
-
-// Dockerfile related
-const showDockerfileDialog = ref(false)
-const dockerfileContent = ref('')
-const dockerfileLoading = ref(false)
-const dockerfileError = ref('')
 
 // Delete related
 const showDeleteDialog = ref(false)
@@ -400,40 +350,6 @@ const viewTagDetails = async (tag: ImageTag) => {
     tagDetailError.value = err.message || t('error.loadFailed')
   } finally {
     tagDetailLoading.value = false
-  }
-}
-
-// View Dockerfile
-const viewDockerfile = async (tag: ImageTag) => {
-  try {
-    selectedTag.value = tag
-    dockerfileLoading.value = true
-    dockerfileError.value = ''
-    dockerfileContent.value = ''
-    showDockerfileDialog.value = true
-    
-    // Call API to get Dockerfile content, using mock data for now
-    // Actual implementation may need to extract from build history or call dedicated API
-    const imageId = route.params.id as string
-    const response = await repositoryService.getImageTagDetails(imageId, tag.id.toString())
-    
-    if (response.success && response.data.buildHistory) {
-      // Generate simple Dockerfile from build history
-      const history = response.data.buildHistory
-      const dockerfileCommands = history
-        .filter(layer => layer.comment && !layer.emptyLayer)
-        .map(layer => layer.comment)
-        .join('\n')
-      
-      dockerfileContent.value = dockerfileCommands || 'FROM scratch\n# Dockerfile info not available'
-    } else {
-      dockerfileError.value = t('error.loadFailed')
-    }
-  } catch (err: any) {
-    console.error('Failed to load Dockerfile:', err)
-    dockerfileError.value = err.message || t('error.loadFailed')
-  } finally {
-    dockerfileLoading.value = false
   }
 }
 
@@ -674,11 +590,15 @@ onMounted(() => {
           font-weight: 600;
           color: var(--primary-text);
           border-bottom: 1px solid var(--border-color);
+          font-size: $font-size-sm;
         }
 
         td {
           padding: 0.75rem 1rem;
           border-bottom: 1px solid var(--border-color);
+          // 同一行里混着 .chip（0.875rem）和小按钮，纯文本单元格若不设字号
+          // 会继承 1rem，看起来比相邻列明显偏大。
+          font-size: $font-size-sm;
         }
 
         tr:last-child td {
@@ -757,10 +677,6 @@ onMounted(() => {
 
   &.tag-detail-modal {
     max-width: 1000px;
-  }
-
-  &.dockerfile-modal {
-    max-width: 900px;
   }
 
   .modal-header {
@@ -852,25 +768,6 @@ onMounted(() => {
             }
           }
         }
-      }
-    }
-
-    .dockerfile-content {
-      .dockerfile-actions {
-        margin-bottom: 1rem;
-      }
-
-      pre {
-        background-color: var(--hover-background);
-        padding: 1rem;
-        border-radius: 8px;
-        overflow-x: auto;
-        white-space: pre-wrap;
-        font-family: monospace;
-        font-size: 0.875rem;
-        line-height: 1.5;
-        max-height: 500px;
-        overflow-y: auto;
       }
     }
 

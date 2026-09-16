@@ -319,7 +319,6 @@ export default {
     createdAt: 'Created At',
     actions: 'Actions',
     details: 'Details',
-    dockerfile: 'Dockerfile',
     link: 'Link',
     copyCommand: 'Copy command',
     delete: 'Delete',
@@ -338,10 +337,6 @@ export default {
     command: 'Command',
     size: 'Size',
     comment: 'Comment',
-    // Dockerfile Dialog
-    dockerfileTitle: 'Dockerfile',
-    dockerfileLoading: 'Loading...',
-    copyDockerfile: 'Copy',
     // Delete Dialog
     confirmDelete: 'Confirm Delete',
     confirmDeleteTag: 'Are you sure you want to delete tag {name}?',
