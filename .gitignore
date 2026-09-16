@@ -2,6 +2,7 @@
 .idea
 .vacode
 .vscode
+registry.db
 
 **/*.log*
 
