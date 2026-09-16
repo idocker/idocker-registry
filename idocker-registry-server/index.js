@@ -90,19 +90,23 @@ const dockerRegistryProxy = createProxyMiddleware({
     '^/v2': '/v2', // Keep /v2 path
   },
   onProxyReq: (proxyReq, req, res) => {
-    // Log the proxy request
-    logger.info(`Proxying Docker Registry request: ${req.method} ${req.path}`);
-    
     // Add authentication for internal registry (if needed)
     // For internal registry, no authentication is needed
-    
+
     // Store start time for logging
     req.startTime = Date.now();
   },
   onProxyRes: (proxyRes, req, res) => {
-    // Log the proxy response
     const responseTime = Date.now() - (req.startTime || Date.now());
-    logger.info(`Docker Registry proxy response: ${req.method} ${req.path} - Status: ${proxyRes.statusCode} - Time: ${responseTime}ms`);
+
+    // A single `docker push` issues dozens of proxied requests (per-layer
+    // POST/PATCH/PUT on blob uploads, plus blob HEAD probes). Logging every one
+    // of them buries the lines that matter, so keep only failures and
+    // manifest-level operations.
+    const isManifestOp = /\/manifests\//.test(req.path || '');
+    if (proxyRes.statusCode >= 400 || isManifestOp) {
+      logger.info(`Docker Registry proxy response: ${req.method} ${req.path} - Status: ${proxyRes.statusCode} - Time: ${responseTime}ms`);
+    }
     
     // If we have user information and permission info, log the operation result
     if (req.user && req.dockerPermission) {
@@ -155,9 +159,17 @@ const dockerRegistryProxy = createProxyMiddleware({
       // A digest reference (sha256:…) is not a tag, so there is nothing to
       // attribute the pusher to in that case.
       const pushedTag = /^sha256:/i.test(manifestReference) ? null : manifestReference;
+      // Record who pushed what. This line is also the fastest way to tell why a
+      // tag ended up without a pusher: if id=null shows up here, the request
+      // reached the proxy without req.user (auth middleware did not run).
+      const pusherId = req.user ? req.user.id : null;
+      logger.info(
+        `Manifest pushed: ${repositoryName}:${manifestReference} by ` +
+        `${req.user ? req.user.username : 'unknown'} (id=${pusherId}), pushedTag=${pushedTag}`
+      );
       import('./services/dockerSyncService.js')
         .then(({ default: dockerSyncService }) =>
-          dockerSyncService.processRepository({ name: repositoryName }, null, req.user ? req.user.id : null, pushedTag)
+          dockerSyncService.processRepository({ name: repositoryName }, null, pusherId, pushedTag)
         )
         .catch(err => {
           logger.error('Failed to auto-record pushed tag:', err);

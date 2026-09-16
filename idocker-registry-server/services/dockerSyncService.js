@@ -36,7 +36,7 @@ class DockerSyncService {
 
         try {
             const config = dockerRegistryService.getRegistryConfig();
-            logger.info("config:", config);
+            logger.debug('syncAllRepositories config:', JSON.stringify(config));
 
             // 检查Repository连接
             const isConnected = await dockerRegistryService.checkConnection(config);
@@ -50,7 +50,6 @@ class DockerSyncService {
             const repositoriesResult = await dockerRegistryService.getRepositories(config);
             const repositories = repositoriesResult.repositories || [];
 
-            //logger.info(`getRepositories:${JSON.stringify(repositories)}`);
             logger.info(`发现 ${repositories.length} 个仓库`);
 
             // 处理每个仓库
@@ -111,7 +110,6 @@ class DockerSyncService {
                 projectName = repoParts[0];
                 imageName = repoParts.slice(1).join('/');
             }
-            //logger.info(`projectName:${projectName}, imageName:${imageName}`);
             // 查找或创建项目
             let project = null;
             if (projectName) {
@@ -132,14 +130,12 @@ class DockerSyncService {
                     logger.info(`创建新项目: ${projectName}`);
                 }
             }
-            //logger.info(`project:${JSON.stringify(project)}`);
             // 查找或创建仓库
             let repository = null;
 
             if (project) {
                 repository = await this.repositoryModel.findByProjectIdAndName(project.id, imageName);
             }
-            logger.info(`repository:${JSON.stringify(repository)}`);
             if (!repository) {
                 // 创建新仓库
                 await this.repositoryModel.createRepository({
@@ -149,7 +145,6 @@ class DockerSyncService {
                     //repository_url: registryConfig.url,
                     is_active: 1
                 });
-                logger.info(`repository:${JSON.stringify(repository)}`);
 
                 // 只有在有项目的情况下才查找仓库
                 if (project && project.id) {
@@ -158,7 +153,7 @@ class DockerSyncService {
                     // 如果没有项目，尝试通过名称查找仓库
                     repository = await this.repositoryModel.findByName(imageName);
                 }
-                logger.info(`不存在，创建仓库: ${repo.name}`);
+                logger.debug(`不存在，创建仓库: ${repo.name}`);
             } else {
                 // 更新仓库信息
                 if (repository && repository.id) {
@@ -166,7 +161,7 @@ class DockerSyncService {
                         updated_at: new Date().toISOString()
                     });
                 }
-                logger.info(`已存在，进行更新: ${repo.name}`);
+                logger.debug(`已存在，进行更新: ${repo.name}`);
             }
 
             // 同步仓库的标签信息
@@ -201,17 +196,16 @@ class DockerSyncService {
             const tagsResult = await dockerRegistryService.getTags(repoName, repositoryConfig);
             const tags = Array.isArray(tagsResult?.tags) ? tagsResult.tags : [];
 
-            logger.info(`仓库 ${repoName} 发现 ${tags.length} 个标签`);
-
             // 获取当前数据库中的标签
             const existingTags = await this.imageTagModel.getTagsByRepositoryId(repository.id);
 
             // 容错检查：确保 existingTags 是数组
             const existingTagsArray = Array.isArray(existingTags) ? existingTags : [];
 
+            logger.info(`仓库 ${repoName}: registry 发现 ${tags.length} 个标签, 数据库已存在 ${existingTagsArray.length} 个`);
+
             const existingTagsMap = new Map();
             if (existingTagsArray.length > 0) {
-                logger.info(`仓库 ${repoName} 已存在 ${existingTagsArray.length} 个标签`);
                 existingTagsArray.forEach(tag => {
                     if (tag && tag.tag) {
                         existingTagsMap.set(tag.tag, tag);
