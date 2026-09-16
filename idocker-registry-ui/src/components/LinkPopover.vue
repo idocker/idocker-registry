@@ -8,7 +8,7 @@
 <template>
   <span ref="triggerEl" class="lp-trigger" @mouseenter="show" @mouseleave="scheduleHide">
     <button class="btn btn-ghost btn-small" type="button">
-      <span class="material-icons">link</span>
+      <span class="material-icons">share</span>
       {{ $t('imageDetail.link') }}
     </button>
     <Teleport to="body">
@@ -106,7 +106,10 @@ const copy = async (text: string) => {
 <style scoped lang="scss">
 .lp-trigger {
   position: relative;
-  display: inline-block;
+  // inline-block 会用行盒包裹内部的 inline-flex 按钮，为基线留下空隙，
+  // 使这个触发器比同级 flex item 矮且偏移，导致操作列里的文字错位。
+  display: inline-flex;
+  align-items: center;
 }
 
 .lp-popover {

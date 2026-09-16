@@ -722,6 +722,8 @@ onMounted(() => {
           display: flex;
           gap: 0.5rem;
           flex-wrap: wrap;
+          // 按内容高度垂直居中，避免 stretch 与行内盒基线差异造成按钮错位
+          align-items: center;
         }
       }
     }
