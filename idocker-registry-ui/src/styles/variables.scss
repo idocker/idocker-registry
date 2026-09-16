@@ -32,6 +32,31 @@
   // actions. It was referenced 11 times but never defined, so those rules
   // silently resolved to transparent / inherited instead of red.
   --danger-color: #f44336;
+
+  // ---- 历史遗留变量名：全项目有引用但从未定义过 ----
+  // 引用它们的地方此前全部静默失效（回退成透明或继承）。这里按名称语义
+  // 补成别名或具体值，取值与已定义的同类变量保持一致。
+  --hover-bg: var(--hover-background);
+  --bg-color: var(--background);
+  --text-color: var(--primary-text);
+  --text-primary: var(--primary-text);
+  --text-secondary: var(--neutral-text);
+  --secondary-bg: var(--card-background);
+  --secondary-color: var(--neutral-text);
+  --code-bg: var(--hover-background);
+  --primary-dark: var(--accent-text);
+  --primary-color-light: #e8eef5;
+  --info-color: #2196f3;
+  --border-radius-lg: 0.5rem;
+  --transition-fast: 0.2s;
+
+  // rgba() 分量形式，供 rgba(var(--x-rgb), alpha) 使用
+  --primary-color-rgb: 119, 119, 119;
+  --danger-color-rgb: 244, 67, 54;
+  --success-color-rgb: 76, 175, 80;
+  --warning-color-rgb: 255, 152, 0;
+  --info-color-rgb: 33, 150, 243;
+  --text-muted-rgb: 119, 119, 119;
   
   // Shadows
   --shadow-1: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
@@ -69,6 +94,12 @@ body.dark-theme {
   --border-radius: 0.4rem;
   --input-bg: #22272e;
   --input-color: #eee;
+
+  // 随主题变化的补充变量
+  --primary-color-rgb: 52, 152, 219;
+  --text-muted-rgb: 109, 127, 171;
+  --primary-dark: var(--primary-color-hover);
+  --primary-color-light: #2c3a4d;
 }
 
 // Breakpoints
