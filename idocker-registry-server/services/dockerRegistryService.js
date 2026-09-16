@@ -341,6 +341,9 @@ class DockerRegistryService {
           imageInfo.created = configResponse.data.created || null;
           imageInfo.architecture = configResponse.data.architecture || 'unknown';
           imageInfo.os = configResponse.data.os || 'unknown';
+          // Build history lives in the image config blob, NOT in the manifest.
+          // Keep it here so getBuildHistory() does not need a second fetch.
+          imageInfo.history = Array.isArray(configResponse.data.history) ? configResponse.data.history : [];
         } catch (error) {
           logger.warn(`Get image config failed: ${error.message}`);
         }
@@ -364,37 +367,38 @@ class DockerRegistryService {
     try {
       const manifest = await this.getManifest(repository, tag, registryConfig);
 
-      if (!manifest.manifest.history) {
+      // `history` is a field of the image config blob, not of the manifest.
+      // The previous implementation read manifest.manifest.history, which is
+      // never present, so this always returned an empty array and the build
+      // history section never rendered.
+      const historySource = Array.isArray(manifest.history) ? manifest.history : [];
+
+      if (historySource.length === 0) {
         return [];
       }
 
-      // Get build history from manifest
-      const history = manifest.manifest.history && Array.isArray(manifest.manifest.history)
-        ? manifest.manifest.history.map((item, index) => {
-          let created = null;
-          let createdBy = '';
-          let emptyLayer = false;
-          let comment = '';
+      const layers = Array.isArray(manifest.manifest?.layers) ? manifest.manifest.layers : [];
 
-          if (typeof item === 'object') {
-            created = item.created;
-            createdBy = item.created_by || '';
-            emptyLayer = item.empty_layer || false;
-            comment = item.comment || '';
-          }
+      // Entries flagged empty_layer do not consume a layer, so layer sizes must
+      // be matched with a running counter rather than the history row index.
+      let layerIndex = 0;
 
-          return {
-            id: index + 1,
-            created,
-            createdBy,
-            emptyLayer,
-            comment,
-            size: emptyLayer ? 0 : manifest.manifest.layers?.[index]?.size || 0
-          };
-        }).reverse()
-        : [];
+      return historySource.map((item, index) => {
+        const isObject = item && typeof item === 'object';
+        const createdBy = isObject ? (item.created_by || '') : '';
+        const emptyLayer = isObject ? (item.empty_layer || false) : false;
+        const comment = isObject ? (item.comment || '') : '';
+        const size = emptyLayer ? 0 : (layers[layerIndex++]?.size || 0);
 
-      return history;
+        return {
+          id: index + 1,
+          created: isObject ? (item.created || null) : null,
+          createdBy,
+          emptyLayer,
+          comment,
+          size
+        };
+      }).reverse();
     } catch (error) {
       logger.error(`Get build history failed ${repository}:${tag}:`, error.message);
       throw new AppError(`Get build history failed: ${error.message}`, 500, 'REGISTRY_API_ERROR');
