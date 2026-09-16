@@ -191,6 +191,12 @@ iDocker是一个Docker Registry管理平台，提供Web UI来管理Docker镜像�
 - URL中仓库名称格式：`project-name/repo-name`（首段为项目名；命名空间仅用于团队/环境等管理分组，不参与镜像仓库路径）
 - **内置 default 项目**（从属 default 命名空间）：存放 nginx/mysql/redis/jdk 等共用基础镜像，**使用单段名称、路径不带项目层**，例如 `idocker.vip/nginx:latest`（单段自动归属 default 项目，多段照常 `project/repo`）
 - default 项目镜像对**所有登录用户**可见、可拉取（pull 放行）；**推送仅管理员/被授权成员**（非成员 push 一律 403）
+- **default 命名空间与 default 项目受保护，不可删除**：`NamespaceModel.deleteNamespace()` 与
+  `ProjectModel.deleteProject()` 在命中 `name === 'default'` 时直接抛错，路由层返回 409
+  `PROTECTED_RESOURCE`。同时禁止通过 `PUT` 绕过：改名（`Cannot rename the default ...`）与
+  停用（`is_active=0`）都会被 409 拒绝——否则先改名/停用再删除即可绕过保护。
+  判定依据是**名字字面量 `'default'`**（路径解析、`findByName('default')` 等多处都依赖它），
+  不是 id，所以两处保护都校验名称。前端 `NamespacesView` / `ProjectsView` 已隐藏 default 的删除按钮。
 - ⚠️ **非 admin 用户不能靠 push 创建新仓库**：`checkRepositoryPermission()` 要求仓库已存在于数据库，
   否则返回 403（`Repository '<x>' not found — push requires an existing repository`）。
   新仓库需先在 Web UI 建好再 push。注意 `dockerRegistry.js` 里的 `:name/manifests/:reference`

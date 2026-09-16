@@ -65,7 +65,7 @@
                     :title="$t('projectList.editProject')">
                     <span class="material-icons">edit</span>
                   </button>
-                  <button class="btn btn-icon btn-ghost" @click="deleteProject(project)" :title="$t('common.delete')">
+                  <button v-if="project.name !== 'default'" class="btn btn-icon btn-ghost" @click="deleteProject(project)" :title="$t('common.delete')">
                     <span class="material-icons">delete</span>
                   </button>
                 </td>

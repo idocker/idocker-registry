@@ -127,6 +127,17 @@ router.put('/:id', requireAdmin, asyncHandler(async (req, res) => {
       return res.status(404).json(error('Namespace not found'));
     }
 
+    // The built-in 'default' namespace is protected: it must keep its name
+    // (other modules resolve it by the literal name 'default') and stay active.
+    if (existingNamespace.name === 'default') {
+      if (name.trim() !== 'default') {
+        return res.status(409).json(error('Cannot rename the default namespace', 409, 'PROTECTED_RESOURCE'));
+      }
+      if (isActive !== undefined && !isActive) {
+        return res.status(409).json(error('Cannot deactivate the default namespace', 409, 'PROTECTED_RESOURCE'));
+      }
+    }
+
     // Check if namespace name is unique (excluding current namespace)
     const isUnique = await namespaceModel.isNamespaceNameUnique(name.trim(), namespaceId);
     if (!isUnique) {
@@ -184,6 +195,11 @@ router.delete('/:id', requireAdmin, asyncHandler(async (req, res) => {
     // Handle specific errors
     if (err.message.includes('Cannot delete namespace with active projects')) {
       return res.status(409).json(error(err.message));
+    }
+
+    // The built-in 'default' namespace is protected
+    if (err.message.includes('Cannot delete the default namespace')) {
+      return res.status(409).json(error(err.message, 409, 'PROTECTED_RESOURCE'));
     }
 
     res.status(500).json(error('Failed to delete namespace'));

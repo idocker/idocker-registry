@@ -115,6 +115,21 @@ router.put('/:id', requireAdmin, asyncHandler(async (req, res) => {
       return res.status(404).json(error('Project not found', 404));
     }
 
+    // The built-in 'default' project is protected: single-segment image paths
+    // (e.g. idocker.vip/nginx) resolve to it by the literal name 'default',
+    // so it must keep both its name and its active state.
+    if (name !== undefined || isActive !== undefined) {
+      const currentProject = await projectModel.findById(id);
+      if (currentProject && currentProject.name === 'default') {
+        if (name !== undefined && name !== 'default') {
+          return res.status(409).json(error('Cannot rename the default project', 409, 'PROTECTED_RESOURCE'));
+        }
+        if (isActive !== undefined && !isActive) {
+          return res.status(409).json(error('Cannot deactivate the default project', 409, 'PROTECTED_RESOURCE'));
+        }
+      }
+    }
+
     if (name) {
       const isNameUnique = await projectModel.isProjectNameUnique(name, id);
       if (!isNameUnique) {
@@ -176,6 +191,12 @@ router.delete('/:id', requireAdmin, asyncHandler(async (req, res) => {
     res.status(200).json(success(null, 'Project deleted successfully'));
   } catch (e) {
     logger.error('Error deleting project:', e);
+
+    // The built-in 'default' project is protected
+    if (e.message && e.message.includes('Cannot delete the default project')) {
+      return res.status(409).json(error(e.message, 409, 'PROTECTED_RESOURCE'));
+    }
+
     res.status(500).json(error('Failed to delete project'));
   }
 }));

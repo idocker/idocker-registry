@@ -210,6 +210,16 @@ export class ProjectModel extends BaseModel {
    */
   async deleteProject(projectId) {
     try {
+      // The built-in 'default' project backs single-segment image paths
+      // (e.g. idocker.vip/nginx) and must always remain available.
+      const project = await this.get(
+        'SELECT id, name FROM projects WHERE id = ?',
+        [projectId]
+      );
+      if (project && project.name === 'default') {
+        throw new Error('Cannot delete the default project');
+      }
+
       const result = await this.update(projectId, {
         is_active: 0,
         updated_at: new Date().toISOString()

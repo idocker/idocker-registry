@@ -73,7 +73,7 @@
                   <button class="btn btn-icon btn-ghost" @click="editNamespace(namespace)" :title="$t('common.edit')">
                     <span class="material-icons">edit</span>
                   </button>
-                  <button v-if="namespace.is_active" class="btn btn-icon btn-ghost" @click="deleteNamespace(namespace)"
+                  <button v-if="namespace.is_active && namespace.name !== 'default'" class="btn btn-icon btn-ghost" @click="deleteNamespace(namespace)"
                     :title="$t('common.delete')">
                     <span class="material-icons">delete</span>
                   </button>

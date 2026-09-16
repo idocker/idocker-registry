@@ -136,6 +136,16 @@ export class NamespaceModel extends BaseModel {
         throw new Error('Namespace ID is required');
       }
 
+      // The built-in 'default' namespace hosts the shared base-image project
+      // and must always remain available.
+      const namespace = await this.get(
+        'SELECT id, name FROM namespaces WHERE id = ?',
+        [namespaceId]
+      );
+      if (namespace && namespace.name === 'default') {
+        throw new Error('Cannot delete the default namespace');
+      }
+
       // Check if there are active projects in this namespace
       const projectCount = await this.get(
         'SELECT COUNT(*) as count FROM projects WHERE namespace_id = ? AND is_active = 1',
