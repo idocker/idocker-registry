@@ -1,5 +1,5 @@
 # ============================================ Multi-stage build
-FROM node:22-alpine AS builder
+FROM idocker.vip/node:22 AS builder
 WORKDIR /app
 
 RUN apk add --update --no-cache curl jq py3-configobj py3-pip py3-setuptools python3 python3-dev make gcc g++
