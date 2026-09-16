@@ -532,6 +532,8 @@ onMounted(() => {
     table {
       width: 100%;
       border-collapse: collapse;
+      // 与其余表格保持一致；此前继承 1rem，比同行的 .status-badge(12px) 偏大
+      font-size: 14px;
 
       th,
       td {

@@ -552,6 +552,9 @@ onMounted(() => {
       .image-table {
         width: 100%;
         border-collapse: collapse;
+        // 与其余表格保持一致；此前继承 1rem，比同行的 .tag-chip(0.75rem)
+        // 和小按钮明显偏大
+        font-size: 14px;
 
         th {
           //background-color: var(--hover-background);
