@@ -32,6 +32,40 @@
       background-color: var(--hover-background);
     }
   }
+
+  &.btn-danger {
+    background-color: var(--error-color);
+    color: white;
+
+    &:hover {
+      background-color: #d32f2f;
+    }
+
+    // Ghost variant: red text on a transparent background, used for row actions
+    &.btn-ghost {
+      background-color: transparent;
+      color: var(--error-color);
+
+      &:hover {
+        background-color: rgba(244, 67, 54, 0.1);
+      }
+    }
+  }
+
+  // Compact button for table action columns.
+  // Kept in the global sheet on purpose: per-view scoped rules never reach
+  // child components (e.g. LinkPopover), which is why its trigger used to
+  // render larger than the buttons right next to it.
+  &.btn-small {
+    padding: $spacing-xs $spacing-sm;
+    font-size: $font-size-xs;
+    gap: $spacing-xs;
+
+    .material-icons {
+      margin-right: 0;
+      font-size: $font-size-base;
+    }
+  }
   
   &.btn-icon {
     padding: $spacing-sm;

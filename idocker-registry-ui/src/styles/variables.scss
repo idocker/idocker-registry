@@ -28,6 +28,10 @@
   --success-color: #4caf50;
   --warning-color: #ff9800;
   --error-color: #f44336;
+  // Alias kept for the views that consume --danger-color for destructive
+  // actions. It was referenced 11 times but never defined, so those rules
+  // silently resolved to transparent / inherited instead of red.
+  --danger-color: #f44336;
   
   // Shadows
   --shadow-1: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
