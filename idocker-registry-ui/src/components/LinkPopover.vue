@@ -8,7 +8,7 @@
 <template>
   <span ref="triggerEl" class="lp-trigger" @mouseenter="show" @mouseleave="scheduleHide">
     <button class="btn btn-ghost btn-small" type="button">
-      <span class="material-icons">share</span>
+      <span class="material-icons">link</span>
       {{ $t('imageDetail.link') }}
     </button>
     <Teleport to="body">

@@ -158,7 +158,7 @@
                             class="btn btn-ghost btn-small"
                             @click.stop="viewImageDetails(image.id.toString())"
                           >
-                            <span class="material-icons">local_offer</span>
+                            <span class="material-icons">list</span>
                             {{ $t('images.allTags') }}
                           </button>
                         </div>
