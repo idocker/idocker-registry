@@ -296,7 +296,9 @@ class DockerRegistryService {
         size: 0,
         created: null,
         architecture: 'unknown',
-        os: 'unknown'
+        os: 'unknown',
+        history: [],
+        layers: []
       };
 
 
@@ -305,6 +307,7 @@ class DockerRegistryService {
       if (Array.isArray(data.layers) && data.layers.length) {
         // Single-platform manifest (docker v2 / OCI image manifest)
         imageInfo.size = data.layers.reduce((acc, layer) => acc + (layer.size || 0), 0);
+        imageInfo.layers = data.layers;
       } else if (Array.isArray(data.manifests) && data.manifests.length) {
         // OCI index / docker manifest list (multi-platform): aggregate child
         // platform manifests so size / created / arch / os are populated.
@@ -317,6 +320,12 @@ class DockerRegistryService {
               imageInfo.created = childInfo.created || null;
               imageInfo.architecture = childInfo.architecture || 'unknown';
               imageInfo.os = childInfo.os || 'unknown';
+              // An index carries neither a config blob nor a layer list of its
+              // own: the build history only exists in the child platform
+              // manifest. Inherit from the first child, otherwise the
+              // build-history table renders empty for every multi-platform image.
+              imageInfo.history = childInfo.history || [];
+              imageInfo.layers = childInfo.layers || [];
             }
             childCount++;
           } catch (error) {
@@ -377,7 +386,9 @@ class DockerRegistryService {
         return [];
       }
 
-      const layers = Array.isArray(manifest.manifest?.layers) ? manifest.manifest.layers : [];
+      // `manifest.layers` is populated for a plain image manifest and, for an
+      // OCI index, inherited from the first child platform (see getManifest).
+      const layers = Array.isArray(manifest.layers) ? manifest.layers : [];
 
       // Entries flagged empty_layer do not consume a layer, so layer sizes must
       // be matched with a running counter rather than the history row index.
