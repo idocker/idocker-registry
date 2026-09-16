@@ -1,5 +1,6 @@
-# 忽略.git目录
+# 忽略 .git 目录
 .git/
+.codewhale/
 
 # development and test directories
 data/
@@ -8,12 +9,19 @@ logs/
 
 # node_modules
 node_modules/
+**/node_modules/
 
-# 忽略所有.log文件
-idocker-registry-server/logs
-idocker-registry-server/node_modules
+# 日志
+**/logs/
+**/*.log
 
-idocker-registry-ui/node_modules
-
-# 忽略特定文件
+# 构建上下文里不需要的文档与编辑器文件
+**/*.md
 .DS_Store
+.idea/
+.vscode/
+
+# 后端运行时配置：含明文凭据，容器由 docker-compose 的 environment 注入，
+# 不需要也不应该进镜像。（前端 .env 不同——VITE_* 变量在构建期被内联，
+# 必须保留在上下文里。）
+idocker-registry-server/.env
