@@ -15,10 +15,8 @@ data/
 test/
 logs/
 
-idocker-registry-server/package-lock.json
 idocker-registry-server/node_modules/
 
-idocker-registry-ui/package-lock.json
 idocker-registry-ui/node_modules/
 
 
