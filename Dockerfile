@@ -26,16 +26,19 @@ FROM idocker.vip/node:22
 
 WORKDIR /app
 
-# 安装运行时依赖 + 创建非 root 用户
+# 安装运行时依赖
+# 基础镜像已自带 node 用户（uid=1000 gid=1000），直接复用，无需另建。
+# compose 里三个数据目录是宿主 bind mount，挂载会盖掉镜像内的属主，
+# 宿主上需按 1000:1000 chown。
 RUN --mount=type=cache,target=/var/cache/apk \
-    apk add --no-cache docker-registry tzdata \
-    && addgroup -S appgroup \
-    && adduser -S appuser -G appgroup
+    apk add --no-cache docker-registry tzdata
 
 # 从构建阶段拷贝生产依赖与前端产物
-COPY --from=server-deps /app/idocker/node_modules /app/idocker/node_modules
-COPY idocker-registry-server /app/idocker
-COPY --from=ui-builder /app/ui/dist /app/idocker/public
+# 用 COPY --chown 而不是事后 chown -R：node_modules 有数万个文件，
+# 递归 chown 会把它们全部复制进新层，凭空多出上百 MB。
+COPY --chown=node:node --from=server-deps /app/idocker/node_modules /app/idocker/node_modules
+COPY --chown=node:node idocker-registry-server /app/idocker
+COPY --chown=node:node --from=ui-builder /app/ui/dist /app/idocker/public
 
 # 拷贝运行时配置与启动脚本
 COPY deploy/config.yaml /etc/docker/registry/config.yml
@@ -43,14 +46,17 @@ COPY deploy/docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # 创建必要目录、清理冗余文件、设置目录权限
+# /app/idocker 无需在此 chown，上面已由 COPY --chown 处理；
+# 这三个数据目录仅供不经 bind mount 直接运行时使用，
+# 走 compose 挂载时以宿主目录的属主为准。
 RUN mkdir -p /var/lib/registry /app/data /app/logs \
     && rm -rf /app/idocker/node_modules/.cache \
               /app/idocker/simple-test.js \
               /app/idocker/test /app/idocker/tests 2>/dev/null || true \
-    && chown -R appuser:appgroup /var/lib/registry /app/data /app/logs /app/idocker
+    && chown -R node:node /var/lib/registry /app/data /app/logs
 
 # 切换到非 root 用户
-USER appuser
+USER node
 
 EXPOSE 7518
 EXPOSE 7519
