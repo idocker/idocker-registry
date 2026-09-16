@@ -160,6 +160,10 @@
                 <div class="info-label">{{ $t('imageDetail.tagName') }}</div>
                 <div class="info-value">{{ tagDetails.tag.name || tagDetails.tag.tag || 'N/A' }}</div>
               </div>
+              <div class="info-item">
+                <div class="info-label">{{ $t('imageDetail.imageName') }}</div>
+                <div class="info-value">{{ tagDetails.repository?.fullName || tagDetails.repository?.name || 'N/A' }}</div>
+              </div>
               <div class="info-item wide">
                 <div class="info-label">{{ $t('imageDetail.digest') }}</div>
                 <div class="info-value">
@@ -720,7 +724,13 @@ onMounted(() => {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         gap: 1rem 1.5rem;
-        margin-bottom: 1.5rem;
+        // Separate the info block from the build history below it. A divider
+        // rather than a tinted panel: --hover-background (#343a4b) and
+        // --card-background (#333a44) are near-identical in dark theme, so a
+        // background block would be invisible there.
+        padding-bottom: 1.25rem;
+        border-bottom: 1px solid var(--border-color);
+        margin-bottom: 1.25rem;
 
         .info-item {
           display: flex;
@@ -758,7 +768,8 @@ onMounted(() => {
 
       .build-history {
         h3 {
-          margin-bottom: 1rem;
+          font-size: $font-size-base;
+          margin-bottom: 0.75rem;
         }
 
         .history-table {
@@ -775,6 +786,7 @@ onMounted(() => {
               padding: 0.75rem;
               text-align: left;
               border-bottom: 1px solid var(--border-color);
+              font-size: 14px;
             }
 
             th {
