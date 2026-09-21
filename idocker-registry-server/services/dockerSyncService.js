@@ -150,8 +150,11 @@ class DockerSyncService {
                 if (project && project.id) {
                     repository = await this.repositoryModel.findByProjectIdAndName(project.id, imageName);
                 } else {
-                    // 如果没有项目，尝试通过名称查找仓库
-                    repository = await this.repositoryModel.findByName(imageName);
+                    // 没有项目上下文时无法定位仓库；repositories.project_id 是 NOT NULL，
+                    // 上游 createRepository 在这种情况下本身就会失败。
+                    // 这里原先调用 this.repositoryModel.findByName()，但 RepositoryModel
+                    // 并没有这个方法，一旦执行就是 TypeError。
+                    repository = null;
                 }
                 logger.debug(`不存在，创建仓库: ${repo.name}`);
             } else {

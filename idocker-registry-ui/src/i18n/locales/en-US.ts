@@ -45,7 +45,6 @@ export default {
     operations: 'Operations',
     noData: 'No data available',
     deleting: 'Deleting...',
-    reactivate: 'Reactivate',
     required: 'Required',
     optional: 'Optional',
     language: 'Language',
@@ -89,7 +88,7 @@ export default {
     description: 'Description',
     descriptionPlaceholder: 'Enter namespace description',
     projectCount: 'Project Count',
-    isActive: 'Active',
+    nameImmutable: 'The name cannot be changed after creation',
     status: 'Status',
     createdAt: 'Created Time',
     createdBy: 'Created By',
@@ -100,7 +99,6 @@ export default {
     createFirstNamespace: 'Create your first namespace',
     noSearchResults: 'No matching namespaces found',
     tryDifferentSearchTerms: 'Please try different search terms',
-    deleteConfirm: 'Are you sure you want to delete the namespace "{name}"?',
     deleteWithProjectsWarning: 'This namespace contains {count} active projects and cannot be deleted. Please delete or move these projects first.'
   },
   // Management Layout
@@ -130,6 +128,7 @@ export default {
     dashboardSubtitle: 'System overview and statistics',
     projectManagement: 'Project Management',
     projectManagementSubtitle: 'Manage all projects and permissions in the system',
+    namespaceManagement: 'Namespace Management',
     userManagement: 'User Management',
     userManagementSubtitle: 'Manage all users and roles in the system',
     auditLog: 'Audit Log',
@@ -598,7 +597,7 @@ export default {
     fetchProjectsFailed: 'Failed to fetch projects',
     saveProjectFailed: 'Failed to save project',
     deleteProjectFailed: 'Failed to delete project',
-    confirmDeleteProject: 'Are you sure you want to delete project "{name}"? This action cannot be undone.'
+    deleteWithRepositoriesWarning: 'This project still has {count} repositories and cannot be deleted. Delete those repositories first.'
   },
 
   // Project Detail
@@ -853,6 +852,17 @@ export default {
   },
 
   // Dialogs
+  // Delete confirmation dialog (name must be typed; related items block deletion)
+  deleteDialog: {
+    warning: 'The item will be moved to the recycle bin and can be restored by an administrator.',
+    instruction: 'Type the {type} name "{name}" to confirm:',
+    placeholder: 'Enter name',
+    mismatch: 'The name does not match the target',
+    blockedTitle: 'Cannot delete: related items exist',
+    blockedHint: 'Resolve the items listed above, then try again.',
+    confirm: 'Delete'
+  },
+
   dialogs: {
     // Authentication Dialog
     auth: {
@@ -1012,5 +1022,31 @@ export default {
     removeFailed: 'Failed to remove member',
     loadFailed: 'Failed to load members',
     loadUsersFailed: 'Failed to load users'
+  },
+
+  // Recycle bin (soft delete)
+  recycleBin: {
+    toggle: 'Recycle Bin',
+    toggleHint: 'Show only resources moved to the recycle bin',
+    badge: 'Deleted',
+    deletedAt: 'Deleted At',
+    deletedBy: 'Deleted By',
+    unknownUser: 'Unknown user',
+    emptyRecycleBin: 'The recycle bin is empty',
+    deleteSuccess: 'Moved to recycle bin: "{name}"',
+    deleteRepositoryTitle: 'Delete Repository',
+    namespaceLabel: 'namespace',
+    projectLabel: 'project',
+    repositoryLabel: 'repository',
+    restore: 'Restore',
+    restoreConfirmTitle: 'Restore',
+    restoreConfirm: 'Are you sure you want to restore "{name}"?',
+    restoreSuccess: 'Restored: "{name}"',
+    purge: 'Delete Permanently',
+    purgeConfirmTitle: 'Delete Permanently',
+    purgeWarning: 'This action cannot be undone; the data will be permanently deleted.',
+    purgeWarningWithImages: 'This cannot be undone: the repository and its tag records will be permanently deleted from the database. Image files in the registry are NOT deleted — reclaiming that disk space needs a separate garbage-collect run (see deploy/registry-gc.md).',
+    purgeSuccess: 'Permanently deleted: "{name}"',
+    operationFailed: 'Operation failed'
   }
 }

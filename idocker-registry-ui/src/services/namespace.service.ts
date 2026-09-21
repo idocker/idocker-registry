@@ -10,20 +10,23 @@ import type {
   Namespace,
   CreateNamespaceData,
   UpdateNamespaceData,
-  NamespacePaginatedResponse
+  NamespacePaginatedResponse,
+  DeletedFilter
 } from '@/types'
 
 class NamespaceService {
   /**
    * 获取命名空间列表
+   * @param params.deleted 回收站过滤：'0' 仅未删除（默认）/ '1' 仅回收站 / 'all' 全部
    */
-  async getNamespaces(params: PaginationParams & { isActive?: boolean }): Promise<NamespacePaginatedResponse> {
+  async getNamespaces(params: PaginationParams & { isActive?: boolean; deleted?: DeletedFilter }): Promise<NamespacePaginatedResponse> {
     const queryParams = new URLSearchParams()
     
     if (params.page) queryParams.append('page', params.page.toString())
     if (params.limit) queryParams.append('limit', params.limit.toString())
     if (params.search) queryParams.append('search', params.search)
     if (params.isActive !== undefined) queryParams.append('isActive', params.isActive.toString())
+    if (params.deleted !== undefined) queryParams.append('deleted', params.deleted)
     
     return http.get(`/api/namespaces?${queryParams.toString()}`)
   }
@@ -43,24 +46,31 @@ class NamespaceService {
   }
 
   /**
-   * 更新命名空间
+   * 更新命名空间（仅描述可改）
    */
   async updateNamespace(id: string, namespaceData: UpdateNamespaceData): Promise<ApiResponse<Namespace>> {
     return http.put(`/api/namespaces/${id}`, namespaceData)
   }
 
   /**
-   * 删除命名空间
+   * 删除命名空间（假删除，移入回收站；后端会拦截仍有项目的命名空间）
    */
   async deleteNamespace(id: string): Promise<ApiResponse<void>> {
     return http.delete(`/api/namespaces/${id}`)
   }
 
   /**
-   * 恢复命名空间
+   * 从回收站恢复命名空间（仅管理员）
    */
-  async reactivateNamespace(id: string): Promise<ApiResponse<void>> {
-    return http.post(`/api/namespaces/${id}/reactivate`)
+  async restoreNamespace(id: string): Promise<ApiResponse<Namespace>> {
+    return http.post(`/api/namespaces/${id}/restore`)
+  }
+
+  /**
+   * 彻底删除命名空间（物理删除，仅管理员，不可恢复）
+   */
+  async purgeNamespace(id: string): Promise<ApiResponse<void>> {
+    return http.delete(`/api/namespaces/${id}/purge`)
   }
 }
 

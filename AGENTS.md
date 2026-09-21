@@ -33,7 +33,7 @@ iDocker是一个Docker Registry管理平台，提供Web UI来管理Docker镜像�
 │   ├── routes/
 │   │   ├── auth.js              # /api/auth (login/logout/register/profile/change-password/refresh)
 │   │   ├── users.js             # /api/users (CRUD + 用户仓库成员关系查询)
-│   │   ├── namespaces.js        # /api/namespaces (CRUD + reactivate)
+│   │   ├── namespaces.js        # /api/namespaces (CRUD；名称不可改，编辑仅改描述；无 reactivate)
 │   │   ├── projects.js          # /api/projects (CRUD；成员管理已迁至仓库级)
 │   │   ├── repository.js        # /api/repository (images/tags/create/sync/config + 仓库成员管理)
 │   │   ├── dockerRegistry.js    # /v2/* (Docker Registry API代理 + 鉴权 + Token服务)
@@ -93,6 +93,8 @@ iDocker是一个Docker Registry管理平台，提供Web UI来管理Docker镜像�
 │   │   │   ├── LanguageSwitcher.vue
 │   │   │   ├── VersionNotification.vue
 │   │   │   └── dialogs/
+│   │   │       ├── ConfirmationDialog.vue    # 通用确认弹窗（title + message）
+│   │   │       ├── DeleteConfirmDialog.vue   # 业务数据删除弹窗（须输入名称确认；blockers 非空则禁止删除）
 │   │   │       ├── RegistryMenu.vue
 │   │   │       └── UserMenu.vue
 │   │   └── views/
@@ -183,6 +185,11 @@ iDocker是一个Docker Registry管理平台，提供Web UI来管理Docker镜像�
 - 默认管理员：`admin / admin123`
 - 默认命名空间：`default`
 - PRAGMA: `foreign_keys=ON`, `journal_mode=WAL`, `synchronous=NORMAL`
+- **回收站（假删除）**：`namespaces` / `projects` / `repositories` 三表各有 `deleted_at` / `deleted_by` 两列（幂等列检查式迁移，不占 `user_version`）。
+  删除 = 写这两个字段，**不动 `is_active`**（启停是另一回事）；列表用 `deleted=0|1|all` 过滤；
+  恢复与物理删除仅 admin（仓库的假删除额外开放给 `project_manager`/`developer` 成员）。
+  物理删除**不级联**：只要后代还存在（含回收站里的），一律 409 拒绝，需自下而上逐个清理。
+  仓库物理删除只删 DB 记录（标签/成员由 FK CASCADE 清掉），**registry 里的 manifest/blob 不动**——释放磁盘要离线跑 GC，见 `deploy/registry-gc.md`。
 
 ### 6. Docker Registry代理机制
 - `http-proxy-middleware` 将 `/v2/*` 请求代理到内部Registry（默认 localhost:7519）

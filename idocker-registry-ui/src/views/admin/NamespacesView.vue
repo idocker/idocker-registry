@@ -3,10 +3,14 @@
     <div class="namespaces-container">
 
       <div class="namespaces-table-container">
-        <div class="table-controls" v-if="filteredNamespaces.length > 0">
+        <div class="table-controls">
           <input type="text" :placeholder="$t('namespaces.searchNamespaces')" v-model="searchQuery"
             class="search-input" />
           <div class="table-actions">
+            <label v-if="isAdmin" class="recycle-toggle" :title="$t('recycleBin.toggleHint')">
+              <input type="checkbox" v-model="showRecycleBin" />
+              <span>{{ $t('recycleBin.toggle') }}</span>
+            </label>
             <button class="btn btn-primary" @click="showCreateModal = true">
               <span class="material-icons">add</span>
               {{ $t('namespaces.createNamespace') }}
@@ -36,6 +40,14 @@
                   </div>
                 </td>
               </tr>
+              <tr v-else-if="filteredNamespaces.length === 0 && showRecycleBin">
+                <td colspan="7" class="empty-cell">
+                  <div class="empty-state">
+                    <span class="material-icons">delete_outline</span>
+                    <h3>{{ $t('recycleBin.emptyRecycleBin') }}</h3>
+                  </div>
+                </td>
+              </tr>
               <tr v-else-if="filteredNamespaces.length === 0 && searchQuery === ''">
                 <td colspan="7" class="empty-cell">
                   <div class="empty-state">
@@ -59,7 +71,18 @@
                 </td>
               </tr>
               <tr v-for="namespace in filteredNamespaces" :key="namespace.id">
-                <td>{{ namespace.name }}</td>
+                <td>
+                  <div class="entity-name-cell">
+                    <span>{{ namespace.name }}</span>
+                    <span v-if="namespace.deleted_at" class="status-badge recycled">
+                      {{ $t('recycleBin.badge') }}
+                    </span>
+                  </div>
+                  <div v-if="namespace.deleted_at" class="recycle-meta">
+                    <span>{{ $t('recycleBin.deletedAt') }}: {{ formatDate(namespace.deleted_at) }}</span>
+                    <span>{{ $t('recycleBin.deletedBy') }}: {{ namespace.deleted_by_username || $t('recycleBin.unknownUser') }}</span>
+                  </div>
+                </td>
                 <td>{{ namespace.description || '-' }}</td>
                 <!-- <td>{{ namespace.project_count || 0 }}</td> -->
                 <td>
@@ -70,17 +93,27 @@
                 <!-- <td>{{ namespace.created_by_username || '-' }}</td> -->
                 <td>{{ formatDate(namespace.created_at) }}</td>
                 <td class="action-buttons">
-                  <button class="btn btn-icon btn-ghost" @click="editNamespace(namespace)" :title="$t('common.edit')">
-                    <span class="material-icons">edit</span>
-                  </button>
-                  <button v-if="namespace.is_active && namespace.name !== 'default'" class="btn btn-icon btn-ghost" @click="deleteNamespace(namespace)"
-                    :title="$t('common.delete')">
-                    <span class="material-icons">delete</span>
-                  </button>
-                  <button v-else class="btn btn-icon btn-ghost" @click="reactivateNamespace(namespace)"
-                    :title="$t('common.reactivate')">
-                    <span class="material-icons">restart</span>
-                  </button>
+                  <template v-if="namespace.deleted_at">
+                    <template v-if="isAdmin">
+                      <button class="btn btn-icon btn-ghost" @click="requestRestore(namespace)"
+                        :title="$t('recycleBin.restore')">
+                        <span class="material-icons">settings_backup_restore</span>
+                      </button>
+                      <button class="btn btn-icon btn-ghost btn-danger-ghost" @click="requestPurge(namespace)"
+                        :title="$t('recycleBin.purge')">
+                        <span class="material-icons">delete_forever</span>
+                      </button>
+                    </template>
+                  </template>
+                  <template v-else>
+                    <button class="btn btn-icon btn-ghost" @click="editNamespace(namespace)" :title="$t('common.edit')">
+                      <span class="material-icons">edit</span>
+                    </button>
+                    <button v-if="namespace.is_active && namespace.name !== 'default'" class="btn btn-icon btn-ghost" @click="deleteNamespace(namespace)"
+                      :title="$t('common.delete')">
+                      <span class="material-icons">delete</span>
+                    </button>
+                  </template>
                 </td>
               </tr>
             </tbody>
@@ -121,19 +154,14 @@
               <label for="namespace-name">{{ $t('namespaces.namespaceName') }} *</label>
               <input type="text" id="namespace-name" v-model="namespaceForm.name"
                 :placeholder="$t('namespaces.namespaceNamePlaceholder')" class="form-input"
-                :class="{ 'error': errors.name }" />
+                :class="{ 'error': errors.name }" :disabled="!!editingNamespace" />
+              <span v-if="editingNamespace" class="field-hint">{{ $t('namespaces.nameImmutable') }}</span>
               <span v-if="errors.name" class="error-message">{{ errors.name }}</span>
             </div>
             <div class="form-group">
               <label for="namespace-description">{{ $t('namespaces.description') }}</label>
               <textarea id="namespace-description" v-model="namespaceForm.description"
                 :placeholder="$t('namespaces.descriptionPlaceholder')" class="form-textarea" rows="4"></textarea>
-            </div>
-            <div v-if="editingNamespace" class="form-group">
-              <label class="checkbox-label">
-                <input type="checkbox" v-model="namespaceForm.is_active" />
-                {{ $t('namespaces.isActive') }}
-              </label>
             </div>
           </div>
           <div class="modal-footer">
@@ -149,32 +177,37 @@
       </div>
 
       <!-- Delete Confirmation Modal -->
-      <div v-if="showDeleteModal" class="modal-overlay" @click.self="showDeleteModal = false">
-        <div class="modal">
-          <div class="modal-header">
-            <h2>{{ $t('namespaces.deleteNamespace') }}</h2>
-            <button class="btn btn-ghost btn-icon" @click="showDeleteModal = false">
-              <span class="material-icons">close</span>
-            </button>
-          </div>
-          <div class="modal-body">
-            <p>{{ $t('namespaces.deleteConfirm', { name: deletingNamespace.name }) }}</p>
-            <p v-if="deletingNamespace.project_count > 0" class="warning-message">
-              {{ $t('namespaces.deleteWithProjectsWarning', { count: deletingNamespace.project_count }) }}
-            </p>
-          </div>
-          <div class="modal-footer">
-            <button class="btn btn-ghost" @click="showDeleteModal = false">
-              {{ $t('common.cancel') }}
-            </button>
-            <button class="btn btn-danger" @click="confirmDelete"
-              :disabled="isSubmitting || deletingNamespace.project_count > 0">
-              <span v-if="isSubmitting" class="material-icons spinning">refresh</span>
-              <span v-else>{{ $t('common.delete') }}</span>
-            </button>
-          </div>
-        </div>
-      </div>
+      <DeleteConfirmDialog
+        v-if="showDeleteModal && deletingNamespace"
+        :title="$t('namespaces.deleteNamespace')"
+        :entity-label="$t('recycleBin.namespaceLabel')"
+        :entity-name="deletingNamespace.name"
+        :blockers="deleteBlockers"
+        :loading="isSubmitting"
+        @confirm="confirmDelete"
+        @cancel="showDeleteModal = false"
+      />
+
+      <!-- 回收站：恢复确认 -->
+      <ConfirmationDialog
+        v-if="showRestoreModal && restoringNamespace"
+        :title="$t('recycleBin.restoreConfirmTitle')"
+        :message="$t('recycleBin.restoreConfirm', { name: restoringNamespace.name })"
+        @confirm="confirmRestore"
+        @cancel="showRestoreModal = false"
+      />
+
+      <!-- 回收站：彻底删除确认（需逐字输入名称） -->
+      <DeleteConfirmDialog
+        v-if="showPurgeModal && purgingNamespace"
+        :title="$t('recycleBin.purgeConfirmTitle')"
+        :entity-label="$t('recycleBin.namespaceLabel')"
+        :entity-name="purgingNamespace.name"
+        :warning="$t('recycleBin.purgeWarning')"
+        :loading="isPurging"
+        @confirm="confirmPurge"
+        @cancel="showPurgeModal = false"
+      />
 
       <!-- Success/Error Messages -->
       <div v-if="message.text" :class="['message', message.type]">
@@ -188,12 +221,18 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '@/stores/auth'
 import namespaceService from '@/services/namespace.service';
 import ManagementLayout from '@/components/admin/ManagementLayout.vue';
+import DeleteConfirmDialog from '@/components/dialogs/DeleteConfirmDialog.vue';
+import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog.vue';
 import { formatDate as fmtDate } from '@/utils/helpers';
 import type { Namespace } from '@/types';
 
-const { locale } = useI18n()
+const { t, locale } = useI18n()
+const authStore = useAuthStore()
+// 回收站视图 / 恢复 / 彻底删除仅管理员可见（后端仍会兜底校验）
+const isAdmin = computed(() => authStore.user?.role === 'admin')
 const namespaces = ref<Namespace[]>([]);
 const isLoading = ref(true);
 const searchQuery = ref('');
@@ -208,10 +247,18 @@ const isSubmitting = ref(false);
 const message = ref({ text: '', type: '' });
 const errors = ref<Record<string, string>>({});
 
+// 回收站（假删除）：切换、恢复、彻底删除
+const showRecycleBin = ref(false);
+const showRestoreModal = ref(false);
+const restoringNamespace = ref<Namespace | null>(null);
+const isRestoring = ref(false);
+const showPurgeModal = ref(false);
+const purgingNamespace = ref<Namespace | null>(null);
+const isPurging = ref(false);
+
 const namespaceForm = ref({
   name: '',
-  description: '',
-  is_active: true
+  description: ''
 });
 
 // Computed properties
@@ -238,7 +285,9 @@ const loadNamespaces = async () => {
     const response = await namespaceService.getNamespaces({
       page: currentPage.value,
       limit: pageSize.value,
-      search: searchQuery.value
+      search: searchQuery.value,
+      // 开启回收站只拉已删除（deleted=1），否则只看未删除（deleted=0）
+      deleted: showRecycleBin.value ? '1' : '0'
     });
 
     namespaces.value = response.data || [];
@@ -257,8 +306,7 @@ const createNamespace = () => {
   editingNamespace.value = null;
   namespaceForm.value = {
     name: '',
-    description: '',
-    is_active: true
+    description: ''
   };
   errors.value = {};
   showCreateModal.value = true;
@@ -268,8 +316,7 @@ const editNamespace = (namespace) => {
   editingNamespace.value = namespace;
   namespaceForm.value = {
     name: namespace.name,
-    description: namespace.description || '',
-    is_active: !!namespace.is_active
+    description: namespace.description || ''
   };
   errors.value = {};
   showCreateModal.value = true;
@@ -280,13 +327,24 @@ const deleteNamespace = (namespace) => {
   showDeleteModal.value = true;
 };
 
+// 删除前拦截：命名空间下仍有活跃项目时不允许删除
+const deleteBlockers = computed(() => {
+  const namespace = deletingNamespace.value;
+  if (!namespace) return [];
+  const projectCount = namespace.project_count || 0;
+  return projectCount > 0
+    ? [t('namespaces.deleteWithProjectsWarning', { count: projectCount })]
+    : [];
+});
+
 const confirmDelete = async () => {
   try {
     isSubmitting.value = true;
     await namespaceService.deleteNamespace(deletingNamespace.value.id);
 
+    // 假删除：资源进入回收站，可由管理员恢复
     showMessage(
-      `Namespace "${deletingNamespace.value.name}" has been deleted successfully`,
+      t('recycleBin.deleteSuccess', { name: deletingNamespace.value.name }),
       'success'
     );
 
@@ -303,26 +361,48 @@ const confirmDelete = async () => {
   }
 };
 
-const reactivateNamespace = async (namespace) => {
-  if (!confirm(`Are you sure you want to reactivate "${namespace.name}"?`)) {
-    return;
-  }
+// ===== 回收站操作 =====
+const requestRestore = (namespace: Namespace) => {
+  restoringNamespace.value = namespace;
+  showRestoreModal.value = true;
+};
 
+const confirmRestore = async () => {
+  if (!restoringNamespace.value || isRestoring.value) return;
+  isRestoring.value = true;
   try {
-    await namespaceService.reactivateNamespace(namespace.id);
-
-    showMessage(
-      `Namespace "${namespace.name}" has been reactivated successfully`,
-      'success'
-    );
-
-    loadNamespaces();
+    await namespaceService.restoreNamespace(restoringNamespace.value.id.toString());
+    showRestoreModal.value = false;
+    showMessage(t('recycleBin.restoreSuccess', { name: restoringNamespace.value.name }), 'success');
+    restoringNamespace.value = null;
+    await loadNamespaces();
   } catch (e: any) {
-    console.error('Error reactivating namespace:', e);
-    showMessage(
-      e?.message || 'Failed to reactivate namespace',
-      'error'
-    );
+    console.error('Error restoring namespace:', e);
+    showMessage(e?.message || t('recycleBin.operationFailed'), 'error');
+  } finally {
+    isRestoring.value = false;
+  }
+};
+
+const requestPurge = (namespace: Namespace) => {
+  purgingNamespace.value = namespace;
+  showPurgeModal.value = true;
+};
+
+const confirmPurge = async () => {
+  if (!purgingNamespace.value || isPurging.value) return;
+  isPurging.value = true;
+  try {
+    await namespaceService.purgeNamespace(purgingNamespace.value.id.toString());
+    showPurgeModal.value = false;
+    showMessage(t('recycleBin.purgeSuccess', { name: purgingNamespace.value.name }), 'success');
+    purgingNamespace.value = null;
+    await loadNamespaces();
+  } catch (e: any) {
+    console.error('Error purging namespace:', e);
+    showMessage(e?.message || t('recycleBin.operationFailed'), 'error');
+  } finally {
+    isPurging.value = false;
   }
 };
 
@@ -337,9 +417,12 @@ const saveNamespace = async () => {
     isSubmitting.value = true;
 
     if (editingNamespace.value) {
-      await namespaceService.updateNamespace(editingNamespace.value.id, namespaceForm.value);
+      // 名称在创建后不可修改，编辑只提交描述
+      await namespaceService.updateNamespace(editingNamespace.value.id, {
+        description: namespaceForm.value.description
+      });
       showMessage(
-        `Namespace "${namespaceForm.value.name}" has been updated successfully`,
+        `Namespace "${editingNamespace.value.name}" has been updated successfully`,
         'success'
       );
     } else {
@@ -384,6 +467,12 @@ watch(currentPage, () => {
 
 // Watch for page size changes
 watch(pageSize, () => {
+  currentPage.value = 1;
+  loadNamespaces();
+});
+
+// 切换回收站视图时回到第一页重新拉取
+watch(showRecycleBin, () => {
   currentPage.value = 1;
   loadNamespaces();
 });
@@ -528,6 +617,45 @@ watch(pageSize, () => {
     color: white;
 }
 
+/* 回收站（假删除） */
+.status-badge.recycled {
+    background-color: var(--error-color);
+    color: white;
+}
+
+.recycle-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    color: var(--neutral-text);
+    cursor: pointer;
+    user-select: none;
+
+    input {
+        cursor: pointer;
+    }
+}
+
+.entity-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.recycle-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--neutral-text);
+}
+
+.btn-danger-ghost {
+    color: var(--error-color);
+}
+
 .pagination {
     display: flex;
     justify-content: center;
@@ -615,15 +743,11 @@ watch(pageSize, () => {
     display: block;
 }
 
-.checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-
-    input[type="checkbox"] {
-        margin: 0;
-    }
+.field-hint {
+    color: var(--neutral-text);
+    font-size: 12px;
+    margin-top: 4px;
+    display: block;
 }
 
 .modal-footer {
@@ -679,14 +803,6 @@ watch(pageSize, () => {
     100% {
         transform: rotate(360deg);
     }
-}
-
-.warning-message {
-    color: var(--warning-color);
-    background-color: var(--hover-background);
-    padding: 10px;
-    border-radius: 4px;
-    margin-top: 10px;
 }
 
 .btn-danger {

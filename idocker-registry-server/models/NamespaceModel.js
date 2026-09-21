@@ -17,8 +17,9 @@ export class NamespaceModel extends BaseModel {
    */
   async findByName(namespaceName) {
     try {
+      // 回收站里的命名空间对调用方不可见：创建项目、Docker 权限判断等都依赖本方法
       return await this.get(
-        'SELECT * FROM namespaces WHERE name = ?',
+        'SELECT * FROM namespaces WHERE name = ? AND deleted_at IS NULL',
         [namespaceName]
       );
     } catch (error) {
@@ -34,19 +35,30 @@ export class NamespaceModel extends BaseModel {
    * @param {number} options.limit Items per page (default: 20)
    * @param {string} options.search Search keyword
    * @param {boolean} options.isActive Filter by active status
+   * @param {string} options.deleted '0' 未删除（默认）| '1' 回收站 | 'all' 全部
    * @returns {Promise<Object>} List of namespaces with pagination
    */
   async getNamespacesList(options = {}) {
     try {
-      const { page = 1, limit = 20, search = '', isActive = true } = options;
-      
+      const { page = 1, limit = 20, search = '', isActive = true, deleted = '0' } = options;
+
       let query = `
-        SELECT n.*, 
-               (SELECT COUNT(*) FROM projects p WHERE p.namespace_id = n.id AND p.is_active = 1) as project_count
-        FROM namespaces n 
+        SELECT n.*,
+               (SELECT COUNT(*) FROM projects p
+                 WHERE p.namespace_id = n.id AND p.is_active = 1 AND p.deleted_at IS NULL) as project_count,
+               u.username as deleted_by_username
+        FROM namespaces n
+        LEFT JOIN users u ON n.deleted_by = u.id
         WHERE 1 = 1
       `;
       const params = [];
+
+      // deleted: '0' 只看未删除（默认）| '1' 只看回收站 | 'all' 都看
+      if (deleted === '1') {
+        query += ' AND n.deleted_at IS NOT NULL';
+      } else if (deleted !== 'all') {
+        query += ' AND n.deleted_at IS NULL';
+      }
 
       if (typeof isActive === 'boolean') {
         query += ' AND n.is_active = ?';
@@ -126,11 +138,13 @@ export class NamespaceModel extends BaseModel {
   }
 
   /**
-   * Delete namespace (soft delete)
+   * Move namespace to the recycle bin (fake delete).
+   * The row and its projects stay in place; only deleted_at/deleted_by are set.
    * @param {number} namespaceId Namespace ID
-   * @returns {Promise<Object>} Delete result
+   * @param {number|null} deletedBy Acting user ID
+   * @returns {Promise<Object>} Update result
    */
-  async deleteNamespace(namespaceId) {
+  async deleteNamespace(namespaceId, deletedBy = null) {
     try {
       if (!namespaceId) {
         throw new Error('Namespace ID is required');
@@ -139,16 +153,22 @@ export class NamespaceModel extends BaseModel {
       // The built-in 'default' namespace hosts the shared base-image project
       // and must always remain available.
       const namespace = await this.get(
-        'SELECT id, name FROM namespaces WHERE id = ?',
+        'SELECT id, name, deleted_at FROM namespaces WHERE id = ?',
         [namespaceId]
       );
-      if (namespace && namespace.name === 'default') {
+      if (!namespace) {
+        throw new Error('Namespace not found');
+      }
+      if (namespace.deleted_at) {
+        throw new Error('Namespace is already in the recycle bin');
+      }
+      if (namespace.name === 'default') {
         throw new Error('Cannot delete the default namespace');
       }
 
-      // Check if there are active projects in this namespace
+      // 只有未删除的活跃项目才算关联子项；回收站里的项目不阻塞删除
       const projectCount = await this.get(
-        'SELECT COUNT(*) as count FROM projects WHERE namespace_id = ? AND is_active = 1',
+        'SELECT COUNT(*) as count FROM projects WHERE namespace_id = ? AND is_active = 1 AND deleted_at IS NULL',
         [namespaceId]
       );
 
@@ -156,12 +176,14 @@ export class NamespaceModel extends BaseModel {
         throw new Error('Cannot delete namespace with active projects');
       }
 
+      const now = new Date().toISOString();
       const result = await this.update(namespaceId, {
-        is_active: 0,
-        updated_at: new Date().toISOString()
+        deleted_at: now,
+        deleted_by: deletedBy,
+        updated_at: now
       });
 
-      logger.info(`Deleted namespace with ID: ${namespaceId}`);
+      logger.info(`Moved namespace to recycle bin, ID: ${namespaceId}`);
       return result;
     } catch (error) {
       logger.error('Failed to delete namespace:', error);
@@ -210,10 +232,13 @@ export class NamespaceModel extends BaseModel {
 
       return await this.get(
         `SELECT n.*, 
-                (SELECT COUNT(*) FROM projects p WHERE p.namespace_id = n.id AND p.is_active = 1) as project_count,
-                u.username as created_by_username
+                (SELECT COUNT(*) FROM projects p
+                  WHERE p.namespace_id = n.id AND p.is_active = 1 AND p.deleted_at IS NULL) as project_count,
+                u.username as created_by_username,
+                du.username as deleted_by_username
          FROM namespaces n
          LEFT JOIN users u ON n.created_by = u.id
+         LEFT JOIN users du ON n.deleted_by = du.id
          WHERE n.id = ?`,
         [namespaceId]
       );
@@ -229,7 +254,7 @@ export class NamespaceModel extends BaseModel {
    */
   async getActiveNamespaceCount() {
     try {
-      const result = await this.get('SELECT COUNT(*) as count FROM namespaces WHERE is_active = 1');
+      const result = await this.get('SELECT COUNT(*) as count FROM namespaces WHERE is_active = 1 AND deleted_at IS NULL');
       return result ? result.count : 0;
     } catch (error) {
       logger.error('Failed to get active namespace count:', error);
@@ -238,25 +263,80 @@ export class NamespaceModel extends BaseModel {
   }
 
   /**
-   * Reactivate namespace
+   * Restore namespace from the recycle bin. Admin only at the route layer.
    * @param {number} namespaceId Namespace ID
-   * @returns {Promise<Object>} Reactivation result
+   * @returns {Promise<Object>} Update result
    */
-  async reactivateNamespace(namespaceId) {
+  async restoreNamespace(namespaceId) {
     try {
       if (!namespaceId) {
         throw new Error('Namespace ID is required');
       }
 
+      const namespace = await this.get(
+        'SELECT id, deleted_at FROM namespaces WHERE id = ?',
+        [namespaceId]
+      );
+      if (!namespace) {
+        throw new Error('Namespace not found');
+      }
+      if (!namespace.deleted_at) {
+        throw new Error('Namespace is not in the recycle bin');
+      }
+
       const result = await this.update(namespaceId, {
-        is_active: 1,
+        deleted_at: null,
+        deleted_by: null,
         updated_at: new Date().toISOString()
       });
 
-      logger.info(`Reactivated namespace with ID: ${namespaceId}`);
+      logger.info(`Restored namespace from recycle bin, ID: ${namespaceId}`);
       return result;
     } catch (error) {
-      logger.error('Failed to reactivate namespace:', error);
+      logger.error('Failed to restore namespace:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Physically remove namespace from the database. Admin only, irreversible.
+   *
+   * projects has NO foreign key to namespaces, so nothing cascades here: any
+   * project row left behind would become an orphan. Refuse while any project
+   * (including one already in the recycle bin) still points at this namespace.
+   * @param {number} namespaceId Namespace ID
+   * @returns {Promise<boolean>} true when the row was removed
+   */
+  async purgeNamespace(namespaceId) {
+    try {
+      if (!namespaceId) {
+        throw new Error('Namespace ID is required');
+      }
+
+      const namespace = await this.get(
+        'SELECT id, name FROM namespaces WHERE id = ?',
+        [namespaceId]
+      );
+      if (!namespace) {
+        throw new Error('Namespace not found');
+      }
+      if (namespace.name === 'default') {
+        throw new Error('Cannot delete the default namespace');
+      }
+
+      const projectCount = await this.get(
+        'SELECT COUNT(*) as count FROM projects WHERE namespace_id = ?',
+        [namespaceId]
+      );
+      if (projectCount.count > 0) {
+        throw new Error('Cannot purge namespace with existing projects');
+      }
+
+      await this.delete(namespaceId);
+      logger.info(`Purged namespace from database, ID: ${namespaceId}`);
+      return true;
+    } catch (error) {
+      logger.error('Failed to purge namespace:', error);
       throw error;
     }
   }

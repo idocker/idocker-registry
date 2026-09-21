@@ -10,13 +10,14 @@
 import express from 'express';
 import dockerRegistryService from '../services/dockerRegistryService.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
+import { requireAdmin } from '../middleware/auth.js';
 import { logger } from '../utils/logger.js';
 import { ProjectModel } from '../models/ProjectModel.js';
 import { RepositoryModel } from '../models/RepositoryModel.js';
 import { ImageTagModel } from '../models/ImageTagModel.js';
 import { RegistryConfigModel } from '../models/RegistryConfigModel.js';
 import { AuthModel } from '../models/AuthModel.js';
-import { success, paginated } from '../utils/apiResponse.js';
+import { success, paginated, error } from '../utils/apiResponse.js';
 
 const router = express.Router();
 const projectModel = new ProjectModel();
@@ -31,14 +32,25 @@ const dockerRepoName = (projectName, repoName) =>
   projectName === 'default' ? repoName : `${projectName}/${repoName}`;
 
 router.get('/all', asyncHandler(async (req, res) => {
+  const { deleted = '0' } = req.query;
   try {
+    // deleted: '0' 只看未删除（默认）| '1' 只看回收站 | 'all' 都看
+    let deletedClause = ' AND r.deleted_at IS NULL';
+    if (deleted === '1') {
+      deletedClause = ' AND r.deleted_at IS NOT NULL';
+    } else if (deleted === 'all') {
+      deletedClause = '';
+    }
+
     const repos = await repositoryModel.all(
       `SELECT r.id, r.name, r.project_id, r.description, r.is_public, r.is_active,
+              r.deleted_at, r.deleted_by, du.username as deleted_by_username,
               p.name as project_name, p.namespace,
               (SELECT COUNT(*) FROM repository_members WHERE repository_id = r.id) as memberCount
        FROM repositories r
        JOIN projects p ON r.project_id = p.id
-       WHERE r.is_active = 1
+       LEFT JOIN users du ON r.deleted_by = du.id
+       WHERE r.is_active = 1${deletedClause}
        ORDER BY p.namespace, p.name, r.name`
     );
     res.status(200).json(success(repos || []));
@@ -341,11 +353,14 @@ router.delete('/images/:imageId/tags/:tagId', asyncHandler(async (req, res) => {
       });
     }
 
-    // 检查权限（只有管理员或项目维护者可以删除标签）
+    // 检查权限（admin，或该仓库的 project_manager / developer 成员）
+    // 这里原先调用 projectModel.getMemberRole（ProjectModel 中并不存在该方法）
+    // 且比对 'owner'/'maintainer' 这两个不存在的角色名，导致非 admin 调用一律 500。
+    // 改为查仓库成员关系，角色枚举与 repository_members 的 CHECK 约束一致。
     if (req.user.role !== 'admin') {
-      const membership = await projectModel.getMemberRole(repository.project_id, req.user.id);
+      const membership = await repositoryModel.getUserMembership(imageId, req.user.id);
 
-      if (!membership || !['owner', 'maintainer'].includes(membership.role)) {
+      if (!membership || !['project_manager', 'developer'].includes(membership.role)) {
         return res.status(403).json({
           success: false,
           message: '无权删除该镜像标签'
@@ -717,6 +732,91 @@ router.put('/:id/public', asyncHandler(async (req, res) => {
   } catch (e) {
     logger.error('Error updating repository visibility:', e);
     res.status(500).json(error('Failed to update repository visibility'));
+  }
+}));
+
+/**
+ * DELETE /api/repository/:id
+ * Move a repository into the recycle bin (admin, or a project_manager/developer
+ * member of that repository). Image data and tags are not touched.
+ */
+router.delete('/:id', asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const repository = await repositoryModel.findById(id);
+    if (!repository) {
+      return res.status(404).json(error('Repository not found', 404));
+    }
+
+    if (req.user.role !== 'admin') {
+      const membership = await repositoryModel.getUserMembership(repository.id, req.user.id);
+      if (!membership || !['project_manager', 'developer'].includes(membership.role)) {
+        return res.status(403).json(error('No permission to delete this repository', 403));
+      }
+    }
+
+    await repositoryModel.deleteRepository(repository.id, req.user.id);
+    res.status(200).json(success(null, 'Repository moved to recycle bin successfully'));
+  } catch (e) {
+    logger.error('Error deleting repository:', e);
+
+    if (e.message && e.message.includes('already in the recycle bin')) {
+      return res.status(409).json(error(e.message, 409, 'ALREADY_DELETED'));
+    }
+
+    res.status(500).json(error('Failed to delete repository'));
+  }
+}));
+
+/**
+ * POST /api/repository/:id/restore
+ * Restore a repository from the recycle bin (admin only)
+ */
+router.post('/:id/restore', requireAdmin, asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const repository = await repositoryModel.findById(id);
+    if (!repository) {
+      return res.status(404).json(error('Repository not found', 404));
+    }
+
+    await repositoryModel.restoreRepository(repository.id);
+    res.status(200).json(success(null, 'Repository restored successfully'));
+  } catch (e) {
+    logger.error('Error restoring repository:', e);
+
+    if (e.message && e.message.includes('not in the recycle bin')) {
+      return res.status(409).json(error(e.message, 409, 'NOT_DELETED'));
+    }
+
+    res.status(500).json(error('Failed to restore repository'));
+  }
+}));
+
+/**
+ * DELETE /api/repository/:id/purge
+ * Physically remove a repository from the database (admin only, irreversible).
+ *
+ * Database rows only: image_tags / repository_members go with it via FK CASCADE.
+ * Registry-side manifests and blobs are NOT removed here — reclaiming that disk
+ * space needs a registry garbage-collect run, see deploy/registry-gc.md.
+ */
+router.delete('/:id/purge', requireAdmin, asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const repository = await repositoryModel.findById(id);
+    if (!repository) {
+      return res.status(404).json(error('Repository not found', 404));
+    }
+
+    await repositoryModel.purgeRepository(repository.id);
+    res.status(200).json(success(null, 'Repository permanently deleted'));
+  } catch (e) {
+    logger.error('Error purging repository:', e);
+    res.status(500).json(error('Failed to purge repository'));
   }
 }));
 

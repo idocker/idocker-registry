@@ -101,6 +101,8 @@ export async function initDatabase() {
               created_by INTEGER,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              deleted_at DATETIME,
+              deleted_by INTEGER,
               FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
             )
           `);
@@ -130,6 +132,8 @@ export async function initDatabase() {
               is_active BOOLEAN DEFAULT 1,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              deleted_at DATETIME,
+              deleted_by INTEGER,
               UNIQUE(name, project_id),
               FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
             )
@@ -211,6 +215,8 @@ export async function initDatabase() {
               created_by INTEGER,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              deleted_at DATETIME,
+              deleted_by INTEGER,
               FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
             )
           `);
@@ -228,6 +234,9 @@ export async function initDatabase() {
           db.run('CREATE INDEX IF NOT EXISTS idx_namespaces_name ON namespaces(name)');
           db.run('CREATE INDEX IF NOT EXISTS idx_namespaces_is_active ON namespaces(is_active)');
           db.run('CREATE INDEX IF NOT EXISTS idx_namespaces_created_by ON namespaces(created_by)');
+          db.run('CREATE INDEX IF NOT EXISTS idx_namespaces_deleted_at ON namespaces(deleted_at)');
+          db.run('CREATE INDEX IF NOT EXISTS idx_projects_deleted_at ON projects(deleted_at)');
+          db.run('CREATE INDEX IF NOT EXISTS idx_repositories_deleted_at ON repositories(deleted_at)');
 
           // ===== Schema Migration: use PRAGMA user_version to ensure migration runs exactly once =====
           db.get("PRAGMA user_version", [], (err, row) => {
@@ -355,6 +364,37 @@ export async function initDatabase() {
                 db.run('PRAGMA user_version = 3');
                 logger.info('Schema migration v3 completed: image_tags.pushed_by');
               }
+            });
+          });
+
+          // ===== Recycle bin migration: deleted_at / deleted_by =====
+          // Guarded by column checks rather than user_version (same reasoning as
+          // the pushed_by migration above: the pragma is written asynchronously,
+          // so a fresh database can still read 0 here). Idempotent and safe to
+          // run on every boot.
+          [
+            ['namespaces', 'deleted_at', 'DATETIME'],
+            ['namespaces', 'deleted_by', 'INTEGER'],
+            ['projects', 'deleted_at', 'DATETIME'],
+            ['projects', 'deleted_by', 'INTEGER'],
+            ['repositories', 'deleted_at', 'DATETIME'],
+            ['repositories', 'deleted_by', 'INTEGER']
+          ].forEach(([table, column, type]) => {
+            db.all(`PRAGMA table_info(${table})`, [], (err, columns) => {
+              if (err || !columns) {
+                logger.error(`Recycle bin migration: cannot inspect ${table}:`, err);
+                return;
+              }
+              if (columns.some(col => col.name === column)) {
+                return;
+              }
+              db.run(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`, (alterErr) => {
+                if (alterErr) {
+                  logger.error(`Recycle bin migration: error adding ${table}.${column}:`, alterErr);
+                } else {
+                  logger.info(`Recycle bin migration: added ${table}.${column}`);
+                }
+              });
             });
           });
 

@@ -46,7 +46,6 @@ export default {
     operations: '操作',
     noData: '暂无数据',
     deleting: '删除中...',
-    reactivate: '重新激活',
     required: '必填',
     optional: '选填',
     language: '语言',
@@ -107,7 +106,7 @@ export default {
     description: '描述',
     descriptionPlaceholder: '输入命名空间描述',
     projectCount: '项目数量',
-    isActive: '是否启用',
+    nameImmutable: '名称创建后不可修改',
     status: '状态',
     createdAt: '创建时间',
     createdBy: '创建者',
@@ -118,7 +117,6 @@ export default {
     createFirstNamespace: '创建第一个命名空间',
     noSearchResults: '未找到匹配的命名空间',
     tryDifferentSearchTerms: '请尝试不同的搜索词',
-    deleteConfirm: '您确定要删除命名空间 "{name}" 吗？',
     deleteWithProjectsWarning: '该命名空间下有 {count} 个活跃项目，无法删除。请先删除或移动这些项目。'
   },
   // 页面标题
@@ -600,7 +598,7 @@ export default {
     fetchProjectsFailed: '获取项目失败',
     saveProjectFailed: '保存项目失败',
     deleteProjectFailed: '删除项目失败',
-    confirmDeleteProject: '确定要删除项目 "{name}" 吗？此操作不可撤销。'
+    deleteWithRepositoriesWarning: '该项目下有 {count} 个仓库，无法删除。请先删除这些仓库。'
   },
 
   // 项目详情
@@ -855,6 +853,17 @@ export default {
   },
 
   // 对话框
+  // 删除确认弹窗（需输入名称 + 关联子项拦截）
+  deleteDialog: {
+    warning: '删除后该对象会进入回收站，管理员可将其恢复。',
+    instruction: '请输入{type}名称 “{name}” 以确认删除：',
+    placeholder: '输入名称',
+    mismatch: '名称与要删除的对象不一致',
+    blockedTitle: '存在关联子项，无法删除',
+    blockedHint: '请先处理上述关联项后再试。',
+    confirm: '确认删除'
+  },
+
   dialogs: {
     // 认证对话框
     auth: {
@@ -1015,5 +1024,31 @@ export default {
     removeFailed: '移除成员失败',
     loadFailed: '加载成员列表失败',
     loadUsersFailed: '加载用户列表失败'
+  },
+
+  // 回收站（假删除）
+  recycleBin: {
+    toggle: '回收站',
+    toggleHint: '只显示已移入回收站的资源',
+    badge: '已删除',
+    deletedAt: '删除时间',
+    deletedBy: '删除人',
+    unknownUser: '未知用户',
+    emptyRecycleBin: '回收站为空',
+    deleteSuccess: '已移入回收站："{name}"',
+    deleteRepositoryTitle: '删除仓库',
+    namespaceLabel: '命名空间',
+    projectLabel: '项目',
+    repositoryLabel: '仓库',
+    restore: '恢复',
+    restoreConfirmTitle: '恢复',
+    restoreConfirm: '确定要恢复 "{name}" 吗？',
+    restoreSuccess: '已恢复："{name}"',
+    purge: '彻底删除',
+    purgeConfirmTitle: '彻底删除',
+    purgeWarning: '此操作不可恢复，数据将被永久删除。',
+    purgeWarningWithImages: '此操作不可恢复：将从数据库永久删除该仓库及其标签记录。registry 中的镜像文件不会被删除，需另行执行垃圾回收才能释放磁盘空间（见 deploy/registry-gc.md）。',
+    purgeSuccess: '已彻底删除："{name}"',
+    operationFailed: '操作失败'
   }
 }

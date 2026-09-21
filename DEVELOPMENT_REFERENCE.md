@@ -509,9 +509,14 @@ PRAGMA temp_store = MEMORY;
 | GET | `/api/namespaces` | 列表 (分页/搜索) |
 | GET | `/api/namespaces/:id` | 详情 |
 | POST | `/api/namespaces` | 创建（需 admin） |
-| PUT | `/api/namespaces/:id` | 更新（需 admin） |
-| DELETE | `/api/namespaces/:id` | 删除（需 admin） |
-| POST | `/api/namespaces/:id/reactivate` | 重新激活（需 admin；原版误写为 PUT） |
+| PUT | `/api/namespaces/:id` | 更新描述（需 admin）；改名 409 `NAMESPACE_NAME_IMMUTABLE`；带 `isActive` 一律 400 `NAMESPACE_STATUS_NOT_SUPPORTED`（状态走独立接口） |
+| DELETE | `/api/namespaces/:id` | 移入回收站（需 admin）；其下仍有未删除项目时 409 `NAMESPACE_HAS_PROJECTS`；default 为 409 `PROTECTED_RESOURCE` |
+| POST | `/api/namespaces/:id/restore` | 从回收站恢复（需 admin） |
+| DELETE | `/api/namespaces/:id/purge` | 物理删除（需 admin，不可逆）；其下存在任何项目（含已删除）时 409 `NAMESPACE_HAS_PROJECTS` |
+
+> 三层（命名空间/项目/仓库）的列表接口均支持 `deleted` 参数：`0`（默认，仅未删除）/ `1`（仅回收站）/ `all`。
+> “删除”均为假删除：写 `deleted_at` / `deleted_by`，**不动 `is_active`**（启用/停用是另一回事）。
+> 物理删除不会级联：只要后代存在（含回收站里的），一律 409 拒绝，需自下而上逐个清理。
 
 ### 6.5 项目 (`/api/projects`)
 
@@ -522,7 +527,9 @@ PRAGMA temp_store = MEMORY;
 | GET | `/api/projects/:id` | 项目详情 |
 | POST | `/api/projects` | 创建 (需 admin) |
 | PUT | `/api/projects/:id` | 更新 (需 admin) |
-| DELETE | `/api/projects/:id` | 删除 (需 admin) |
+| DELETE | `/api/projects/:id` | 移入回收站（需 admin）；其下仍有未删除仓库时 409 `PROJECT_HAS_REPOSITORIES` |
+| POST | `/api/projects/:id/restore` | 从回收站恢复（需 admin） |
+| DELETE | `/api/projects/:id/purge` | 物理删除（需 admin，不可逆）；其下存在任何仓库（含已删除）时 409 `PROJECT_HAS_REPOSITORIES` |
 
 > **项目级成员管理已废弃**（原基于 `project_members` 表，schema v2 已 DROP）：成员管理统一走仓库级
 > `/api/repository/:id/members`。“项目成员”现为派生概念（= 该项目下任一仓库的成员）。
@@ -546,6 +553,9 @@ PRAGMA temp_store = MEMORY;
 | PUT | `/api/repository/:id/members/:userId` | 修改成员角色 |
 | DELETE | `/api/repository/:id/members/:userId` | 移除成员 |
 | PUT | `/api/repository/:id/public` | 切换仓库公开状态 |
+| DELETE | `/api/repository/:id` | 移入回收站（admin，或该仓库的 `project_manager`/`developer` 成员）；镜像与标签不动 |
+| POST | `/api/repository/:id/restore` | 从回收站恢复（需 admin） |
+| DELETE | `/api/repository/:id/purge` | 物理删除 DB 记录（需 admin，不可逆）；标签/成员由 FK CASCADE 一并清除，**registry 里的镜像数据不动**（释放磁盘需离线 GC，见 `deploy/registry-gc.md`） |
 
 ### 6.7 审计 (`/api/audit`)
 

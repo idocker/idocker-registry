@@ -16,8 +16,9 @@ export class ProjectModel extends BaseModel {
    * @returns 
    */
   async findByName(projectName) {
+    // 回收站里的项目对调用方不可见（Docker 权限判断、同步等依赖本方法）
     return await this.get(
-      'SELECT * FROM projects WHERE name = ?',
+      'SELECT * FROM projects WHERE name = ? AND deleted_at IS NULL',
       [projectName]
     );
   }
@@ -27,22 +28,32 @@ export class ProjectModel extends BaseModel {
    * @param {*} isActive Whether active 
    * @returns 
    */
-  async getProjectsAllList(isActive , { page = 1, limit = 20, search = '' } = {}) {
+  async getProjectsAllList(isActive, { page = 1, limit = 20, search = '', deleted = '0' } = {}) {
     try {
       let query;
       let params = [];
 
       query = `
-        SELECT * FROM projects WHERE 1 = 1
+        SELECT p.*, du.username as deleted_by_username
+        FROM projects p
+        LEFT JOIN users du ON p.deleted_by = du.id
+        WHERE 1 = 1
       `;
 
+      // deleted: '0' 只看未删除（默认）| '1' 只看回收站 | 'all' 都看
+      if (deleted === '1') {
+        query += ' AND p.deleted_at IS NOT NULL';
+      } else if (deleted !== 'all') {
+        query += ' AND p.deleted_at IS NULL';
+      }
+
       if (isActive && isActive !== 'all') {
-        query += ' AND is_active = ?';
+        query += ' AND p.is_active = ?';
         params.push(isActive);
       }
 
       if (search) {
-        query += ' AND (name LIKE ? OR description LIKE ? OR namespace LIKE ?)';
+        query += ' AND (p.name LIKE ? OR p.description LIKE ? OR p.namespace LIKE ?)';
         params.push(`%${search}%`, `%${search}%`, `%${search}%`);
       }
 
@@ -63,20 +74,29 @@ export class ProjectModel extends BaseModel {
   /**
    * Get project list (with pagination and search, including permission filtering)
    */
-  async getProjectsList(userId, userRole, isActive, { page = 1, limit = 20, search = '' } = {}) {
+  async getProjectsList(userId, userRole, isActive, { page = 1, limit = 20, search = '', deleted = '0' } = {}) {
     try {
       let query;
       let params = [];
       logger.info(`getProjectsList:${JSON.stringify(isActive)}`)
       if (userRole === 'admin') {
         query = `
-          SELECT p.id, p.name, p.description, p.namespace, p.is_active, p.created_at, p.updated_at, 
+          SELECT p.id, p.name, p.description, p.namespace, p.is_active, p.created_at, p.updated_at,
+                 p.deleted_at, p.deleted_by, du.username as deleted_by_username,
                  u.username as created_by_username, u.full_name as created_by_name
           FROM projects p
           LEFT JOIN users u ON p.created_by = u.id
+          LEFT JOIN users du ON p.deleted_by = du.id
           WHERE 1=1
         `;
-        
+
+        // deleted: '0' 只看未删除（默认）| '1' 只看回收站 | 'all' 都看
+        if (deleted === '1') {
+          query += ' AND p.deleted_at IS NOT NULL';
+        } else if (deleted !== 'all') {
+          query += ' AND p.deleted_at IS NULL';
+        }
+
         if (isActive && isActive !== 'all') {
           query += ' AND p.is_active = ?';
           params.push(isActive);
@@ -93,6 +113,7 @@ export class ProjectModel extends BaseModel {
           FROM projects p
           LEFT JOIN users u ON p.created_by = u.id
           WHERE p.is_active = 1
+            AND p.deleted_at IS NULL
             AND (p.name = 'default'
                  OR EXISTS (SELECT 1
                               FROM repositories r
@@ -151,7 +172,7 @@ export class ProjectModel extends BaseModel {
       `SELECT COUNT(DISTINCT rm.user_id) as count
          FROM repository_members rm
          JOIN repositories r ON r.id = rm.repository_id
-        WHERE r.project_id = ? AND r.is_active = 1`,
+        WHERE r.project_id = ? AND r.is_active = 1 AND r.deleted_at IS NULL`,
       [projectId]
     );
     return { count: result ? result.count : 0 };
@@ -162,7 +183,7 @@ export class ProjectModel extends BaseModel {
    */
   async getProjectRepositoryCount(projectId) {
     return await this.get(
-      'SELECT COUNT(*) as count FROM repositories WHERE project_id = ? AND is_active = 1',
+      'SELECT COUNT(*) as count FROM repositories WHERE project_id = ? AND is_active = 1 AND deleted_at IS NULL',
       [projectId]
     );
   }
@@ -206,27 +227,117 @@ export class ProjectModel extends BaseModel {
   }
 
   /**
-   * Delete project (soft delete)
+   * Move project to the recycle bin (fake delete).
+   * The row and its repositories stay in place; only deleted_at/deleted_by are set.
+   * @param {number} projectId Project ID
+   * @param {number|null} deletedBy Acting user ID
    */
-  async deleteProject(projectId) {
+  async deleteProject(projectId, deletedBy = null) {
     try {
       // The built-in 'default' project backs single-segment image paths
       // (e.g. idocker.vip/nginx) and must always remain available.
       const project = await this.get(
-        'SELECT id, name FROM projects WHERE id = ?',
+        'SELECT id, name, deleted_at FROM projects WHERE id = ?',
         [projectId]
       );
-      if (project && project.name === 'default') {
+      if (!project) {
+        throw new Error('Project not found');
+      }
+      if (project.deleted_at) {
+        throw new Error('Project is already in the recycle bin');
+      }
+      if (project.name === 'default') {
         throw new Error('Cannot delete the default project');
       }
 
+      // 只有未删除的活跃仓库才算关联子项；回收站里的仓库不阻塞删除
+      const repositoryCount = await this.get(
+        'SELECT COUNT(*) as count FROM repositories WHERE project_id = ? AND is_active = 1 AND deleted_at IS NULL',
+        [projectId]
+      );
+      if (repositoryCount.count > 0) {
+        throw new Error('Cannot delete project with active repositories');
+      }
+
+      const now = new Date().toISOString();
       const result = await this.update(projectId, {
-        is_active: 0,
-        updated_at: new Date().toISOString()
+        deleted_at: now,
+        deleted_by: deletedBy,
+        updated_at: now
       });
+      logger.info(`Moved project to recycle bin, ID: ${projectId}`);
       return result;
     } catch (error) {
       logger.error('Failed to delete project:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Restore project from the recycle bin. Admin only at the route layer.
+   * @param {number} projectId Project ID
+   */
+  async restoreProject(projectId) {
+    try {
+      const project = await this.get(
+        'SELECT id, deleted_at FROM projects WHERE id = ?',
+        [projectId]
+      );
+      if (!project) {
+        throw new Error('Project not found');
+      }
+      if (!project.deleted_at) {
+        throw new Error('Project is not in the recycle bin');
+      }
+
+      const result = await this.update(projectId, {
+        deleted_at: null,
+        deleted_by: null,
+        updated_at: new Date().toISOString()
+      });
+      logger.info(`Restored project from recycle bin, ID: ${projectId}`);
+      return result;
+    } catch (error) {
+      logger.error('Failed to restore project:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Physically remove project from the database. Admin only, irreversible.
+   *
+   * repositories.project_id has ON DELETE CASCADE, so purging a project would
+   * silently take its repositories (and their tags/members) with it. Refuse
+   * while any repository row still points here, including one already in the
+   * recycle bin, so the blast radius stays explicit.
+   * @param {number} projectId Project ID
+   */
+  async purgeProject(projectId) {
+    try {
+      const project = await this.get(
+        'SELECT id, name FROM projects WHERE id = ?',
+        [projectId]
+      );
+      if (!project) {
+        throw new Error('Project not found');
+      }
+      if (project.name === 'default') {
+        throw new Error('Cannot delete the default project');
+      }
+
+      const repositoryCount = await this.get(
+        'SELECT COUNT(*) as count FROM repositories WHERE project_id = ?',
+        [projectId]
+      );
+      if (repositoryCount.count > 0) {
+        throw new Error('Cannot purge project with existing repositories');
+      }
+
+      await this.delete(projectId);
+      logger.info(`Purged project from database, ID: ${projectId}`);
+      return true;
+    } catch (error) {
+      logger.error('Failed to purge project:', error);
       throw error;
     }
   }
@@ -266,7 +377,7 @@ export class ProjectModel extends BaseModel {
         `SELECT rm.id
            FROM repository_members rm
            JOIN repositories r ON r.id = rm.repository_id
-          WHERE r.project_id = ? AND rm.user_id = ? AND r.is_active = 1
+          WHERE r.project_id = ? AND rm.user_id = ? AND r.is_active = 1 AND r.deleted_at IS NULL
           LIMIT 1`,
         [projectId, userId]
       );
@@ -301,7 +412,7 @@ export class ProjectModel extends BaseModel {
         `SELECT rm.id
            FROM repository_members rm
            JOIN repositories r ON r.id = rm.repository_id
-          WHERE r.project_id = ? AND rm.user_id = ? AND r.is_active = 1
+          WHERE r.project_id = ? AND rm.user_id = ? AND r.is_active = 1 AND r.deleted_at IS NULL
           LIMIT 1`,
         [projectId, userId]
       );
@@ -321,7 +432,7 @@ export class ProjectModel extends BaseModel {
         return null;
       }
       const project = await this.get(
-        'SELECT id, name FROM projects WHERE id = ? AND is_active = 1',
+        'SELECT id, name FROM projects WHERE id = ? AND is_active = 1 AND deleted_at IS NULL',
         [projectId]
       );
       return project;
@@ -344,7 +455,7 @@ export class ProjectModel extends BaseModel {
         `SELECT rm.id
            FROM repository_members rm
            JOIN repositories r ON r.id = rm.repository_id
-          WHERE r.project_id = ? AND rm.user_id = ? AND r.is_active = 1
+          WHERE r.project_id = ? AND rm.user_id = ? AND r.is_active = 1 AND r.deleted_at IS NULL
           LIMIT 1`,
         [projectId, userId]
       );
@@ -364,7 +475,7 @@ export class ProjectModel extends BaseModel {
         return null;
       }
       const project = await this.get(
-        'SELECT id FROM projects WHERE name = ? AND is_active = 1',
+        'SELECT id FROM projects WHERE name = ? AND is_active = 1 AND deleted_at IS NULL',
         [projectName]
       );
       return project;

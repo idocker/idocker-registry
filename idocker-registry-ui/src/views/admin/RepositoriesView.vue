@@ -5,6 +5,10 @@
         <div class="table-controls">
           <input type="text" :placeholder="$t('projectDetail.searchRepos')" v-model="searchQuery" class="search-input" />
           <div class="table-actions">
+            <label v-if="isAdmin" class="recycle-toggle" :title="$t('recycleBin.toggleHint')">
+              <input type="checkbox" v-model="showRecycleBin" />
+              <span>{{ $t('recycleBin.toggle') }}</span>
+            </label>
             <button class="btn btn-primary" @click="showAddModal = true">
               <span class="material-icons">add</span>
               {{ $t('projectDetail.createRegistry') }}
@@ -34,10 +38,23 @@
                 </td>
               </tr>
               <tr v-else-if="filteredRepos.length === 0">
-                <td colspan="6" class="empty-cell">{{ $t('projectDetail.noRepos') }}</td>
+                <td colspan="6" class="empty-cell">
+                  {{ showRecycleBin ? $t('recycleBin.emptyRecycleBin') : $t('projectDetail.noRepos') }}
+                </td>
               </tr>
               <tr v-for="repo in filteredRepos" :key="repo.id">
-                <td>{{ repo.name }}</td>
+                <td>
+                  <div class="entity-name-cell">
+                    <span>{{ repo.name }}</span>
+                    <span v-if="repo.deleted_at" class="status-badge recycled">
+                      {{ $t('recycleBin.badge') }}
+                    </span>
+                  </div>
+                  <div v-if="repo.deleted_at" class="recycle-meta">
+                    <span>{{ $t('recycleBin.deletedAt') }}: {{ formatDate(repo.deleted_at) }}</span>
+                    <span>{{ $t('recycleBin.deletedBy') }}: {{ repo.deleted_by_username || $t('recycleBin.unknownUser') }}</span>
+                  </div>
+                </td>
                 <td>{{ repo.namespace }}</td>
                 <td>{{ repo.project_name }}</td>
                 <td>
@@ -47,9 +64,26 @@
                 </td>
                 <td>{{ repo.memberCount || 0 }}</td>
                 <td class="action-buttons">
-                  <button class="btn btn-icon btn-ghost" :title="$t('projectDetail.manageMembers')" @click="openMembers(repo)">
-                    <span class="material-icons">group</span>
-                  </button>
+                  <template v-if="repo.deleted_at">
+                    <template v-if="isAdmin">
+                      <button class="btn btn-icon btn-ghost" @click="requestRestoreRepo(repo)"
+                        :title="$t('recycleBin.restore')">
+                        <span class="material-icons">settings_backup_restore</span>
+                      </button>
+                      <button class="btn btn-icon btn-ghost btn-danger-ghost" @click="requestPurgeRepo(repo)"
+                        :title="$t('recycleBin.purge')">
+                        <span class="material-icons">delete_forever</span>
+                      </button>
+                    </template>
+                  </template>
+                  <template v-else>
+                    <button class="btn btn-icon btn-ghost" :title="$t('projectDetail.manageMembers')" @click="openMembers(repo)">
+                      <span class="material-icons">group</span>
+                    </button>
+                    <button class="btn btn-icon btn-ghost btn-danger-ghost" :title="$t('common.delete')" @click="requestDeleteRepo(repo)">
+                      <span class="material-icons">delete</span>
+                    </button>
+                  </template>
                 </td>
               </tr>
             </tbody>
@@ -102,6 +136,38 @@
           </form>
         </div>
       </div>
+
+      <!-- 回收站：删除仓库（假删除） -->
+      <DeleteConfirmDialog
+        v-if="showDeleteRepoModal && repoToDelete"
+        :title="$t('recycleBin.deleteRepositoryTitle')"
+        :entity-label="$t('recycleBin.repositoryLabel')"
+        :entity-name="repoToDelete.name"
+        :loading="isDeletingRepo"
+        @confirm="confirmDeleteRepo"
+        @cancel="showDeleteRepoModal = false"
+      />
+
+      <!-- 回收站：恢复确认 -->
+      <ConfirmationDialog
+        v-if="showRestoreRepoModal && repoToRestore"
+        :title="$t('recycleBin.restoreConfirmTitle')"
+        :message="$t('recycleBin.restoreConfirm', { name: repoToRestore.name })"
+        @confirm="confirmRestoreRepo"
+        @cancel="showRestoreRepoModal = false"
+      />
+
+      <!-- 回收站：彻底删除确认（会同时删除 registry 中的镜像数据） -->
+      <DeleteConfirmDialog
+        v-if="showPurgeRepoModal && repoToPurge"
+        :title="$t('recycleBin.purgeConfirmTitle')"
+        :entity-label="$t('recycleBin.repositoryLabel')"
+        :entity-name="repoToPurge.name"
+        :warning="$t('recycleBin.purgeWarningWithImages')"
+        :loading="isPurgingRepo"
+        @confirm="confirmPurgeRepo"
+        @cancel="showPurgeRepoModal = false"
+      />
 
       <!-- Member Management Modal -->
       <div v-if="showMembersModal" class="modal-overlay" @click.self="closeMembers">
@@ -161,19 +227,29 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http } from '@/utils/http'
+import repositoryService from '@/services/repository.service'
+import { useAuthStore } from '@/stores/auth'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
+import DeleteConfirmDialog from '@/components/dialogs/DeleteConfirmDialog.vue'
+import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog.vue'
 import { useNotifications } from '@/composables/useNotifications'
+import { formatDate as fmtDate } from '@/utils/helpers'
 
 const { showSuccess, showError } = useNotifications()
+// 回收站视图 / 恢复 / 彻底删除仅管理员可见（后端仍会兜底校验）
+const authStore = useAuthStore()
+const isAdmin = computed(() => authStore.user?.role === 'admin')
 
 const repos = ref<any[]>([])
 const projectList = ref<any[]>([])
 const isLoading = ref(true)
 const isSubmitting = ref(false)
 const searchQuery = ref('')
+// 回收站（假删除）视图开关
+const showRecycleBin = ref(false)
 const showAddModal = ref(false)
 const addError = ref('')
 
@@ -184,7 +260,7 @@ const addForm = ref({
 })
 
 // ===== 仓库成员管理 =====
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const showMembersModal = ref(false)
 const activeRepo = ref<any>(null)
 const repoMembers = ref<any[]>([])
@@ -215,14 +291,21 @@ const filteredRepos = computed(() => {
 
 async function fetchRepos() {
   try {
-    const res = await http.get('/api/repository/all')
+    isLoading.value = true
+    // 开启回收站只拉已删除（deleted=1），否则只看未删除（deleted=0）
+    const res = await repositoryService.getAllRepositories({
+      deleted: showRecycleBin.value ? '1' : '0'
+    })
     repos.value = res.data || []
   } catch (e) {
     console.error('Failed to load repositories:', e)
+    repos.value = []
   } finally {
     isLoading.value = false
   }
 }
+
+const formatDate = (dateString: string) => dateString ? fmtDate(dateString, locale.value) : '-'
 
 async function fetchProjects() {
   try {
@@ -271,6 +354,99 @@ onMounted(async () => {
   await Promise.all([fetchRepos(), fetchProjects()])
 })
 
+// 切换回收站视图时重新拉取
+watch(showRecycleBin, () => {
+  fetchRepos()
+})
+
+// ===== 回收站（假删除）操作 =====
+const repoToDelete = ref<any>(null)
+const showDeleteRepoModal = ref(false)
+const isDeletingRepo = ref(false)
+const repoToRestore = ref<any>(null)
+const showRestoreRepoModal = ref(false)
+const isRestoringRepo = ref(false)
+const repoToPurge = ref<any>(null)
+const showPurgeRepoModal = ref(false)
+const isPurgingRepo = ref(false)
+
+function requestDeleteRepo(repo: any) {
+  repoToDelete.value = repo
+  showDeleteRepoModal.value = true
+}
+
+async function confirmDeleteRepo() {
+  if (!repoToDelete.value || isDeletingRepo.value) return
+  isDeletingRepo.value = true
+  const name = repoToDelete.value.name
+  try {
+    // 假删除：仓库进入回收站，可由管理员恢复
+    const res = await repositoryService.deleteRepository(repoToDelete.value.id)
+    if (res.success === false) {
+      throw new Error(res.message || t('recycleBin.operationFailed'))
+    }
+    showDeleteRepoModal.value = false
+    repoToDelete.value = null
+    await fetchRepos()
+    showSuccess(t('recycleBin.deleteSuccess', { name }))
+  } catch (e: any) {
+    showError(e.message || t('recycleBin.operationFailed'))
+  } finally {
+    isDeletingRepo.value = false
+  }
+}
+
+function requestRestoreRepo(repo: any) {
+  repoToRestore.value = repo
+  showRestoreRepoModal.value = true
+}
+
+async function confirmRestoreRepo() {
+  if (!repoToRestore.value || isRestoringRepo.value) return
+  isRestoringRepo.value = true
+  const name = repoToRestore.value.name
+  try {
+    const res = await repositoryService.restoreRepository(repoToRestore.value.id)
+    if (res.success === false) {
+      throw new Error(res.message || t('recycleBin.operationFailed'))
+    }
+    showRestoreRepoModal.value = false
+    repoToRestore.value = null
+    await fetchRepos()
+    showSuccess(t('recycleBin.restoreSuccess', { name }))
+  } catch (e: any) {
+    showError(e.message || t('recycleBin.operationFailed'))
+  } finally {
+    isRestoringRepo.value = false
+  }
+}
+
+function requestPurgeRepo(repo: any) {
+  repoToPurge.value = repo
+  showPurgeRepoModal.value = true
+}
+
+async function confirmPurgeRepo() {
+  if (!repoToPurge.value || isPurgingRepo.value) return
+  isPurgingRepo.value = true
+  const name = repoToPurge.value.name
+  try {
+    // 彻底删除：后端会同时删除 registry 中的镜像数据，不可恢复
+    const res = await repositoryService.purgeRepository(repoToPurge.value.id)
+    if (res.success === false) {
+      throw new Error(res.message || t('recycleBin.operationFailed'))
+    }
+    showPurgeRepoModal.value = false
+    repoToPurge.value = null
+    await fetchRepos()
+    showSuccess(t('recycleBin.purgeSuccess', { name }))
+  } catch (e: any) {
+    showError(e.message || t('recycleBin.operationFailed'))
+  } finally {
+    isPurgingRepo.value = false
+  }
+}
+
 // ===== 仓库成员管理逻辑 =====
 async function openMembers(repo: any) {
   activeRepo.value = repo
@@ -286,7 +462,7 @@ async function openMembers(repo: any) {
     repoMembers.value = membersRes.data?.members || []
     userOptions.value = usersRes.data || []
   } catch (e: any) {
-    membersError.value = e.response?.data?.message || e.message || t('repoMembers.loadFailed')
+    membersError.value = e.message || t('repoMembers.loadFailed')
   } finally {
     membersLoading.value = false
   }
@@ -303,7 +479,7 @@ async function loadMembers() {
     const res = await http.get(`/api/repository/${activeRepo.value.id}/members`)
     repoMembers.value = res.data?.members || []
   } catch (e: any) {
-    membersError.value = e.response?.data?.message || e.message || t('repoMembers.loadFailed')
+    membersError.value = e.message || t('repoMembers.loadFailed')
   }
 }
 
@@ -324,7 +500,7 @@ async function handleAddMember() {
     memberForm.value = { userId: '', role: 'developer' }
     await loadMembers()
   } catch (e: any) {
-    membersError.value = e.response?.data?.message || e.message || t('repoMembers.addFailed')
+    membersError.value = e.message || t('repoMembers.addFailed')
   } finally {
     addingMember.value = false
   }
@@ -339,7 +515,7 @@ async function handleRoleChange(member: any, event: Event) {
     member.role = role
     showSuccess(t('repoMembers.roleUpdated'))
   } catch (e: any) {
-    showError(e.response?.data?.message || e.message || t('repoMembers.roleUpdateFailed'))
+    showError(e.message || t('repoMembers.roleUpdateFailed'))
     await loadMembers()
   }
 }
@@ -352,7 +528,7 @@ async function handleRemoveMember(member: any) {
     repoMembers.value = repoMembers.value.filter((m: any) => m.user_id !== member.user_id)
     showSuccess(t('repoMembers.removeSuccess'))
   } catch (e: any) {
-    showError(e.response?.data?.message || e.message || t('repoMembers.removeFailed'))
+    showError(e.message || t('repoMembers.removeFailed'))
   }
 }
 </script>
@@ -448,6 +624,41 @@ async function handleRemoveMember(member: any) {
 
   &.public { background: #e8f5e9; color: #2e7d32; }
   &.private { background: #fff3e0; color: #e65100; }
+  &.recycled { background: rgba(244, 67, 54, 0.12); color: var(--error-color, #f44336); }
+}
+
+/* 回收站（假删除） */
+.recycle-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--neutral-text);
+  cursor: pointer;
+  user-select: none;
+
+  input {
+    cursor: pointer;
+  }
+}
+
+.entity-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.recycle-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--neutral-text);
+}
+
+.btn-danger-ghost {
+  color: var(--error-color, #f44336);
 }
 
 /* Modal styles */

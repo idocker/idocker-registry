@@ -15,8 +15,9 @@ export class RepositoryModel extends BaseModel {
    */
   async findByProjectIdAndName(projectId, name) {
     try {
+      // 回收站里的仓库对 Docker 权限判断不可见
       return await this.get(
-        'SELECT * FROM repositories WHERE project_id = ? AND name = ? AND is_active = 1',
+        'SELECT * FROM repositories WHERE project_id = ? AND name = ? AND is_active = 1 AND deleted_at IS NULL',
         [projectId, name]
       );
     } catch (error) {
@@ -68,17 +69,26 @@ export class RepositoryModel extends BaseModel {
    * - admin: all active repositories across projects
    * - other users: repositories where the user is a repository member
    */
-  async getRepositoriesList(userId, userRole, { page = 1, limit = 20, search = '' } = {}) {
+  async getRepositoriesList(userId, userRole, { page = 1, limit = 20, search = '', deleted = '0' } = {}) {
     try {
       const select = `
         SELECT r.id, r.name, r.project_id, r.description, r.is_public, r.is_active,
+               r.deleted_at, r.deleted_by, du.username as deleted_by_username,
                p.name as project_name, p.namespace, r.created_at, r.updated_at,
                (SELECT COUNT(*) FROM image_tags t WHERE t.repository_id = r.id) as tag_count
         FROM repositories r
         JOIN projects p ON r.project_id = p.id
+        LEFT JOIN users du ON r.deleted_by = du.id
       `;
       let where = 'WHERE r.is_active = 1';
       const params = [];
+
+      // deleted: '0' 只看未删除（默认）| '1' 只看回收站 | 'all' 都看
+      if (deleted === '1') {
+        where += ' AND r.deleted_at IS NOT NULL';
+      } else if (deleted !== 'all') {
+        where += ' AND r.deleted_at IS NULL';
+      }
 
       if (userRole !== 'admin') {
         where += ' AND r.id IN (SELECT repository_id FROM repository_members WHERE user_id = ?)';
@@ -101,7 +111,7 @@ export class RepositoryModel extends BaseModel {
   /**
    * Get image list under project
    */
-  async getProjectRepositories(projectId, { page = 1, limit = 20, search = '' } = {}) {
+  async getProjectRepositories(projectId, { page = 1, limit = 20, search = '', deleted = '0' } = {}) {
     try {
       let query = `
         SELECT r.*, COUNT(t.id) as tag_count
@@ -110,6 +120,12 @@ export class RepositoryModel extends BaseModel {
         WHERE r.project_id = ? AND r.is_active = 1
       `;
       let params = [projectId];
+
+      if (deleted === '1') {
+        query += ' AND r.deleted_at IS NOT NULL';
+      } else if (deleted !== 'all') {
+        query += ' AND r.deleted_at IS NULL';
+      }
 
       if (search) {
         query += ' AND (r.name LIKE ? OR r.description LIKE ?)';
@@ -127,22 +143,94 @@ export class RepositoryModel extends BaseModel {
   }
 
   /**
-   * Delete repository (soft delete)
+   * Move repository to the recycle bin (fake delete).
+   *
+   * Deliberately does NOT touch is_active and does NOT delete image_tags: the
+   * recycle bin has to be reversible, so tags stay attached and come back on
+   * restore. Registry-side manifests are not touched either — a fake delete
+   * never destroys image data.
    */
-  async deleteRepository(repositoryId) {
+  async deleteRepository(repositoryId, deletedBy = null) {
     try {
-      const result = await this.update(repositoryId, { 
-        is_active: 0,
-        updated_at: new Date().toISOString() 
+      const repository = await this.get(
+        'SELECT id, deleted_at FROM repositories WHERE id = ?',
+        [repositoryId]
+      );
+      if (!repository) {
+        throw new Error('Repository not found');
+      }
+      if (repository.deleted_at) {
+        throw new Error('Repository is already in the recycle bin');
+      }
+
+      const now = new Date().toISOString();
+      const result = await this.update(repositoryId, {
+        deleted_at: now,
+        deleted_by: deletedBy,
+        updated_at: now
       });
-      
-      // Also delete related image tags
-      const db = await this.getDb();
-      await db.run('DELETE FROM image_tags WHERE repository_id = ?', [repositoryId]);
-      
+
+      logger.info(`Moved repository to recycle bin, ID: ${repositoryId}`);
       return result;
     } catch (error) {
       logger.error('Failed to delete repository:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Restore repository from the recycle bin. Admin only at the route layer.
+   */
+  async restoreRepository(repositoryId) {
+    try {
+      const repository = await this.get(
+        'SELECT id, deleted_at FROM repositories WHERE id = ?',
+        [repositoryId]
+      );
+      if (!repository) {
+        throw new Error('Repository not found');
+      }
+      if (!repository.deleted_at) {
+        throw new Error('Repository is not in the recycle bin');
+      }
+
+      const result = await this.update(repositoryId, {
+        deleted_at: null,
+        deleted_by: null,
+        updated_at: new Date().toISOString()
+      });
+
+      logger.info(`Restored repository from recycle bin, ID: ${repositoryId}`);
+      return result;
+    } catch (error) {
+      logger.error('Failed to restore repository:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Physically remove the repository row. Admin only, irreversible.
+   *
+   * image_tags and repository_members both have ON DELETE CASCADE to this row,
+   * so their database records go with it. Registry-side manifests/blobs are NOT
+   * touched here — reclaiming that disk space needs a separate registry
+   * garbage-collect run (see deploy/registry-gc.md).
+   */
+  async purgeRepository(repositoryId) {
+    try {
+      const repository = await this.get(
+        'SELECT id, name, project_id FROM repositories WHERE id = ?',
+        [repositoryId]
+      );
+      if (!repository) {
+        throw new Error('Repository not found');
+      }
+
+      await this.delete(repositoryId);
+      logger.info(`Purged repository from database, ID: ${repositoryId}`);
+      return true;
+    } catch (error) {
+      logger.error('Failed to purge repository:', error);
       throw error;
     }
   }
@@ -191,7 +279,8 @@ export class RepositoryModel extends BaseModel {
                 p.id as project_id, p.name as project_name, p.namespace
          FROM repositories r
          JOIN projects p ON r.project_id = p.id
-         WHERE r.id = ? AND r.is_active = 1 AND p.is_active = 1`,
+         WHERE r.id = ? AND r.is_active = 1 AND p.is_active = 1
+           AND r.deleted_at IS NULL AND p.deleted_at IS NULL`,
         [repositoryId]
       );
 
@@ -215,7 +304,8 @@ export class RepositoryModel extends BaseModel {
         `SELECT r.id, r.name, r.project_id, p.name as project_name
          FROM repositories r
          JOIN projects p ON r.project_id = p.id
-         WHERE r.id = ? AND r.is_active = 1 AND p.is_active = 1`,
+         WHERE r.id = ? AND r.is_active = 1 AND p.is_active = 1
+           AND r.deleted_at IS NULL AND p.deleted_at IS NULL`,
         [repositoryId]
       );
 
@@ -278,7 +368,7 @@ export class RepositoryModel extends BaseModel {
       }
 
       const repository = await this.get(
-        'SELECT id, is_public, project_id FROM repositories WHERE name = ? AND project_id = ? AND is_active = 1',
+        'SELECT id, is_public, project_id FROM repositories WHERE name = ? AND project_id = ? AND is_active = 1 AND deleted_at IS NULL',
         [repositoryName, projectId]
       );
 
@@ -330,6 +420,7 @@ export class RepositoryModel extends BaseModel {
         JOIN projects p ON r.project_id = p.id
         LEFT JOIN image_tags t ON r.id = t.repository_id
         WHERE p.is_active = 1
+          AND r.deleted_at IS NULL AND p.deleted_at IS NULL
       `;
       
       const params = [];

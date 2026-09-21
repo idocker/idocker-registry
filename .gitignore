@@ -22,3 +22,6 @@ idocker-registry-ui/node_modules/
 
 # Codewhale runtime files (agent tooling, not project code)
 .codewhale/
+
+# 产品网站：只保留在本地/部署环境，代码不纳入版本库
+web/

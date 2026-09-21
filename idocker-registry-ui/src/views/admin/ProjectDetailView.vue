@@ -120,6 +120,17 @@
         </div>
       </div>
 
+      <!-- 删除仓库确认（假删除，需逐字输入仓库名称） -->
+      <DeleteConfirmDialog
+        v-if="showDeleteRepoModal && repoToDelete"
+        :title="$t('recycleBin.deleteRepositoryTitle')"
+        :entity-label="$t('recycleBin.repositoryLabel')"
+        :entity-name="repoToDelete.name"
+        :loading="isDeletingRepo"
+        @confirm="confirmDeleteRepository"
+        @cancel="showDeleteRepoModal = false"
+      />
+
     </div>
   </ManagementLayout>
 </template>
@@ -129,6 +140,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import ManagementLayout from '@/components/admin/ManagementLayout.vue'
+import DeleteConfirmDialog from '@/components/dialogs/DeleteConfirmDialog.vue'
 import projectService from '@/services/project.service'
 import repositoryService from '@/services/repository.service'
 import userService from '@/services/user.service'
@@ -230,10 +242,36 @@ const addRepository = async () => {
 
 const formatDate = (dateString: string) => fmtDate(dateString, locale.value)
 
+// 回收站（假删除）：删除仓库需先逐字输入仓库名称确认
+const repoToDelete = ref<Image | null>(null)
+const showDeleteRepoModal = ref(false)
+const isDeletingRepo = ref(false)
+
 const deleteRepository = (repository: Image) => {
-  if (confirm(t('projectDetail.confirmDeleteRegistry', { name: repository.name }))) {
-    // TODO: Implement delete repository functionality
-    console.log('Delete repository:', repository)
+  repoToDelete.value = repository
+  showDeleteRepoModal.value = true
+}
+
+const confirmDeleteRepository = async () => {
+  if (!repoToDelete.value || isDeletingRepo.value) return
+  isDeletingRepo.value = true
+  const name = repoToDelete.value.name
+  try {
+    // 假删除：仓库进入回收站，可由管理员恢复
+    const response = await repositoryService.deleteRepository(repoToDelete.value.id)
+    if (response.success === false) {
+      throw new Error(response.message || t('recycleBin.operationFailed'))
+    }
+    showDeleteRepoModal.value = false
+    repoToDelete.value = null
+    await fetchProjectData()
+    showSuccess(t('recycleBin.deleteSuccess', { name }))
+  } catch (e: any) {
+    console.error('Error deleting repository:', e)
+    // 后端会拦截仍有镜像的仓库，这里把后端的说明透出
+    showError(t('projectDetail.deleteRegistryFailed'), e.message)
+  } finally {
+    isDeletingRepo.value = false
   }
 }
 

@@ -1,5 +1,3 @@
-import type { P } from "vue-router/dist/router-CWoNjPRp.mjs"
-
 // Registry configuration types
 export interface RegistryConfig {
   url: string
@@ -153,6 +151,10 @@ export interface Project {
   memberSince?: string
   memberCount?: number
   repositoryCount?: number
+  // 回收站（假删除）字段
+  deleted_at?: string | null
+  deleted_by?: number | null
+  deleted_by_username?: string
 }
 
 export interface ProjectMember {
@@ -269,6 +271,10 @@ export interface Repository {
   project?: string  // 兼容字段
   namespace: string
   fullName: string
+  // 回收站（假删除）字段
+  deleted_at?: string | null
+  deleted_by?: number | null
+  deleted_by_username?: string
 }
 
 export interface Image {
@@ -282,6 +288,10 @@ export interface Image {
   created_at: string
   updated_at: string
   tags: ImageTag[]
+  // 回收站（假删除）字段
+  deleted_at?: string | null
+  deleted_by?: number | null
+  deleted_by_username?: string
 }
 
 export interface ImageTag {
@@ -465,6 +475,12 @@ export interface PaginationParams {
   search?: string
 }
 
+/**
+ * 回收站（假删除）过滤参数：
+ * '0' 仅未删除（后端默认）/ '1' 仅回收站 / 'all' 全部
+ */
+export type DeletedFilter = '0' | '1' | 'all'
+
 // 通用分页响应
 export interface PaginatedApiResponse<T>  {
   success: boolean
@@ -507,6 +523,10 @@ export interface Namespace {
     full_name: string
   }
   project_count?: number
+  // 回收站（假删除）字段
+  deleted_at?: string | null
+  deleted_by?: number | null
+  deleted_by_username?: string
 }
 
 export interface CreateNamespaceData {
@@ -514,10 +534,9 @@ export interface CreateNamespaceData {
   description: string
 }
 
+// 命名空间仅描述可修改（名称创建后不可变）
 export interface UpdateNamespaceData {
-  name?: string
   description?: string
-  is_active?: boolean
 }
 
 // 命名空间分页响应

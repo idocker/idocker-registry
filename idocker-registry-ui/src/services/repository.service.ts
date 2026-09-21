@@ -8,7 +8,10 @@ import type {
   ImageTagDetails, 
   PaginationParams,
   ImageRepositoryPaginatedResponse,
-  Repository
+  Repository,
+  Image,
+  PageInfo,
+  DeletedFilter
 } from '@/types'
 
 import { http } from '@/utils/http'
@@ -115,6 +118,46 @@ class RepositoryService {
    */
   async createRepository(data: { projectId: number; name: string; description?: string }): Promise<{ success: boolean; message: string; data: Repository }> {
     return http.post('/api/repository/create', data);
+  }
+
+  /**
+   * 获取全部仓库列表（管理页 /admin/repositories 使用）
+   * @param params.deleted 回收站过滤：'0' 仅未删除（默认）/ '1' 仅回收站 / 'all' 全部
+   */
+  async getAllRepositories(
+    params: { deleted?: DeletedFilter } = {}
+  ): Promise<{ success: boolean; message?: string; data?: Image[]; pagination?: PageInfo }> {
+    const queryParams = new URLSearchParams();
+    if (params.deleted !== undefined) {
+      queryParams.append('deleted', params.deleted);
+    }
+    const queryString = queryParams.toString();
+    return http.get(`/api/repository/all${queryString ? `?${queryString}` : ''}`);
+  }
+
+  /**
+   * 删除仓库（假删除，移入回收站）
+   */
+  async deleteRepository(id: string | number): Promise<{ success: boolean; message: string }> {
+    this.validateRequired(id, '仓库ID');
+    return http.delete(`/api/repository/${id}`);
+  }
+
+  /**
+   * 从回收站恢复仓库（仅管理员）
+   */
+  async restoreRepository(id: string | number): Promise<{ success: boolean; message: string }> {
+    this.validateRequired(id, '仓库ID');
+    return http.post(`/api/repository/${id}/restore`);
+  }
+
+  /**
+   * 彻底删除仓库（物理删除，仅管理员，不可恢复）
+   * 后端会同时删除 registry 中对应的镜像数据
+   */
+  async purgeRepository(id: string | number): Promise<{ success: boolean; message: string }> {
+    this.validateRequired(id, '仓库ID');
+    return http.delete(`/api/repository/${id}/purge`);
   }
 
   /**

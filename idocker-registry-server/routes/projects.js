@@ -13,10 +13,10 @@ const namespaceModel = new NamespaceModel();
 const router = express.Router();
 
 router.get('/', asyncHandler(async (req, res) => {
-  const { page = 1, limit = 20, search = '', isActive='all'} = req.query;
+  const { page = 1, limit = 20, search = '', isActive='all', deleted = '0'} = req.query;
   const { id: userId, role: userRole } = req.user;
   try {
-    const result = await projectModel.getProjectsList(userId, userRole, isActive, { page, limit, search });
+    const result = await projectModel.getProjectsList(userId, userRole, isActive, { page, limit, search, deleted });
     res.status(200).json(paginated(result.data, result.pagination, 'Project list retrieved successfully'));
   } catch (e) {
     logger.error('Error getting project list:', e);
@@ -25,9 +25,9 @@ router.get('/', asyncHandler(async (req, res) => {
 }));
 
 router.get('/all', requireAdmin, asyncHandler(async (req, res) => {
-  const { isActive='all', page = 1, limit = 20, search = '' } = req.query;
+  const { isActive='all', page = 1, limit = 20, search = '', deleted = '0' } = req.query;
   try {
-    const result = await projectModel.getProjectsAllList(isActive, { page, limit, search });
+    const result = await projectModel.getProjectsAllList(isActive, { page, limit, search, deleted });
     res.status(200).json(paginated(result.data, result.pagination, 'Project list retrieved successfully'));
   } catch (e) {
     logger.error('Error getting project list:', e);
@@ -187,10 +187,21 @@ router.delete('/:id', requireAdmin, asyncHandler(async (req, res) => {
       return res.status(404).json(error('Project not found', 404));
     }
 
-    await projectModel.deleteProject(id);
-    res.status(200).json(success(null, 'Project deleted successfully'));
+    // A project that still holds active repositories cannot be deleted:
+    // the repositories (and the images behind them) would be orphaned.
+    // 假删除：进回收站。关联子项检查已下沉到模型层（deleteProject）。
+    await projectModel.deleteProject(id, req.user.id);
+    res.status(200).json(success(null, 'Project moved to recycle bin successfully'));
   } catch (e) {
     logger.error('Error deleting project:', e);
+
+    if (e.message && e.message.includes('Cannot delete project with active repositories')) {
+      return res.status(409).json(error(e.message, 409, 'PROJECT_HAS_REPOSITORIES'));
+    }
+
+    if (e.message && e.message.includes('already in the recycle bin')) {
+      return res.status(409).json(error(e.message, 409, 'ALREADY_DELETED'));
+    }
 
     // The built-in 'default' project is protected
     if (e.message && e.message.includes('Cannot delete the default project')) {
@@ -198,6 +209,64 @@ router.delete('/:id', requireAdmin, asyncHandler(async (req, res) => {
     }
 
     res.status(500).json(error('Failed to delete project'));
+  }
+}));
+
+/**
+ * POST /api/projects/:id/restore
+ * Restore a project from the recycle bin (admin only)
+ */
+router.post('/:id/restore', requireAdmin, asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const projectExists = await projectModel.projectExists(id);
+    if (!projectExists) {
+      return res.status(404).json(error('Project not found', 404));
+    }
+
+    await projectModel.restoreProject(id);
+    res.status(200).json(success(null, 'Project restored successfully'));
+  } catch (e) {
+    logger.error('Error restoring project:', e);
+
+    if (e.message && e.message.includes('not in the recycle bin')) {
+      return res.status(409).json(error(e.message, 409, 'NOT_DELETED'));
+    }
+
+    res.status(500).json(error('Failed to restore project'));
+  }
+}));
+
+/**
+ * DELETE /api/projects/:id/purge
+ * Physically remove a project (admin only, irreversible)
+ */
+router.delete('/:id/purge', requireAdmin, asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const projectExists = await projectModel.projectExists(id);
+    if (!projectExists) {
+      return res.status(404).json(error('Project not found', 404));
+    }
+
+    await projectModel.purgeProject(id);
+    res.status(200).json(success(null, 'Project permanently deleted'));
+  } catch (e) {
+    logger.error('Error purging project:', e);
+
+    // repositories.project_id has FK CASCADE, so the model refuses while any
+    // repository (including one in the recycle bin) still points here
+    if (e.message && e.message.includes('Cannot purge project with existing repositories')) {
+      return res.status(409).json(error(e.message, 409, 'PROJECT_HAS_REPOSITORIES'));
+    }
+
+    if (e.message && e.message.includes('Cannot delete the default project')) {
+      return res.status(409).json(error(e.message, 409, 'PROTECTED_RESOURCE'));
+    }
+
+    res.status(500).json(error('Failed to purge project'));
   }
 }));
 

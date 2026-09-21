@@ -14,19 +14,22 @@ import type {
   UpdateMemberRoleData,
   PaginationParams,
   ProjectRepositoryPaginatedResponse,
-  ProjectPaginatedResponse
+  ProjectPaginatedResponse,
+  DeletedFilter
 } from '@/types'
 class ProjectService {
   /**
    * 获取项目列表
+   * @param params.deleted 回收站过滤：'0' 仅未删除（默认）/ '1' 仅回收站 / 'all' 全部
    */
-  async getProjects(isActive:string ,params: PaginationParams): Promise<ProjectPaginatedResponse> {
+  async getProjects(isActive:string ,params: PaginationParams & { deleted?: DeletedFilter }): Promise<ProjectPaginatedResponse> {
     const queryParams = new URLSearchParams()
     //console.log('isActive', isActive)
     if (isActive) queryParams.append('isActive', isActive.toString())
     if (params.page) queryParams.append('page', params.page.toString()) 
     if (params.limit) queryParams.append('limit', params.limit.toString())
     if (params.search) queryParams.append('search', params.search)
+    if (params.deleted !== undefined) queryParams.append('deleted', params.deleted)
     
     return http.get(`/api/projects?${queryParams.toString()}`)
   }
@@ -63,10 +66,24 @@ class ProjectService {
   }
 
   /**
-   * 删除项目
+   * 删除项目（假删除，移入回收站；后端会拦截仍有仓库的项目）
    */
   async deleteProject(id: string): Promise<{ success: boolean; message: string }> {
     return http.delete(`/api/projects/${id}`)
+  }
+
+  /**
+   * 从回收站恢复项目（仅管理员）
+   */
+  async restoreProject(id: string): Promise<{ success: boolean; message: string; data?: Project }> {
+    return http.post(`/api/projects/${id}/restore`)
+  }
+
+  /**
+   * 彻底删除项目（物理删除，仅管理员，不可恢复）
+   */
+  async purgeProject(id: string): Promise<{ success: boolean; message: string }> {
+    return http.delete(`/api/projects/${id}/purge`)
   }
 
   /**
