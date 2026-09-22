@@ -22,7 +22,10 @@ RUN --mount=type=cache,target=/root/.npm \
 # ---------- Stage 3: Runtime ----------
 FROM idocker.vip/node:22
 
-# 建议 .dockerignore 排除：node_modules、.git、*.md、test/、tests/、simple-test.js
+# 这个容器永远是生产运行形态、时区固定为 Asia/Shanghai（AGENTS.md 要求全链路统一时区），
+# 属于镜像属性而非部署参数，因此写进镜像，compose 无需再重复声明。
+# 注意：只能放在 runtime 阶段——前面两个构建阶段需要 devDependencies（vite/vue-tsc）。
+ENV NODE_ENV=production TZ=Asia/Shanghai
 
 WORKDIR /app
 

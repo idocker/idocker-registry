@@ -1,0 +1,50 @@
+# 本地开发专用 compose：后端 + 内部 registry 跑在容器里，配置全部写在下面。
+#
+# 为什么不用 idocker-registry-server/.env：
+#   那份文件会被 dotenv 自动加载，但它是给"宿主机直接跑 node"准备的，且历史上
+#   带着明文凭据进了版本库。改成 compose 显式声明后，配置就一处可见、可 review。
+#
+# 前端不在这里 —— 仍在宿主机跑 `npm run dev:client`（Vite，8030），
+# 它的 /api 与 /v2 代理指向本文件暴露的 8031。
+#
+# 用法：
+#   docker compose -f docker-compose.dev.yaml up        # 前台，看日志
+#   docker compose -f docker-compose.dev.yaml up -d     # 后台
+#   改后端代码即时生效（源码是挂载的）；改了 package.json 依赖或前端代码需要重建镜像：
+#   docker build -t idocker-registry:2.0.0 . && docker compose -f docker-compose.dev.yaml up -d
+
+services:
+  idocker-dev:
+    image: idocker-registry:2.0.0
+    container_name: idocker-dev
+    ports:
+      # 后端 API：宿主 8031，正是 vite.config.ts 里 /api 与 /v2 的代理目标
+      - "8031:8031"
+    volumes:
+      # 源码挂载 → 热更新
+      - ./idocker-registry-server:/app/idocker
+      # 匿名卷遮住上面那行，保留镜像内编译好的 node_modules
+      # （宿主机没有 node_modules；Mac 上直接挂宿主依赖也会因架构不同而失效）
+      - /app/idocker/node_modules
+      # 开发数据独立存放，避免污染生产/测试目录
+      - ./test/dev-registry-data:/var/lib/registry
+      - ./test/dev-app-data:/app/data
+      - ./test/dev-app-logs:/app/logs
+      # 开发入口脚本（镜像里只有生产入口，这里单独挂进来）
+      - ./deploy/dev-entrypoint.sh:/usr/local/bin/dev-entrypoint.sh:ro
+    environment:
+      - NODE_ENV=development
+      - PORT=8031
+      - LOG_LEVEL=debug
+      # Vite dev server 的地址：决定 CORS 的 origin
+      - IDOCKER_REGISTRY_URL=http://localhost:8030
+      # 以下变量刻意不设，走代码里的值：
+      #   DOCKER_REGISTRY_URL  → 已在 config/env.js 写死为 http://localhost:7519（容器内 registry）
+      #   DB_PATH / LOG_DIR    → 默认就是 /app/data 与 /app/logs，与上面的挂载一致
+      #   JWT_SECRET           → 首次启动自动生成并持久化到 /app/data/.jwt_secret
+      #   DEFAULT_ADMIN_PASSWORD → 默认 admin123，仅首次建库时使用
+    # 必须覆盖 entrypoint 而不只是 command：基础镜像 idocker.vip/node:22 自带
+    # ENTRYPOINT ["docker-entrypoint.sh"]，而 command 只覆盖 CMD——
+    # 只写 command 的话，生产入口仍会执行，dev 入口会变成它的参数被忽略。
+    entrypoint: ["dev-entrypoint.sh"]
+    restart: unless-stopped

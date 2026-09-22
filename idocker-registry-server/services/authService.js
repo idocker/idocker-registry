@@ -12,6 +12,7 @@ import bcrypt from 'bcryptjs';
 import { AuthModel } from '../models/AuthModel.js';
 import { logger } from '../utils/logger.js';
 import * as env from '../config/env.js';
+import { getJwtSecret } from '../config/jwtSecret.js';
 
 export class AuthService {
   /**
@@ -62,7 +63,7 @@ export class AuthService {
       expiresIn: env.JWT_EXPIRES_IN
     };
 
-    return jwt.sign(payload, env.JWT_SECRET, options);
+    return jwt.sign(payload, getJwtSecret(), options);
   }
 
   /**
@@ -80,7 +81,7 @@ export class AuthService {
       access: scopes || [{ type: 'registry', name: service, actions: ['*'] }]
     };
 
-    return jwt.sign(payload, env.JWT_SECRET);
+    return jwt.sign(payload, getJwtSecret());
   }
 
   /**
@@ -90,7 +91,7 @@ export class AuthService {
    */
   static async validateToken(token) {
     try {
-      const decoded = jwt.verify(token, env.JWT_SECRET);
+      const decoded = jwt.verify(token, getJwtSecret());
       
       // Get user info from database using AuthModel
       const authModel = new AuthModel();

@@ -49,7 +49,11 @@ export const IDOCKER_REGISTRY_URL = process.env.IDOCKER_REGISTRY_URL || 'http://
  * default value is the embedded registry in the iDocker Registry
  * if you want to use your own registry, please set the value to your registry url
  */
-export const DOCKER_REGISTRY_URL = process.env.DOCKER_REGISTRY_URL || 'http://localhost:7519';
+// 内部 registry 与 iDocker 后端固定跑在同一个容器里（监听端口见 deploy/config.yaml
+// 的 http.addr），本版本不再支持多 registry，所以写死为常量。
+// 使用方：/v2 反向代理的 target、dockerSyncService 的同步目标、以及首次建库时
+// 写入 registry_configs 的默认配置。
+export const DOCKER_REGISTRY_URL = 'http://localhost:7519';
 
 
 /**
@@ -68,11 +72,11 @@ export const DOCKER_REGISTRY_USERNAME = process.env.DOCKER_REGISTRY_USERNAME || 
 export const DOCKER_REGISTRY_PASSWORD = process.env.DOCKER_REGISTRY_PASSWORD || null;
 
 /**
- * JWT_SECRET
- * default value is your_jwt_secret_key_here_change_in_production
- * change it to a strong secret key in production environment
+ * JWT 签名密钥不在这里以常量导出：
+ * 它是必须保密的凭证（持有者可伪造任意身份，包括 admin），而本模块的常量在 import 时
+ * 就求值，早于数据目录可用。改请用 config/jwtSecret.js 的 getJwtSecret()：
+ * 优先环境变量 JWT_SECRET，否则读取/生成 <数据目录>/.jwt_secret 并持久化。
  */
-export const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key_here_change_in_production';
 
 /**
 

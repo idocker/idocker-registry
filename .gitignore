@@ -25,3 +25,7 @@ idocker-registry-ui/node_modules/
 
 # 产品网站：只保留在本地/部署环境，代码不纳入版本库
 web/
+
+# 后端本地配置：开发配置改由 docker-compose.dev.yaml 提供；
+# 且该文件历史上带过明文凭据，不应再入库
+idocker-registry-server/.env

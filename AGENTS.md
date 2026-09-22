@@ -369,7 +369,7 @@ cd idocker-registry-ui && npm run format
 | 容器名 | `idocker-registry` |
 | 端口 | `7588:7518`；内部 registry 7519 不映射到宿主 |
 | 卷 | `./test/registry-data`、`./test/app-data`、`./test/app-logs`（`test/` 不入 git） |
-| 环境 | `TZ=Asia/Shanghai`、`DOCKER_REGISTRY_URL=http://localhost:7519`、`NODE_ENV=production` 等 |
+| 环境 | 只剩 `IDOCKER_REGISTRY_URL`（必须是对外域名）。`NODE_ENV`/`TZ` 已固化进镜像（Dockerfile 的 `ENV`）；`DOCKER_REGISTRY_URL` 已写死为常量；`JWT_SECRET` **无需配置**——首次启动生成随机密钥并持久化到数据目录的 `.jwt_secret`（0600），其余全部沿用 `config/env.js` 默认值 |
 
 ⚠️ 这些值与上一节描述的线上值（容器名 `idocker`、镜像 `:latest`、卷 `./registry|./data|./logs`）
 **不一致**：这是两套不同的部署形态，改部署相关代码时务必先确认目标环境。
@@ -378,56 +378,61 @@ cd idocker-registry-ui && npm run format
 
 ## Docker 开发模式（热更新）
 
-> ⚠️ **该流程当前不可用**：`docker-compose.dev.yaml` **在本仓库中不存在**（工作目录与 `git ls-files`
-> 都没有），`-f docker-compose.dev.yaml` 会直接报错；`deploy/dev-entrypoint.sh` 也因此成为无引用者。
-> 若要恢复容器内热更新，需先补回这份 dev override（源码 volume 挂载 + nodemon 入口）。
+开发配置集中在 `docker-compose.dev.yaml`：后端 + 内部 registry 跑在容器里，前端仍在宿主机起 Vite。
+后端改代码即时生效，无需重建镜像。
 
-首次启动（可用部分）：
 ```bash
-# 编译前端产物
-cd idocker-registry-ui && npm run build
-```
-
-日常本地开发（当前推荐，不依赖 dev compose）：
-```bash
-# 前端：Vite dev server，端口 8030，/api 与 /v2 代理到 8031
+# 1) 前端：Vite dev server（8030），把 /api 与 /v2 代理到 8031
 cd idocker-registry-ui && npm run dev:client
 
-# 后端：先 npm install，再起 nodemon（读 idocker-registry-server/.env，PORT=8031）
-cd idocker-registry-server && npm run dev
+# 2) 后端 + 内部 registry：容器内运行，宿主 8031
+docker compose -f docker-compose.dev.yaml up
 ```
 
-改完代码要验证容器内运行效果，只能重建镜像并重启 compose（见上一节）。
+首次使用先建数据目录并修正属主——容器以 uid 1000（`node`）运行，bind mount 会盖掉镜像内目录的属主：
+
+```bash
+mkdir -p test/dev-registry-data test/dev-app-data test/dev-app-logs
+chown -R 1000:1000 test/dev-registry-data test/dev-app-data test/dev-app-logs
+```
+
+数据写在 `test/dev-*`（`test/` 不入 git），与生产/测试目录隔离。
 
 ### 关键配置
 
 | 文件 | 作用 | 本仓库状态 |
 |------|------|------------|
-| `docker-compose.yaml` | 纯镜像启动，无热更新挂载 | ✅ 存在 |
-| `docker-compose.dev.yaml` | 叠加生产配置，添加 volume mount + nodemon 入口 | ❌ **不存在** |
-| `deploy/dev-entrypoint.sh` | 开发入口：启动 docker-registry + nodemon polling | ⚠️ 存在但无引用者 |
-| `deploy/docker-entrypoint.sh` | 生产入口（镜像 `CMD` 默认） | ✅ 存在 |
+| `docker-compose.yaml` | 生产形态：纯镜像启动、无挂载（7588） | ✅ 存在 |
+| `docker-compose.dev.yaml` | 开发形态：源码挂载 + 8031 + 开发环境变量 | ✅ 存在 |
+| `deploy/dev-entrypoint.sh` | 开发入口：起 docker-registry + `node --watch` | ✅ 存在 |
+| `deploy/docker-entrypoint.sh` | 生产入口（基硰镜像自带 `ENTRYPOINT`） | ✅ 存在 |
+| `idocker-registry-server/.env` | **已移除**：开发配置改由 dev compose 提供 | ❌ 不存在 |
+
+⚠️ **dev compose 必须用 `entrypoint:` 而不是 `command:` 覆盖**：基硰镜像 `idocker.vip/node:22` 自带
+`ENTRYPOINT ["docker-entrypoint.sh"]`，而 `command` 只覆盖 `CMD`。写成 `command` 的话生产入口
+仍会执行、dev 入口变成它的参数被忽略——表现为开发容器里跑着生产流程、端口是 7518。
 
 ### 环境切换
 
 ```bash
-# 生产部署
+# 生产部署（本仓库这份用于构建/验证；线上是 /data/docker/idocker/docker-compose.yaml）
 docker compose up -d
 
-# 开发调试（源码热更新）—— 需先补回 docker-compose.dev.yaml，当前不可用
-# docker compose -f docker-compose.yaml -f docker-compose.dev.yaml up -d
+# 开发（源码热更新）
+docker compose -f docker-compose.dev.yaml up
 ```
 
-生产环境的 UI 静态文件来自镜像构建（`Dockerfile` 中 `COPY --from=builder /app/ui/dist /app/idocker/public`），后端代码也来自镜像，无需 volume 覆盖。
+生产环境的 UI 静态文件与后端代码都来自镜像（`Dockerfile` 里 `COPY --from=builder /app/ui/dist ...`），
+无需 volume 覆盖。
 
-### 后端热更新原理（前提：存在 dev compose；本仓库当前不成立）
+### 后端热更新原理
 
-以下描述的是 `deploy/dev-entrypoint.sh` 与 dev override 配合时的行为：
-
-- `nodemon --legacy-watch` 运行在容器内，轮询 `/app/idocker`（排除 `node_modules`）
-- 容器 `node_modules` 来自镜像构建（Alpine 编译），不会被 host 覆盖
-- 所有 source 目录（`config/` `routes/` `models/` `services/` `middleware/` `utils/` + `index.js` + `.env`）通过 volume mount 从 host 同步
-- 热更新 **不适用**：修改 `package.json`（需重建镜像）、新增 npm 包（需重建镜像）
+- 源码从宿主挂载到 `/app/idocker`，`node --watch`（Node 22 内置，不需 nodemon）监听改动后自动重启
+- 匿名卷 `- /app/idocker/node_modules` 保留镜像内编译好的依赖，不被宿主目录盖掉
+- **热更新不适用**：改 `package.json` 依赖、改前端代码 → 需重建镜像
+  （`docker build -t idocker-registry:2.0.0 .`）
+- macOS / Docker Desktop 上若发现改文件不触发重启（宿主文件事件不传入容器），把 dev-entrypoint 里的
+  `node --watch` 换成 `npx nodemon --legacy-watch --watch /app/idocker --ignore node_modules index.js`
 
 ---
 
@@ -461,7 +466,7 @@ docker compose up -d
   造成开发配置串味到生产进程。
 - `deploy/build.sh` / `deploy/build.bat` / `deploy/.env` 是**旧架构残留的孤儿**：无人引用，
   其中的端口 8080、`REGISTRY_URL=http://localhost:5000`、tag `:latest` 均与当前镜像
-  （7518/7519、`DOCKER_REGISTRY_URL`、`:1.0.2`）不符，不要用。
+  （7518/7519、`:2.0.0`）不符，不要用。
 - `idocker-registry-ui/Dockerfile` 引用不存在的 `idocker-registry-ui/server/` 目录，
   `COPY` 就会失败 —— 死文件，不要基于它构建。
 - `deploy/docker-entrypoint.sh` 未 trap/转发 SIGTERM，PID 1 是 shell，`docker stop` 不会优雅终止子进程。

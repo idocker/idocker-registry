@@ -632,13 +632,13 @@ PRAGMA temp_store = MEMORY;
 |--------|--------|------|
 | `PORT` | 7518 | 服务端口 |
 | `BLUE` | `true` | (未文档化，环境标识) |
-| `NODE_ENV` | development | 运行环境 |
+| `NODE_ENV` | development | 运行环境（生产镜像已用 Dockerfile 的 `ENV` 固化为 production，compose 无需再设） |
 | `DB_PATH` | /app/data/registry.db | 数据库路径 |
 | `LOG_LEVEL` | info | 日志级别 |
 | `LOG_DIR` | /app/logs | 日志目录 |
-| `JWT_SECRET` | (默认密钥) | JWT 签名密钥 |
+| `JWT_SECRET` | (自动生成) | JWT 签名密钥。**无需配置**：未设置时生成 48 字节随机值并持久化到 `<数据目录>/.jwt_secret`（权限 0600），重启复用；仅多实例需要共享密钥时才显式指定。实现见 `config/jwtSecret.js`。 |
 | `JWT_EXPIRES_IN` | 24h | JWT 过期时间 |
-| `DOCKER_REGISTRY_URL` | http://localhost:7519 | 内部 Registry 地址 |
+| `DOCKER_REGISTRY_URL` | http://localhost:7519 | 内部 Registry 地址；**已写死为常量，不再读环境变量**（单容器、单 registry，见 `config/env.js`） |
 | `DOCKER_REGISTRY_TIMEOUT` | 30000 | Registry 请求超时(ms) |
 | `DOCKER_REGISTRY_USERNAME` | null | 外部 Registry 用户名 |
 | `DOCKER_REGISTRY_PASSWORD` | null | 外部 Registry 密码 |

@@ -1,26 +1,20 @@
 services:
   idocker-registry:
-    image: idocker-registry:1.0.2
+    image: idocker-registry:2.0.0
     container_name: idocker-registry
     ports:
       - "7588:7518"
     volumes:
-      - ./test/registry-data:/var/lib/registry
-      - ./test/app-data:/app/data
-      - ./test/app-logs:/app/logs
+      - ./registry-data:/var/lib/registry
+      - ./app-data:/app/data
+      - ./app-logs:/app/logs
     environment:
-      - NODE_ENV=production
-      - PORT=7518
-      - DOCKER_REGISTRY_URL=http://localhost:7519
-      - TZ=Asia/Shanghai
+      # 对外访问地址：决定 CORS 的 origin 与对外 URL 拼接。
+      # 不能省——config/env.js 里的默认值是开发用的 http://localhost:7518。
       - IDOCKER_REGISTRY_URL=https://idocker.vip
-      - DB_PATH=/app/data/registry.db
-      - LOG_DIR=/app/logs
-      - LOG_LEVEL=info
-      - JWT_SECRET=your_jwt_secret_key_here_change_in_production
-      - JWT_EXPIRES_IN=24h
-      - DEFAULT_ADMIN_PASSWORD=admin123
-      - ALLOW_USER_REGISTRATION=false
+      # JWT 签名密钥无需设置：首次启动会自动生成随机密钥并持久化到 /app/data/.jwt_secret，
+      # 重启后复用。只有需要多实例共享同一密钥时才显式指定：
+      # - JWT_SECRET=change-me
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:7518/health"]
