@@ -377,10 +377,11 @@ cd idocker-registry-ui && npm run format
 
 | 项 | 本仓库实际值 |
 |----|--------------|
-| 镜像 | `idocker-registry:2.0.5`；**没有 `build:` 段**，必须先手工 `docker build` |
+| 镜像 | `${IDOCKER_IMAGE:-idocker-registry:2.0.5}`；**没有 `build:` 段**，必须先手工 `docker build`，
+ 或用 `IDOCKER_IMAGE=idockervip/idocker-registry:2.0.4 docker compose up -d` 直接用 Docker Hub 官方镜像 |
 | 容器名 | `idocker-registry` |
 | 端口 | `7588:7518`；内部 registry 7519 不映射到宿主 |
-| 卷 | `./test/registry-data`、`./test/app-data`、`./test/app-logs`（`test/` 不入 git） |
+| 卷 | `./registry`、`./data`、`./logs`（均不入 git，位于**仓库根目录**；宿主需 `chown -R 1000:1000`） |
 | 环境 | 只剩 `IDOCKER_REGISTRY_URL`（必须是对外域名）。`NODE_ENV`/`TZ` 已固化进镜像（Dockerfile 的 `ENV`）；`DOCKER_REGISTRY_URL` 已写死为常量；`JWT_SECRET` **无需配置**——首次启动生成随机密钥并以 `JWT_SECRET=...` 写入数据目录的 `.env`（0600，历史 `.jwt_secret` 会自动迁移），其余全部沿用 `config/env.js` 默认值 |
 
 ⚠️ 这些值与上一节描述的线上值（容器名 `idocker`、镜像 `:latest`、卷 `./registry|./data|./logs`）

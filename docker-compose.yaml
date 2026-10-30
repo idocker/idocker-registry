@@ -1,6 +1,9 @@
 services:
   idocker-registry:
-    image: idocker-registry:2.0.5
+    # 镜像可由环境变量覆盖，便于直接使用 Docker Hub 官方镜像而不改文件：
+    #   IDOCKER_IMAGE=idockervip/idocker-registry:2.0.4 docker compose up -d
+    # 不设时用本地构建的 tag。
+    image: ${IDOCKER_IMAGE:-idocker-registry:2.0.5}
     container_name: idocker-registry
     ports:
       - "7588:7518"
