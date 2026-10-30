@@ -83,38 +83,24 @@ cd idocker-registry-ui && npm run dev:client
 
 ```bash
 cd /workspace/idocker-registry
-docker build -t idocker-registry:2.0.3 .   # 与 compose 的 image tag 保持一致；compose 无 build 段
+docker build -t idocker-registry:2.0.4 .   # 与 compose 的 image tag 保持一致；compose 无 build 段
 docker compose up -d
 ```
 
-### 从 1.2.x 升级（数据库结构变更）
+### 数据库结构变更（已内置自动迁移）
 
 2.0.x 需要 `namespaces` / `projects` / `repositories` 三张表上的 `deleted_at` / `deleted_by`
-（回收站功能），1.2.x 的库没有这几列。直接替换镜像会因缺列而启动失败，且日志只看得到
-`database connect success` —— 真实原因在 `logs/exceptions.log` 里。
+（回收站功能），1.2.x 的库没有这几列。启动时 `initDatabase()` 会自动补齐，**无需手工干预**：
 
-升级前先停服，然后体检 → 升级：
+1. 先 `ALTER TABLE ... ADD COLUMN` 补列
+2. 再 `CREATE INDEX ... ON <table>(deleted_at)` 建索引
 
-```bash
-cd /data/docker/idocker
-docker compose down
+⚠️ 这个顺序不能颠倒。历史上曾把建索引写在补列之前，导致 1.2.x 的库启动时抛
+`no such column: deleted_at`，而异常经 winston 的 exceptionHandler 落盘后进程即退出，
+`docker logs` 里只看得到 `database connect success` —— 真实原因在 `logs/exceptions.log`。
 
-# 关键：容器以 uid 1000 运行，bind mount 会盖掉镜像内目录的属主
-chown -R 1000:1000 data registry logs
-
-# 体检（只读，报告缺什么，不改动）
-docker run --rm -v $PWD/data:/app/data --entrypoint node \
-  idocker.vip/idocker-registry:2.0.3 /app/idocker/scripts/upgrade-db.js --check
-
-# 备份 + 升级（备份写到 data/registry.db.bak-<时间戳>）
-docker run --rm -v $PWD/data:/app/data --entrypoint node \
-  idocker.vip/idocker-registry:2.0.3 /app/idocker/scripts/upgrade-db.js
-
-docker compose up -d
-```
-
-该脚本幂等、只加列不删改数据、失败自动回滚。即使忘了跑，2.0.3 启动时也会自动补列；
-主动跑的好处是有备份、能提前看到变更清单。
+从 1.2.x 升级前建议先备份 `data/` 整个目录（含 `-wal`/`-shm`；WAL 模式下单独拷
+`registry.db` 不一定包含最新写入，最好先停容器）。
 
 ### 默认账号
 

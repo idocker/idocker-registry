@@ -11,11 +11,11 @@
 #   docker compose -f docker-compose.dev.yaml up        # 前台，看日志
 #   docker compose -f docker-compose.dev.yaml up -d     # 后台
 #   改后端代码即时生效（源码是挂载的）；改了 package.json 依赖或前端代码需要重建镜像：
-#   docker build -t idocker-registry:2.0.3 . && docker compose -f docker-compose.dev.yaml up -d
+#   docker build -t idocker-registry:2.0.4 . && docker compose -f docker-compose.dev.yaml up -d
 
 services:
   idocker-dev:
-    image: idocker-registry:2.0.3
+    image: idocker-registry:2.0.4
     container_name: idocker-dev
     ports:
       # 后端 API：宿主 8031，正是 vite.config.ts 里 /api 与 /v2 的代理目标

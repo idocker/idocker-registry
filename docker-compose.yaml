@@ -1,6 +1,6 @@
 services:
   idocker-registry:
-    image: idocker-registry:2.0.3
+    image: idocker-registry:2.0.4
     container_name: idocker-registry
     ports:
       - "7588:7518"

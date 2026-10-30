@@ -91,10 +91,12 @@ const handleLogin = async () => {
 
     await authStore.login(loginForm)
 
-    // Check if there is a redirect path, prioritize stored path
+    // 优先级：被踢回前的原页面 → URL 上的 redirect 参数 → 前端首页。
+    // 默认落到 `/`（镜像列表）而不是管理页：登录后第一眼应该是能用的功能，
+    // 管理页是二级入口。
     const redirectPath = authStore.loginRedirectPath ||
                      router.currentRoute.value.query.redirect as string ||
-                     '/admin/profile'
+                     '/'
 
     // Clear redirect path
     authStore.loginRedirectPath = ''

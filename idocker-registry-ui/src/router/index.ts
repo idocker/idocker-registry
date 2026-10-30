@@ -232,9 +232,9 @@ router.beforeEach((to, from, next) => {
       })
     }
     
-    // 如果已登录且访问登录页，重定向到个人中心
+    // 已登录还访问登录页：回到前端首页（不默认为管理页）
     if (to.path === '/admin/login') {
-      return next('/admin/profile')
+      return next('/')
     }
     
     // 检查是否需要管理员权限
@@ -249,7 +249,7 @@ router.beforeEach((to, from, next) => {
   // 检查是否为登录页面且已登录
   const authStore = useAuthStore()
   if (to.path === '/admin/login' && authStore.isAuthenticated) {
-    return next('/admin/profile')
+    return next('/')
   }
   
   next()

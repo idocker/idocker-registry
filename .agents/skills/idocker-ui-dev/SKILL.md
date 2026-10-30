@@ -74,7 +74,7 @@ View (*.vue) → services/*.service.ts → utils/http.ts 的 http 单例 → 后
   2. `checkAuthRequired(to)` 为真时要求 `authStore.isAuthenticated`，否则只记
      `loginRedirectPath` 并跳 `/admin/login?redirect=<fullPath>`；
      **不**标记会话过期（首次访问不该在登录页报“登录已失效”）；
-  3. 已登录再访问 `/admin/login` → 重定向 `/admin/profile`；
+  3. 已登录再访问 `/admin/login` → 重定向 `/`（前端首页，不是管理页）；
   4. `meta.requiresAdmin` 且角色非 admin → 重定向 `/admin/profile`（不是 403 页）。
 - 注意 `checkAuthRequired()` 只检查 `meta.requiresAuth`，其内部还有一个恒为空的
   `protectedRoutes` 数组 —— 新增页面必须显式写 `meta.requiresAuth: true`。
