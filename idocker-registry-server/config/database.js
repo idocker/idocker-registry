@@ -35,6 +35,26 @@ export function getDb() {
 }
 
 /**
+ * 确保 deleted_at 上的索引存在。
+ *
+ * 只在 recycle bin 迁移里调用：必须等 deleted_at 列确实存在之后才能建索引，
+ * 否则老库会在启动时抛 `no such column: deleted_at` 直接退出。
+ * 只处理 deleted_at 列（deleted_by 不建索引）。
+ */
+function ensureDeletedAtIndex(table, column) {
+  if (column !== 'deleted_at') {
+    return;
+  }
+  const indexName = `idx_${table}_deleted_at`;
+  db.run(`CREATE INDEX IF NOT EXISTS ${indexName} ON ${table}(deleted_at)`, (indexErr) => {
+    if (indexErr) {
+      // 建索引失败不影响功能（只是查回收站慢一点），不应阻断启动
+      logger.error(`Recycle bin migration: error creating ${indexName}:`, indexErr);
+    }
+  });
+}
+
+/**
  * init database
  * @returns {Promise<Object>} database connection object
  */
@@ -234,9 +254,12 @@ export async function initDatabase() {
           db.run('CREATE INDEX IF NOT EXISTS idx_namespaces_name ON namespaces(name)');
           db.run('CREATE INDEX IF NOT EXISTS idx_namespaces_is_active ON namespaces(is_active)');
           db.run('CREATE INDEX IF NOT EXISTS idx_namespaces_created_by ON namespaces(created_by)');
-          db.run('CREATE INDEX IF NOT EXISTS idx_namespaces_deleted_at ON namespaces(deleted_at)');
-          db.run('CREATE INDEX IF NOT EXISTS idx_projects_deleted_at ON projects(deleted_at)');
-          db.run('CREATE INDEX IF NOT EXISTS idx_repositories_deleted_at ON repositories(deleted_at)');
+          // deleted_at 上的索引**不能**在这里建：老库（回收站功能上线前创建的）
+          // 三张表都还没有这一列，而 CREATE TABLE IF NOT EXISTS 不会给已存在的表补列，
+          // 于是 CREATE INDEX 直接抛 `no such column: deleted_at`，
+          // 又因为没挂 error 监听、winston 的 exceptionHandler 默认 exitOnError，
+          // 进程当场退出，日志只停在 “database connect success”。
+          // 这三条索引改到下方 recycle bin 迁移中建（列确保存在之后）。
 
           // ===== Schema Migration: use PRAGMA user_version to ensure migration runs exactly once =====
           db.get("PRAGMA user_version", [], (err, row) => {
@@ -372,6 +395,9 @@ export async function initDatabase() {
           // the pushed_by migration above: the pragma is written asynchronously,
           // so a fresh database can still read 0 here). Idempotent and safe to
           // run on every boot.
+          //
+          // 列与索引同在这里处理：老库没有 deleted_at/deleted_by，必须先 ALTER 补列，
+          // 补完之后才能建 deleted_at 上的索引（历史上这两步顺序颠倒，导致老库起不来）。
           [
             ['namespaces', 'deleted_at', 'DATETIME'],
             ['namespaces', 'deleted_by', 'INTEGER'],
@@ -386,6 +412,7 @@ export async function initDatabase() {
                 return;
               }
               if (columns.some(col => col.name === column)) {
+                ensureDeletedAtIndex(table, column);
                 return;
               }
               db.run(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`, (alterErr) => {
@@ -393,6 +420,7 @@ export async function initDatabase() {
                   logger.error(`Recycle bin migration: error adding ${table}.${column}:`, alterErr);
                 } else {
                   logger.info(`Recycle bin migration: added ${table}.${column}`);
+                  ensureDeletedAtIndex(table, column);
                 }
               });
             });

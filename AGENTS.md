@@ -190,6 +190,34 @@ iDocker是一个Docker Registry管理平台，提供Web UI来管理Docker镜像�
   恢复与物理删除仅 admin（仓库的假删除额外开放给 `project_manager`/`developer` 成员）。
   物理删除**不级联**：只要后代还存在（含回收站里的），一律 409 拒绝，需自下而上逐个清理。
   仓库物理删除只删 DB 记录（标签/成员由 FK CASCADE 清掉），**registry 里的 manifest/blob 不动**——释放磁盘要离线跑 GC，见 `deploy/registry-gc.md`。
+  ⚠️ **补列必须先于建索引**。历史 bug：`deleted_at` 的 `CREATE INDEX` 写在补列 ALTER 之前，
+  1.2.x 的老库（表已存在、没有该列）启动时必然抛 `no such column: deleted_at`，
+  再经 winston 的 exceptionHandler（`exitOnError` 默认 true）静默退出，`docker logs` 里
+  只停在 `database connect success`。现在索引改由 `ensureDeletedAtIndex()` 在补列之后建。
+  **1.2.x → 2.0.x 升级前建议先跑** `idocker-registry-server/scripts/upgrade-db.js`（见下节）。
+
+#### 数据库升级工具（`idocker-registry-server/scripts/upgrade-db.js`）
+
+从 1.2.x 升到 2.0.x 只需补 6 个列 + 3 个索引（已实测确认：`users`/`image_tags` 两版一致）。
+启动时程序也会自动补，但建议在**停服状态下主动跑一次**，它会在改动前备份：
+
+```bash
+# 体检（只读，不改动）
+docker run --rm -v /data/docker/idocker/data:/app/data \
+  --entrypoint node idocker.vip/idocker-registry:2.0.3 \
+  /app/idocker/scripts/upgrade-db.js --check
+
+# 备份 + 升级
+docker run --rm -v /data/docker/idocker/data:/app/data \
+  --entrypoint node idocker.vip/idocker-registry:2.0.3 \
+  /app/idocker/scripts/upgrade-db.js
+```
+
+- 按**目标结构**驱动、不认版本号，所以对任意 1.x 小版本适用，可重复执行
+- 只做 `ADD COLUMN` / `CREATE INDEX IF NOT EXISTS`，不重建表、不改数据
+- 全部 DDL 在一个事务里，失败回滚；备份文件是 `registry.db.bak-<时间戳>`（含 `-wal`/`-shm`）
+- 错误提示覆盖 `CANTOPEN`（属主不对）/ `READONLY` / `NOTADB`（文件损坏）三种部署时真踩过的坑
+- **宿主机数据目录必须先 `chown -R 1000:1000`**，否则容器以 uid 1000 运行时打不开库
 
 ### 6. Docker Registry代理机制
 - `http-proxy-middleware` 将 `/v2/*` 请求代理到内部Registry（默认 localhost:7519）
@@ -365,7 +393,7 @@ cd idocker-registry-ui && npm run format
 
 | 项 | 本仓库实际值 |
 |----|--------------|
-| 镜像 | `idocker-registry:2.0.2`；**没有 `build:` 段**，必须先手工 `docker build` |
+| 镜像 | `idocker-registry:2.0.3`；**没有 `build:` 段**，必须先手工 `docker build` |
 | 容器名 | `idocker-registry` |
 | 端口 | `7588:7518`；内部 registry 7519 不映射到宿主 |
 | 卷 | `./test/registry-data`、`./test/app-data`、`./test/app-logs`（`test/` 不入 git） |
@@ -430,7 +458,7 @@ docker compose -f docker-compose.dev.yaml up
 - 源码从宿主挂载到 `/app/idocker`，`node --watch`（Node 22 内置，不需 nodemon）监听改动后自动重启
 - 匿名卷 `- /app/idocker/node_modules` 保留镜像内编译好的依赖，不被宿主目录盖掉
 - **热更新不适用**：改 `package.json` 依赖、改前端代码 → 需重建镜像
-  （`docker build -t idocker-registry:2.0.2 .`）
+  （`docker build -t idocker-registry:2.0.3 .`）
 - macOS / Docker Desktop 上若发现改文件不触发重启（宿主文件事件不传入容器），把 dev-entrypoint 里的
   `node --watch` 换成 `npx nodemon --legacy-watch --watch /app/idocker --ignore node_modules index.js`
 

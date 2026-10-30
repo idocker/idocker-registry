@@ -83,9 +83,38 @@ cd idocker-registry-ui && npm run dev:client
 
 ```bash
 cd /workspace/idocker-registry
-docker build -t idocker-registry:2.0.2 .   # 与 compose 的 image tag 保持一致；compose 无 build 段
+docker build -t idocker-registry:2.0.3 .   # 与 compose 的 image tag 保持一致；compose 无 build 段
 docker compose up -d
 ```
+
+### 从 1.2.x 升级（数据库结构变更）
+
+2.0.x 需要 `namespaces` / `projects` / `repositories` 三张表上的 `deleted_at` / `deleted_by`
+（回收站功能），1.2.x 的库没有这几列。直接替换镜像会因缺列而启动失败，且日志只看得到
+`database connect success` —— 真实原因在 `logs/exceptions.log` 里。
+
+升级前先停服，然后体检 → 升级：
+
+```bash
+cd /data/docker/idocker
+docker compose down
+
+# 关键：容器以 uid 1000 运行，bind mount 会盖掉镜像内目录的属主
+chown -R 1000:1000 data registry logs
+
+# 体检（只读，报告缺什么，不改动）
+docker run --rm -v $PWD/data:/app/data --entrypoint node \
+  idocker.vip/idocker-registry:2.0.3 /app/idocker/scripts/upgrade-db.js --check
+
+# 备份 + 升级（备份写到 data/registry.db.bak-<时间戳>）
+docker run --rm -v $PWD/data:/app/data --entrypoint node \
+  idocker.vip/idocker-registry:2.0.3 /app/idocker/scripts/upgrade-db.js
+
+docker compose up -d
+```
+
+该脚本幂等、只加列不删改数据、失败自动回滚。即使忘了跑，2.0.3 启动时也会自动补列；
+主动跑的好处是有备份、能提前看到变更清单。
 
 ### 默认账号
 
