@@ -33,8 +33,16 @@ WORKDIR /app
 # 基础镜像已自带 node 用户（uid=1000 gid=1000），直接复用，无需另建。
 # compose 里三个数据目录是宿主 bind mount，挂载会盖掉镜像内的属主，
 # 宿主上需按 1000:1000 chown。
+#
+# ⚠️ docker-registry 版本必须固定，不能写成裸的 `docker-registry`：
+# apk 会拉取当前 Alpine 仓库里的最新版，而 distribution 3.x 与 2.8 存在已知行为差异
+# （例如 http.secret 缺失时，3.x 直接拒启、2.8 只警告；上传/删除等路径也需实测）。
+# 3.x 迁移要单独安排，不能让它随 apk 被动升级进来：
+# 版本漂移曾直接导致重建镜像后容器起不来，所以这里钉死在已验证的 2.8.3-r24。
+# 若构建报 "unable to select packages: docker-registry-2.8.3-r24"，说明 Alpine 仓库
+# 已把 2.8.x 撤下：要么改用带 Alpine 小版本的基础镜像 tag，要么提前做 3.x 迁移。
 RUN --mount=type=cache,target=/var/cache/apk \
-    apk add --no-cache docker-registry tzdata
+    apk add --no-cache docker-registry=2.8.3-r24 tzdata
 
 # 从构建阶段拷贝生产依赖与前端产物
 # 用 COPY --chown 而不是事后 chown -R：node_modules 有数万个文件，
@@ -45,8 +53,8 @@ COPY --chown=node:node --from=ui-builder /app/ui/dist /app/idocker/public
 
 # 拷贝运行时配置与启动脚本
 COPY deploy/config.yaml /etc/docker/registry/config.yml
-COPY deploy/docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+COPY deploy/docker-entrypoint.sh deploy/registry-http-secret.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh /usr/local/bin/registry-http-secret.sh
 
 # 创建必要目录、清理冗余文件、设置目录权限
 # /app/idocker 无需在此 chown，上面已由 COPY --chown 处理；

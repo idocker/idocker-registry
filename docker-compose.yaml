@@ -12,8 +12,8 @@ services:
       # 对外访问地址：决定 CORS 的 origin 与对外 URL 拼接。
       # 不能省——config/env.js 里的默认值是开发用的 http://localhost:7518。
       - IDOCKER_REGISTRY_URL=https://idocker.vip
-      # JWT 签名密钥无需设置：首次启动会自动生成随机密钥并持久化到 /app/data/.jwt_secret，
-      # 重启后复用。只有需要多实例共享同一密钥时才显式指定：
+      # JWT 签名密钥无需设置：首次启动会自动生成随机密钥并以 JWT_SECRET=... 写入
+      # /app/data/.env，重启后复用。只有需要多实例共享同一密钥时才显式指定：
       # - JWT_SECRET=change-me
     restart: unless-stopped
     healthcheck:

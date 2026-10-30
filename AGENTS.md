@@ -212,7 +212,7 @@ iDocker是一个Docker Registry管理平台，提供Web UI来管理Docker镜像�
 - 密码规则：至少 6 字符且**必须包含至少 1 个特殊符号**（大小写/数字不强制）
 - 服务器统一时区 **Asia/Shanghai**（宿主 + 容器 TZ + 镜像内置 tzdata）；SQLite 存 UTC ISO，Web 按浏览器时区展示
 - 镜像 push 成功后**即时同步 tag 入库**（无需手动 sync）；若最新 tag（按 `image_tags.created_at`）非 latest，会自动把该 digest 再以 `latest` 引用推送（`docker pull <repo>` 恒为最新）
-- 内部 registry 配置：`relativeurls: true`（Location 相对化，避免回传内部 localhost 地址）、`storage.delete.enabled: true`（标签删除可用）、manifest 解析 Accept 含 OCI（`vnd.oci.image.*`）
+- 内部 registry 配置：`relativeurls: true`（Location 相对化，避免回传内部 localhost 地址）、`storage.delete.enabled: true`（标签删除可用）、manifest 解析 Accept 含 OCI（`vnd.oci.image.*`）。同于 `http.secret`：配置里**不写**，由 entrypoint 调 `deploy/registry-http-secret.sh` 解析后经环境变量注入（`REGISTRY_HTTP_SECRET` → `<数据目录>/.registry_http_secret` → 生成并持久化）；缺它时 2.8 仅打 warning、3.x 直接拒启，所以手动 `docker-registry serve` 时也要自己带上，见 `deploy/registry-gc.md`
 - /v2 仓库权限校验基于 `repository_members`（角色 project_manager/developer/operator），admin 全权；普通用户镜像列表 = 成员项目 ∪ default 项目
 
 ### 7. 日志
@@ -369,7 +369,7 @@ cd idocker-registry-ui && npm run format
 | 容器名 | `idocker-registry` |
 | 端口 | `7588:7518`；内部 registry 7519 不映射到宿主 |
 | 卷 | `./test/registry-data`、`./test/app-data`、`./test/app-logs`（`test/` 不入 git） |
-| 环境 | 只剩 `IDOCKER_REGISTRY_URL`（必须是对外域名）。`NODE_ENV`/`TZ` 已固化进镜像（Dockerfile 的 `ENV`）；`DOCKER_REGISTRY_URL` 已写死为常量；`JWT_SECRET` **无需配置**——首次启动生成随机密钥并持久化到数据目录的 `.jwt_secret`（0600），其余全部沿用 `config/env.js` 默认值 |
+| 环境 | 只剩 `IDOCKER_REGISTRY_URL`（必须是对外域名）。`NODE_ENV`/`TZ` 已固化进镜像（Dockerfile 的 `ENV`）；`DOCKER_REGISTRY_URL` 已写死为常量；`JWT_SECRET` **无需配置**——首次启动生成随机密钥并以 `JWT_SECRET=...` 写入数据目录的 `.env`（0600，历史 `.jwt_secret` 会自动迁移），其余全部沿用 `config/env.js` 默认值 |
 
 ⚠️ 这些值与上一节描述的线上值（容器名 `idocker`、镜像 `:latest`、卷 `./registry|./data|./logs`）
 **不一致**：这是两套不同的部署形态，改部署相关代码时务必先确认目标环境。

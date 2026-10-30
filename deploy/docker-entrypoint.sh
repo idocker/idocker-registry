@@ -15,6 +15,12 @@ echo ">>> Starting Docker Registry..."
 echo "------------------------------------------"
 echo "                                          "
 
+# registry 的 http.secret：REGISTRY_HTTP_SECRET 优先，否则复用/生成
+# <数据目录>/.registry_http_secret（见 deploy/registry-http-secret.sh）。
+# 缺失时 2.8 只打 warning，3.x 会直接拒绝启动。
+REGISTRY_HTTP_SECRET=$(sh /usr/local/bin/registry-http-secret.sh)
+export REGISTRY_HTTP_SECRET
+
 docker-registry serve /etc/docker/registry/config.yml &
 REGISTRY_PID=$(pgrep -f docker-registry)
 sleep 3

@@ -36,7 +36,7 @@ distribution 官方要求 GC 期间 registry **只读或停机**运行。原因�
 | 项 | 值 |
 |----|----|
 | registry 与 iDocker 后端 | **同一个容器**（见 `deploy/docker-entrypoint.sh`） |
-| registry 启动方式 | `docker-registry serve /etc/docker/registry/config.yml &` |
+| registry 启动方式 | `docker-registry serve /etc/docker/registry/config.yml &`（由 entrypoint 注入 `REGISTRY_HTTP_SECRET`，见下） |
 | 配置文件 | 仓库内 `deploy/config.yaml` → 容器内 `/etc/docker/registry/config.yml` |
 | 存储目录 | `/var/lib/registry`（compose 挂载到宿主，见 `docker-compose.yaml` / 生产 compose） |
 | 删除能力 | `storage.delete.enabled: true`（manifest 删除 API 已启用） |
@@ -63,8 +63,14 @@ distribution 官方要求 GC 期间 registry **只读或停机**运行。原因�
    ```
 5. 重新启动 registry：
    ```bash
-   docker-registry serve /etc/docker/registry/config.yml &
+   REGISTRY_HTTP_SECRET="$(/usr/local/bin/registry-http-secret.sh)" \
+     docker-registry serve /etc/docker/registry/config.yml &
    ```
+   > 必须带上 `REGISTRY_HTTP_SECRET`：`deploy/config.yaml` 里**没有** `http.secret`，
+   > 它由启动脚本解析（环境变量 → `<数据目录>/.registry_http_secret` → 生成并持久化）。
+   > distribution 2.8 缺它只是警告，3.x 起会直接拒绝启动。
+   > 上面这行取自持久化文件，与容器正常启动时用的是同一个值。
+
    然后确认 `/v2/` 可访问、能正常 pull 一个已知镜像。
 6. 维护窗口结束，通知使用者。
 

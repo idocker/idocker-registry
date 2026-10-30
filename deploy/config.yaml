@@ -11,6 +11,14 @@ storage:
 http:
   addr: :7519
   net: tcp
+  # http.secret 不写在这里：缺失时 2.8 会自行随机生成（仅打一条 warning），
+  # 3.x 起则直接拒启。容器启动时由 entrypoint 以环境变量注入：
+  #   deploy/docker-entrypoint.sh 与 deploy/dev-entrypoint.sh 会执行
+  #   deploy/registry-http-secret.sh，按
+  #   REGISTRY_HTTP_SECRET → <数据目录>/.registry_http_secret → 生成并持久化 取值。
+  # 密钥只存在挂载的数据卷里，不进镜像。
+  # ⚠️ 手动 `docker-registry serve`（调试/GC）时也要带上，否则 2.8 只打警告、3.x 起不来：
+  #   REGISTRY_HTTP_SECRET="$(/usr/local/bin/registry-http-secret.sh)" docker-registry serve /etc/docker/registry/config.yml
   # Return relative Location URLs so the Docker client resolves them against its
   # own registry base URL instead of the internal localhost:7519 address
   relativeurls: true

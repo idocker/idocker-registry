@@ -636,7 +636,7 @@ PRAGMA temp_store = MEMORY;
 | `DB_PATH` | /app/data/registry.db | 数据库路径 |
 | `LOG_LEVEL` | info | 日志级别 |
 | `LOG_DIR` | /app/logs | 日志目录 |
-| `JWT_SECRET` | (自动生成) | JWT 签名密钥。**无需配置**：未设置时生成 48 字节随机值并持久化到 `<数据目录>/.jwt_secret`（权限 0600），重启复用；仅多实例需要共享密钥时才显式指定。实现见 `config/jwtSecret.js`。 |
+| `JWT_SECRET` | (自动生成) | JWT 签名密钥。**无需配置**：未设置时生成 48 字节随机值并以 `JWT_SECRET=...` 写入 `<数据目录>/.env`（权限 0600），重启复用；仅多实例需要共享密钥时才显式指定。历史位置 `<数据目录>/.jwt_secret` 会自动迁移。实现见 `config/jwtSecret.js`。 |
 | `JWT_EXPIRES_IN` | 24h | JWT 过期时间 |
 | `DOCKER_REGISTRY_URL` | http://localhost:7519 | 内部 Registry 地址；**已写死为常量，不再读环境变量**（单容器、单 registry，见 `config/env.js`） |
 | `DOCKER_REGISTRY_TIMEOUT` | 30000 | Registry 请求超时(ms) |

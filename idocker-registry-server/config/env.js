@@ -75,7 +75,7 @@ export const DOCKER_REGISTRY_PASSWORD = process.env.DOCKER_REGISTRY_PASSWORD || 
  * JWT 签名密钥不在这里以常量导出：
  * 它是必须保密的凭证（持有者可伪造任意身份，包括 admin），而本模块的常量在 import 时
  * 就求值，早于数据目录可用。改请用 config/jwtSecret.js 的 getJwtSecret()：
- * 优先环境变量 JWT_SECRET，否则读取/生成 <数据目录>/.jwt_secret 并持久化。
+ * 优先环境变量 JWT_SECRET，否则读取/生成 <数据目录>/.env 里的 JWT_SECRET 并持久化。
  */
 
 /**

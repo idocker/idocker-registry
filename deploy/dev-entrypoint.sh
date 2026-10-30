@@ -7,7 +7,11 @@ echo "=========================================="
 
 # 内部 registry：与生产同一份配置、同一端口（7519）。
 # DOCKER_REGISTRY_URL 已在 config/env.js 里写死指向它，无需再注入环境变量。
+# http.secret 由 registry-http-secret.sh 解析：REGISTRY_HTTP_SECRET 优先，
+# 否则复用/生成 <数据目录>/.registry_http_secret（3.x 缺它拒不启动）。
 echo ">>> Starting Docker Registry on :7519 ..."
+REGISTRY_HTTP_SECRET=$(sh /usr/local/bin/registry-http-secret.sh)
+export REGISTRY_HTTP_SECRET
 docker-registry serve /etc/docker/registry/config.yml &
 sleep 2
 
