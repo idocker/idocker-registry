@@ -154,11 +154,7 @@ export default {
     loginFailed: 'Login failed',
     logoutSuccess: 'Logout successful',
     invalidCredentials: 'Invalid username or password',
-    accountDisabled: 'Account has been disabled, please contact administrator',
-    sessionExpired: 'Session Expired',
-    sessionExpiredMessage: 'Your login session has expired, please login again.',
-    loginNow: 'Login Now',
-    loginLater: 'Login Later'
+    accountDisabled: 'Account has been disabled, please contact administrator'
   },
 
   // Users
@@ -512,7 +508,7 @@ export default {
     enterPassword: 'Enter your password',
     useLdapAuth: 'Use LDAP Authentication',
     createAccount: 'Create an account',
-    loginPrompt: 'This page requires you to be logged in. Please sign in to continue.',
+    sessionExpiredHint: 'Your session has expired. Please sign in again to continue.',
     loginFailed: 'Login failed'
   },
 
@@ -657,6 +653,7 @@ export default {
     selectProject: 'Select Project',
     registryRepositoryName: 'Repository Name',
     registryRepositoryNamePlaceholder: 'Enter repository name',
+    registryDescriptionPlaceholder: 'Enter repository description',
     creating: 'Creating...',
     registryCreated: 'Repository created successfully',
     createRegistryFailed: 'Failed to create repository',

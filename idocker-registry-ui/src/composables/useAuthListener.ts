@@ -30,8 +30,7 @@ export function useAuthListener() {
       if (isExpired) {
         // 令牌已过期，清除认证状态
         await authStore.logout()
-        authStore.showLoginPrompt = true
-        authStore.loginRedirectPath = router.currentRoute.value.fullPath
+        authStore.markSessionExpired(router.currentRoute.value.fullPath)
         
         // 重定向到登录页面
         if (router.currentRoute.value.path !== '/admin/login') {
@@ -75,8 +74,7 @@ export function useAuthListener() {
       
       // 刷新失败，清除认证状态
       await authStore.logout()
-      authStore.showLoginPrompt = true
-      authStore.loginRedirectPath = router.currentRoute.value.fullPath
+      authStore.markSessionExpired(router.currentRoute.value.fullPath)
       
       if (router.currentRoute.value.path !== '/admin/login') {
         router.push({
@@ -118,8 +116,8 @@ export function useAuthListener() {
                           ['taglist', 'taghistory'].includes(to.name as string)
       
       if (requiresAuth && !authStore.isAuthenticated) {
-        // 显示登录提示
-        authStore.showLoginPrompt = true
+        // 仅未登录就访问受保护页（包括首次打开站点）：只跳转，不标记为“过期”，
+        // 这样登录页不会弹提示。真正的会话失效由 401 / 令牌过期 / 其他标签页登出设置。
         authStore.loginRedirectPath = to.fullPath
         
         // 重定向到登录页面
@@ -167,11 +165,12 @@ export function useAuthListener() {
   const handleStorageChange = (event: StorageEvent) => {
     if (event.key === 'idocker_token' && event.newValue === null && authStore.isAuthenticated) {
       // 其他标签页清除了令牌，同步登出
+      const redirectPath = router.currentRoute.value.fullPath
       authStore.logout()
-      authStore.showLoginPrompt = true
-      
+      authStore.markSessionExpired(redirectPath)
+
       if (router.currentRoute.value.path !== '/admin/login') {
-        router.push('/admin/login')
+        router.push({ path: '/admin/login', query: { redirect: redirectPath } })
       }
     }
   }

@@ -24,14 +24,13 @@
                   <tr>
                     <th>{{ $t('projects.projectName') }}</th>
                     <th>{{ $t('projects.description') }}</th>
-                    <th>{{ $t('projects.type') }}</th>
                     <th>{{ $t('projects.createdAt') }}</th>
                     <th>{{ $t('common.actions') }}</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-if="isLoading">
-                    <td colspan="5" class="loading-cell">
+                    <td colspan="4" class="loading-cell">
                       <div class="loading-indicator">
                         <span class="material-icons">refresh</span>
                         {{ $t('projectDetail.loadingRepositories') }}
@@ -39,7 +38,7 @@
                     </td>
                   </tr>
                   <tr v-else-if="repositories.length === 0">
-                    <td colspan="5" class="empty-cell">
+                    <td colspan="4" class="empty-cell">
                       <div class="empty-state">
                         <span class="material-icons">storage</span>
                         <h3>{{ $t('projectDetail.noRepositoriesYet') }}</h3>
@@ -105,7 +104,8 @@
 
             <div class="form-group">
               <label for="repo-desc">{{ $t('projects.description') }}</label>
-              <textarea id="repo-desc" v-model="repositoryForm.description" rows="3" :placeholder="$t('projects.descriptionPlaceholder')"></textarea>
+              <textarea id="repo-desc" v-model="repositoryForm.description" rows="3"
+                :placeholder="$t('projectDetail.registryDescriptionPlaceholder')"></textarea>
             </div>
 
             <div class="modal-actions">
@@ -705,23 +705,25 @@ onMounted(() => {
   }
 }
 
+// 与系统统一弹窗（ConfirmationDialog / DeleteConfirmDialog / ProjectsView）保持一致
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 1);
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: var(--z-modal-backdrop);
 }
 
 .modal {
-  background-color: var(--border-color);
-
-  border-radius: 8px;
+  background-color: var(--card-background);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-3);
   width: 90%;
   max-width: 500px;
   max-height: 90vh;
@@ -732,12 +734,11 @@ onMounted(() => {
     justify-content: space-between;
     align-items: center;
     padding: 20px;
-    border-bottom: 1px solid #f1f2f6;
+    border-bottom: 1px solid var(--border-color);
 
     h2 {
-      font-size: 20px;
-      font-weight: 600;
-      //color: #2c3e50;
+      font-size: 1.125rem;
+      font-weight: 500;
     }
   }
 
@@ -751,7 +752,6 @@ onMounted(() => {
         display: block;
         margin-bottom: 8px;
         font-weight: 500;
-        //color: #34495e;
       }
 
       input,
@@ -759,26 +759,37 @@ onMounted(() => {
       textarea {
         width: 100%;
         padding: 10px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        font-size: 16px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        background-color: var(--background);
+        color: var(--primary-text);
+        font-family: inherit;
+        font-size: inherit;
+
+        &::placeholder {
+          color: var(--neutral-text);
+        }
 
         &:focus {
           outline: none;
-          border-color: #3498db;
-          box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+          border-color: var(--primary-color);
+          box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.2);
         }
       }
 
       textarea {
         resize: vertical;
       }
+
+      select {
+        cursor: pointer;
+      }
     }
 
     .auth-fields {
       padding: 15px;
-      background: #f8f9fa;
-      border-radius: 4px;
+      background: var(--hover-background);
+      border-radius: var(--border-radius);
       margin-top: 10px;
     }
 
@@ -789,10 +800,11 @@ onMounted(() => {
       padding: 10px 12px;
       background: var(--hover-background);
       border: 1px solid var(--border-color);
-      border-radius: 4px;
+      border-radius: var(--border-radius);
       color: var(--primary-text);
       font-size: 14px;
     }
+
     .form-info.readonly-field .material-icons {
       font-size: 18px;
       color: var(--neutral-text);
@@ -804,7 +816,7 @@ onMounted(() => {
     justify-content: flex-end;
     gap: 10px;
     padding: 20px;
-    border-top: 1px solid #f1f2f6;
+    border-top: 1px solid var(--border-color);
   }
 }
 

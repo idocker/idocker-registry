@@ -222,8 +222,8 @@ router.beforeEach((to, from, next) => {
     const authStore = useAuthStore()
     
     if (!authStore.isAuthenticated) {
-      // 显示提示消息
-      authStore.showLoginPrompt = true
+      // 未登录访问受保护页（包括首次打开站点）：只记录回跳路径，不标记会话过期，
+      // 登录页因此不会显示“已过期”提示。
       authStore.loginRedirectPath = to.fullPath
       
       return next({

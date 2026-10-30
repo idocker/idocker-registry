@@ -71,12 +71,19 @@ View (*.vue) → services/*.service.ts → utils/http.ts 的 http 单例 → 后
 
 - 守卫 `router.beforeEach`：
   1. 用 `to.meta.titleKey`（i18n key）或 `meta.title` 设置 `document.title`；
-  2. `checkAuthRequired(to)` 为真时要求 `authStore.isAuthenticated`，否则置
-     `showLoginPrompt` 并跳 `/admin/login?redirect=<fullPath>`；
+  2. `checkAuthRequired(to)` 为真时要求 `authStore.isAuthenticated`，否则只记
+     `loginRedirectPath` 并跳 `/admin/login?redirect=<fullPath>`；
+     **不**标记会话过期（首次访问不该在登录页报“登录已失效”）；
   3. 已登录再访问 `/admin/login` → 重定向 `/admin/profile`；
   4. `meta.requiresAdmin` 且角色非 admin → 重定向 `/admin/profile`（不是 403 页）。
 - 注意 `checkAuthRequired()` 只检查 `meta.requiresAuth`，其内部还有一个恒为空的
   `protectedRoutes` 数组 —— 新增页面必须显式写 `meta.requiresAuth: true`。
+- 会话失效提示：`authStore.markSessionExpired()` 会在内存置 `sessionExpired` 并写
+  `sessionStorage['idocker_session_expired']`（因为 `utils/http.ts` 的 401 分支用
+  `window.location.href` 硬跳转，整页重载会清空 Pinia）。登录页 `onMounted` 读一次
+  快照后调 `clearSessionExpired()`，所以提示只在被踢回那一次出现，刷新不再重复。
+  触发点：令牌过期（`useAuthListener`）、`/api` 401 且**请求时持有 token**、
+  其他标签页登出。未登录状态下的 401 不标记。
 - 实际存在的视图：`views/{ImageView,ImageDetailView,NotFoundView}.vue` 与
   `views/admin/*`（含 `RepositoriesView.vue`、`PlaceholderView.vue`）。
   文档里的 `ImageTagDetailView.vue` 与 `/images/:imageId/tags/:tagId` 路由**在代码中不存在**。

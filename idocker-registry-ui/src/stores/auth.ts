@@ -22,14 +22,36 @@ function readStoredUser(): any {
   }
 }
 
+/**
+ * 会话失效标记的存储键。
+ *
+ * 为什么不用纯内存字段：`utils/http.ts` 的 401 分支用 `window.location.href` 硬跳转，
+ * 整页重载会把 Pinia 状态清空。所以标记必须落到 sessionStorage 才能在登录页读到。
+ * 用 sessionStorage 而不是 localStorage：关掉标签页就该忘掉，不该在下次打开站点时
+ * 还报“登录已过期”。
+ */
+const SESSION_EXPIRED_KEY = 'idocker_session_expired'
+
+function readSessionExpiredFlag(): boolean {
+  try {
+    return sessionStorage.getItem(SESSION_EXPIRED_KEY) === '1'
+  } catch {
+    // 隐私模式 / 禁用存储：退化为“没有过期标记”，最多是少一条提示，不影响登录
+    return false
+  }
+}
+
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     token: localStorage.getItem('idocker_token') || '',
     user: readStoredUser(),
     isLoading: false,
     error: null as string | null,
-    // 用于显示登录提示
-    showLoginPrompt: false,
+    // 会话是否因过期 / 401 / 其他标签页登出而失效。
+    // 语义是“你刚才的登录状态没了”，而不是“你没登录”——
+    // 首次访问受保护页（包括直接打开站点）由路由守卫跳转，但**不**置此标记，
+    // 所以那种情况下登录页不会有提示。
+    sessionExpired: readSessionExpiredFlag(),
     // 登录后重定向的路径
     loginRedirectPath: ''
   }),
@@ -115,10 +137,34 @@ export const useAuthStore = defineStore('auth', {
     clearError() {
       this.error = null
     },
-    
-    clearLoginPrompt() {
-      this.showLoginPrompt = false
-      this.loginRedirectPath = ''
+
+    /**
+     * 标记会话已失效。redirectPath 会在登录成功后用于回跳。
+     * 注意：这里不清空 loginRedirectPath，它是回跳依据；只负责打标记。
+     */
+    markSessionExpired(redirectPath?: string) {
+      this.sessionExpired = true
+      if (redirectPath) {
+        this.loginRedirectPath = redirectPath
+      }
+      try {
+        sessionStorage.setItem(SESSION_EXPIRED_KEY, '1')
+      } catch {
+        // 存不进去也不影响本次提示（内存标记已置）；只是刷新后会丢
+      }
+    },
+
+    /**
+     * 清除“已过期”标记，但**保留** loginRedirectPath。
+     * 登录页在展示过一次提示后调用，这样用户刷新登录页不会再被重复提示。
+     */
+    clearSessionExpired() {
+      this.sessionExpired = false
+      try {
+        sessionStorage.removeItem(SESSION_EXPIRED_KEY)
+      } catch {
+        // 忽略：删不掉时内存标记已清，刷新后最多再提示一次
+      }
     },
     
     // 初始化认证状态

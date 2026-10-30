@@ -155,11 +155,7 @@ export default {
     loginFailed: '登录失败',
     logoutSuccess: '退出登录成功',
     invalidCredentials: '用户名或密码错误',
-    accountDisabled: '账号已被禁用，请联系管理员',
-    sessionExpired: '会话已过期',
-    sessionExpiredMessage: '您的登录会话已过期，请重新登录。',
-    loginNow: '立即登录',
-    loginLater: '稍后登录'
+    accountDisabled: '账号已被禁用，请联系管理员'
   },
 
   // 用户
@@ -513,7 +509,7 @@ export default {
     enterPassword: '输入密码',
     useLdapAuth: '使用LDAP认证',
     createAccount: '创建账号',
-    loginPrompt: '此页面需要您登录。请登录以继续。',
+    sessionExpiredHint: '登录状态已失效，请重新登录以继续。',
     loginFailed: '登录失败'
   },
 
@@ -658,6 +654,7 @@ export default {
     selectProject: '选择项目',
     registryRepositoryName: '仓库名称',
     registryRepositoryNamePlaceholder: '输入仓库名称',
+    registryDescriptionPlaceholder: '输入仓库描述',
     creating: '创建中...',
     registryCreated: '仓库创建成功',
     createRegistryFailed: '创建仓库失败',

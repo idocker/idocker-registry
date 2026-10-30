@@ -120,7 +120,7 @@
 
             <div class="form-group">
               <label for="add-repo-desc">{{ $t('projects.description') }}</label>
-              <textarea id="add-repo-desc" v-model="addForm.description" rows="3" :placeholder="$t('projects.descriptionPlaceholder')"></textarea>
+              <textarea id="add-repo-desc" v-model="addForm.description" rows="3" :placeholder="$t('projectDetail.registryDescriptionPlaceholder')"></textarea>
             </div>
 
             <div v-if="addError" class="form-error">{{ addError }}</div>

@@ -100,6 +100,20 @@ body.dark-theme {
   --text-muted-rgb: 109, 127, 171;
   --primary-dark: var(--primary-color-hover);
   --primary-color-light: #2c3a4d;
+
+  // 派性别名必须在这里重新声明一遍。自定义属性里的 var() 是在**声明它的元素**
+  // （:root）上完成替换的，继承到 body 时已经是浅色值（--text-color 实测仍为
+  // #25313b），不会随本块的 --primary-text / --background 重定义而变化。
+  // 漏掉这些就会表现为：暗色下用 --text-color 的标题/表单标签仍是深色，
+  // 在 #333a44 卡片上几乎不可见。
+  --hover-bg: var(--hover-background);
+  --bg-color: var(--background);
+  --text-color: var(--primary-text);
+  --text-primary: var(--primary-text);
+  --text-secondary: var(--neutral-text);
+  --secondary-bg: var(--card-background);
+  --secondary-color: var(--neutral-text);
+  --code-bg: var(--hover-background);
 }
 
 // Breakpoints

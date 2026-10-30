@@ -85,26 +85,38 @@ class RegistryHttpService {
         console.log('error interceptor:', error)
         // Handle application authentication errors (401 for backend API)
         if (error.response?.status === 401 && error.config?.url?.startsWith('/api/')) {
+          // 只有“本来已登录”才算会话失效。登录接口自己返回 401（密码错误）
+          // 走的是全局 axios、不经本实例，但凭路径事实判定太脆弱——
+          // 这里以“发请求时是否持有 token”为准，未登录状态的 401 绝不被标成过期。
+          const hadSession = !!authStore.token
+          const redirectPath = window.location.pathname + window.location.search
+
           // Clear authentication state
           authStore.token = ''
           authStore.user = null
           localStorage.removeItem('idocker_token')
           localStorage.removeItem('user_data')
           delete axios.defaults.headers.common['Authorization']
-          
-          // Show login prompt and redirect to login page
-          authStore.showLoginPrompt = true
-          authStore.loginRedirectPath = window.location.pathname + window.location.search
-          
+
+          if (hadSession) {
+            // 标记会话已失效（除内存状态外还会写 sessionStorage：下面用
+            // window.location.href 硬跳转，整页重载会清空 Pinia 状态）
+            authStore.markSessionExpired(redirectPath)
+          } else if (window.location.pathname !== '/admin/login') {
+            // 未登录遇上的 401：只记回跳路径，不置“过期”标记，
+            // 否则下次进登录页会错误地提示“登录状态已失效”。
+            authStore.loginRedirectPath = redirectPath
+          }
+
           // Redirect to login page
           if (window.location.pathname !== '/admin/login') {
-            window.location.href = '/admin/login?redirect=' + encodeURIComponent(window.location.pathname + window.location.search)
+            window.location.href = '/admin/login?redirect=' + encodeURIComponent(redirectPath)
           }
-          
+
           // Don't retry the request
           return Promise.reject(this.formatError(error))
         }
-        
+
         // Handle Docker Registry authentication errors
         if (error.response?.status === 401) {
           // Try to handle authentication
