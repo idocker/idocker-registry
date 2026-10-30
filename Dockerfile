@@ -1,5 +1,5 @@
 # ---------- Stage 1: 前端构建 ----------
-FROM idocker.vip/node:22 AS ui-builder
+FROM node:22-alpine AS ui-builder
 WORKDIR /app/ui
 RUN npm config set registry https://registry.npmmirror.com
 COPY idocker-registry-ui/package*.json ./
@@ -9,7 +9,7 @@ COPY idocker-registry-ui ./
 RUN npm run build
 
 # ---------- Stage 2: 后端生产依赖（含 SQLite 原生编译） ----------
-FROM idocker.vip/node:22 AS server-deps
+FROM node:22-alpine AS server-deps
 WORKDIR /app/idocker
 RUN npm config set registry https://registry.npmmirror.com
 COPY idocker-registry-server/package*.json ./
@@ -20,7 +20,7 @@ RUN --mount=type=cache,target=/root/.npm \
     && npm cache clean --force
 
 # ---------- Stage 3: Runtime ----------
-FROM idocker.vip/node:22
+FROM node:22-alpine
 
 # 这个容器永远是生产运行形态、时区固定为 Asia/Shanghai（AGENTS.md 要求全链路统一时区），
 # 属于镜像属性而非部署参数，因此写进镜像，compose 无需再重复声明。

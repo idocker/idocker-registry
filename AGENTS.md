@@ -421,9 +421,13 @@ chown -R 1000:1000 test/dev-registry-data test/dev-app-data test/dev-app-logs
 | `deploy/docker-entrypoint.sh` | 生产入口（基硰镜像自带 `ENTRYPOINT`） | ✅ 存在 |
 | `idocker-registry-server/.env` | **已移除**：开发配置改由 dev compose 提供 | ❌ 不存在 |
 
-⚠️ **dev compose 必须用 `entrypoint:` 而不是 `command:` 覆盖**：基硰镜像 `idocker.vip/node:22` 自带
-`ENTRYPOINT ["docker-entrypoint.sh"]`，而 `command` 只覆盖 `CMD`。写成 `command` 的话生产入口
+⚠️ **dev compose 必须用 `entrypoint:` 而不是 `command:` 覆盖**：基础镜像是官方 `node:22-alpine`，
+它自带 `ENTRYPOINT ["docker-entrypoint.sh"]`，而 `command` 只覆盖 `CMD`。写成 `command` 的话生产入口
 仍会执行、dev 入口变成它的参数被忽略——表现为开发容器里跑着生产流程、端口是 7518。
+
+> 注意 `Dockerfile` 里的 `COPY deploy/docker-entrypoint.sh /usr/local/bin/` 会**覆盖官方
+> 同名 entrypoint**（这正是 `ENTRYPOINT` 能执行到我们脚本的原因）；该脚本不读 `"$@"`，
+> 所以 `CMD ["docker-entrypoint.sh"]` 传进来的参数被忽略，不影响启动。
 
 ### 环境切换
 

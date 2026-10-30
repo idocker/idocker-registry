@@ -45,7 +45,7 @@ services:
       #   DB_PATH / LOG_DIR    → 默认就是 /app/data 与 /app/logs，与上面的挂载一致
       #   JWT_SECRET           → 首次启动自动生成并写入 /app/data/.env
       #   DEFAULT_ADMIN_PASSWORD → 默认 admin123，仅首次建库时使用
-    # 必须覆盖 entrypoint 而不只是 command：基础镜像 idocker.vip/node:22 自带
+    # 必须覆盖 entrypoint 而不只是 command：基础镜像 node:22-alpine 自带
     # ENTRYPOINT ["docker-entrypoint.sh"]，而 command 只覆盖 CMD——
     # 只写 command 的话，生产入口仍会执行，dev 入口会变成它的参数被忽略。
     entrypoint: ["dev-entrypoint.sh"]
