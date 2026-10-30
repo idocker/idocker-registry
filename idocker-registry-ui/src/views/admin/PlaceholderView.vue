@@ -101,7 +101,7 @@
                 <strong>{{ t('guide.nsTitle') }}</strong>
                 <span>{{ t('guide.nsLabel') }}</span>
               </div>
-              <p class="hierarchy-desc">{{ t('guide.nsDesc') }}<code>backend-team</code>、<code>frontend-team</code></p>
+              <p class="hierarchy-desc">{{ t('guide.nsDesc') }}<code>backend-team</code>{{ t('guide.exampleSeparator') }}<code>frontend-team</code></p>
             </div>
             <span class="material-icons hierarchy-arrow">arrow_downward</span>
             <div class="hierarchy-level">
@@ -152,14 +152,16 @@
             <code>{{ t('guide.defaultPullCmd') }}</code>
           </div>
           <div class="hierarchy-desc" style="margin-top: 8px">
-            <code>{{ t('guide.defaultMore') }}</code>
+            {{ t('guide.defaultMoreLabel') }}
+            <code>{{ t('guide.defaultMoreCmd') }}</code>
           </div>
           <div class="path-example">
             <span class="material-icons">upload</span>
             {{ t('guide.defaultPushNote') }}
           </div>
           <div class="hierarchy-desc">
-            <code>{{ t('guide.defaultProjNote') }}</code>
+            {{ t('guide.defaultProjNoteLabel') }}
+            <code>{{ t('guide.defaultProjNoteCmd') }}</code>
           </div>
         </div>
       </section>

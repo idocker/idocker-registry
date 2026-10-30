@@ -377,7 +377,7 @@ cd idocker-registry-ui && npm run format
 
 | 项 | 本仓库实际值 |
 |----|--------------|
-| 镜像 | `idocker-registry:2.0.4`；**没有 `build:` 段**，必须先手工 `docker build` |
+| 镜像 | `idocker-registry:2.0.5`；**没有 `build:` 段**，必须先手工 `docker build` |
 | 容器名 | `idocker-registry` |
 | 端口 | `7588:7518`；内部 registry 7519 不映射到宿主 |
 | 卷 | `./test/registry-data`、`./test/app-data`、`./test/app-logs`（`test/` 不入 git） |
@@ -442,7 +442,7 @@ docker compose -f docker-compose.dev.yaml up
 - 源码从宿主挂载到 `/app/idocker`，`node --watch`（Node 22 内置，不需 nodemon）监听改动后自动重启
 - 匿名卷 `- /app/idocker/node_modules` 保留镜像内编译好的依赖，不被宿主目录盖掉
 - **热更新不适用**：改 `package.json` 依赖、改前端代码 → 需重建镜像
-  （`docker build -t idocker-registry:2.0.4 .`）
+  （`docker build -t idocker-registry:2.0.5 .`）
 - macOS / Docker Desktop 上若发现改文件不触发重启（宿主文件事件不传入容器），把 dev-entrypoint 里的
   `node --watch` 换成 `npx nodemon --legacy-watch --watch /app/idocker --ignore node_modules index.js`
 
