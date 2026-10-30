@@ -83,7 +83,7 @@ cd idocker-registry-ui && npm run dev:client
 
 ```bash
 cd /workspace/idocker-registry
-docker build -t idocker-registry:1.0.2 .   # compose 声明的 tag；compose 无 build 段
+docker build -t idocker-registry:2.0.2 .   # 与 compose 的 image tag 保持一致；compose 无 build 段
 docker compose up -d
 ```
 
