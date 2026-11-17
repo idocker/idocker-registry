@@ -36,8 +36,8 @@ web/
 ## 常用改动位置
 
 - **控制台地址**：`assets/app.js` 顶部的 `CONSOLE_URL`（默认 `https://idocker.vip`）
-- **页脚官方链接**：`index.html` 页脚 `footer-official` 行（GitHub / Docker Hub / 官网），
-  新增外链域名要同步加进 `.check.mjs` 的 `ALLOWED_HOSTS`
+- **页脚官方链接**：`index.html` 页脚 `footer-official` 行（GitHub / Docker Hub / 官网 / 联系邮箱），
+  新增外链域名要同步加进 `.check.mjs` 的 `ALLOWED_HOSTS`，新增邮箱加到 `ALLOWED_MAILS`
 - **页脚版本号**：`index.html` 中 `web/index.html` 的 `v1.2.21`
 - **中文文案**：直接写在 `index.html` 的 `data-i18n` 节点里（同时是中文源，无需另建字典）
 - **英文文案**：`assets/app.js` 里的 `EN` 对象，键与 `data-i18n` 一一对应
@@ -85,6 +85,6 @@ node web/.runtime-check.mjs            # 运行时：真实执行 app.js，验�
 
 - 本目录**已纳入版本库**（早先被根 `.gitignore` 忽略，现已解除），改动随仓库一起提交。
 - 页面不请求任何后端接口、不引用任何 CDN，离线环境可正常打开。
-  页脚有三条纯导航外链（GitHub / Docker Hub / 官网），不加载任何远程资源；
-  `.check.mjs` 对外链域名做白名单校验（`ALLOWED_HOSTS`）。
+  页脚有四条纯导航链（GitHub / Docker Hub / 官网 / 邮箱 `mailto:`），不加载任何远程资源；
+  `.check.mjs` 对外链域名与邮箱地址做白名单校验（`ALLOWED_HOSTS` / `ALLOWED_MAILS`）。
 - 页面不含登录态与真实镜像数据，所有命令示例均可在产品 UI 与 README 中核对。

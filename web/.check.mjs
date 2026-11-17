@@ -27,7 +27,7 @@ const deadAnchors = [...new Set(hrefs)].filter((h) => !ids.includes(h));
 if (deadAnchors.length) problems.push('无对应 id 的锚点: ' + deadAnchors.join(', '));
 
 // 3) 引用的本地资源是否存在
-const refs = [...html.matchAll(/(?:src|href)="((?!https?:|#)[^"]+)"/g)].map((m) => m[1]);
+const refs = [...html.matchAll(/(?:src|href)="((?!https?:|mailto:|#|\/\/)[^"]+)"/g)].map((m) => m[1]);
 const missingFiles = refs.filter((r) => !existsSync(resolve(root, r)));
 if (missingFiles.length) problems.push('缺失的资源文件: ' + missingFiles.join(', '));
 
@@ -71,6 +71,12 @@ const unknownLinks = [...new Set(links)].filter((u) => {
   }
 });
 if (unknownLinks.length) problems.push('出现白名单外的外部链接: ' + unknownLinks.join(', '));
+
+// 邮件链接同样收口到白名单，避免页面被改成指向任意邮箱
+const ALLOWED_MAILS = ['liu.menjoy@gmail.com'];
+const mails = [...stripped.matchAll(/mailto:([^"'\s>]+)/g)].map((m) => m[1]);
+const unknownMails = [...new Set(mails)].filter((a) => !ALLOWED_MAILS.includes(a));
+if (unknownMails.length) problems.push('出现白名单外的邮件地址: ' + unknownMails.join(', '));
 
 console.log('data-i18n 键数量:', new Set(htmlKeys).size);
 console.log('EN 字典键数量:', new Set(enKeys).size);

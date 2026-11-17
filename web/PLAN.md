@@ -51,7 +51,7 @@
 | 许可证 MIT | `README.md` 文末 |
 | 版本号 v1.2.21 | `idocker-registry-ui/package.json` 的 `version`（UI 页脚同源） |
 | 品牌色 / logo / 图标 | `idocker-registry-ui/src/styles/variables.scss`、`src/assets/{logo,idocker}.png` |
-| 页脚官方链接：GitHub / Docker Hub / 官网 | 项目方提供（源码 <https://github.com/idocker/idocker-registry>、镜像 `idockervip/idocker-registry:2.0.4`、主页 <https://www.idocker.vip>） |
+| 页脚官方链接：GitHub / Docker Hub / 官网 / 邮箱 | 项目方提供（源码 <https://github.com/idocker/idocker-registry>、镜像 `idockervip/idocker-registry:2.0.4`、主页 <https://www.idocker.vip>、邮箱 <mailto:liu.menjoy@gmail.com>） |
 
 ## 4. 刻意的取舍（需要你确认的点）
 
