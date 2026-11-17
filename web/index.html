@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="auto">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>iDocker Registry — 企业级 Docker 镜像仓库管理平台</title>
+    <meta
+      name="description"
+      content="iDocker Registry 是一款自托管的企业级 Docker 镜像仓库管理平台：三层资源模型、仓库级细粒度权限、Docker Registry v2 全量代理、push 即时同步与完整审计日志。"
+    />
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+    <link rel="stylesheet" href="assets/styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main" data-i18n="a11y.skip">跳到主要内容</a>
+
+    <!-- ============ 顶栏 ============ -->
+    <header class="site-header">
+      <div class="container header-inner">
+        <a class="brand" href="#top" aria-label="iDocker Registry">
+          <img class="brand-logo" src="assets/logo.png" alt="iDocker Registry" />
+        </a>
+
+        <nav class="site-nav" id="siteNav" aria-label="主导航">
+          <a href="#features" data-i18n="nav.features">核心特性</a>
+          <a href="#architecture" data-i18n="nav.architecture">三层架构</a>
+          <a href="#roles" data-i18n="nav.roles">角色权限</a>
+          <a href="#quickstart" data-i18n="nav.quickstart">快速开始</a>
+          <a href="#stack" data-i18n="nav.stack">技术栈</a>
+          <a href="#faq" data-i18n="nav.faq">常见问题</a>
+        </nav>
+
+        <div class="header-actions">
+          <button
+            class="icon-btn"
+            id="langToggle"
+            type="button"
+            title="Switch language / 切换语言"
+          >
+            EN
+          </button>
+          <button class="icon-btn" id="themeToggle" type="button" title="主题">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6l1.4 1.4m10 10l1.4 1.4m0-12.8l-1.4 1.4m-10 10l-1.4 1.4"
+              />
+              <circle cx="12" cy="12" r="4" />
+            </svg>
+          </button>
+          <a class="btn btn-primary btn-sm" id="consoleLink" href="#" data-i18n="nav.console"
+            >进入控制台</a
+          >
+          <button
+            class="icon-btn menu-btn"
+            id="menuToggle"
+            type="button"
+            aria-expanded="false"
+            aria-controls="siteNav"
+            aria-label="展开或收起导航菜单"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 7h16M4 12h16M4 17h16" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main id="main">
+      <!-- ============ Hero ============ -->
+      <section class="hero" id="top">
+        <div class="container hero-inner">
+          <p class="eyebrow">
+            <span data-i18n="hero.badge1">企业级</span>
+            <span aria-hidden="true">·</span>
+            <span data-i18n="hero.badge2">自托管</span>
+            <span aria-hidden="true">·</span>
+            <span data-i18n="hero.badge3">MIT 许可证</span>
+          </p>
+          <h1 data-i18n="hero.title">企业级 Docker 镜像仓库管理平台</h1>
+          <p class="hero-sub" data-i18n="hero.subtitle">
+            以「命名空间 → 项目 → 仓库」三层模型组织镜像，提供仓库级细粒度成员权限、Docker
+            Registry v2 全量代理与完整的操作审计日志 —— Web UI 与 Docker CLI 共用同一套账号体系。
+          </p>
+
+          <div class="hero-cta">
+            <a class="btn btn-primary" href="#quickstart" data-i18n="hero.ctaPrimary">快速开始</a>
+            <a class="btn btn-ghost" href="#features" data-i18n="hero.ctaSecondary">查看核心特性</a>
+          </div>
+
+          <div class="terminal" role="group" aria-label="Docker 命令行示例">
+            <div class="terminal-bar">
+              <span class="dot dot-r"></span><span class="dot dot-y"></span
+              ><span class="dot dot-g"></span>
+              <span class="terminal-title">bash</span>
+            </div>
+            <pre class="terminal-body"><code><span class="c-prompt">$</span> docker login idocker.vip
+<span class="c-prompt">$</span> docker pull idocker.vip/nginx:latest
+<span class="c-prompt">$</span> docker pull idocker.vip/wvp/media-worker:latest</code></pre>
+          </div>
+
+          <p class="hero-note" data-i18n="hero.note">
+            单段路径自动归属内置的 default 项目（基础镜像公共库），两段路径为「项目/仓库」。
+          </p>
+        </div>
+      </section>
+
+      <!-- ============ 核心特性 ============ -->
+      <section class="section" id="features">
+        <div class="container">
+          <header class="section-head">
+            <h2 data-i18n="features.title">核心特性</h2>
+            <p data-i18n="features.subtitle">
+              围绕镜像仓库的日常运维场景设计：管得清、看得见、记得全。
+            </p>
+          </header>
+
+          <div class="grid grid-features">
+            <article class="card">
+              <h3 data-i18n="features.f1.title">三层资源模型</h3>
+              <p data-i18n="features.f1.desc">
+                命名空间 → 项目 → 仓库的层级结构，清晰隔离团队、环境与业务资源。
+              </p>
+            </article>
+            <article class="card">
+              <h3 data-i18n="features.f2.title">默认公共库</h3>
+              <p data-i18n="features.f2.desc">
+                内置 default 项目存放 mysql / redis / nginx / jdk 等基础镜像，使用单段路径，对所有登录用户可见、可拉取。
+              </p>
+            </article>
+            <article class="card">
+              <h3 data-i18n="features.f3.title">仓库级细粒度权限</h3>
+              <p data-i18n="features.f3.desc">
+                4 种系统角色，成员授权落实在仓库级别（repository_members），授权即生效。
+              </p>
+            </article>
+            <article class="card">
+              <h3 data-i18n="features.f4.title">Docker Registry v2 代理</h3>
+              <p data-i18n="features.f4.desc">
+                对 Docker Registry v2 API 的完整代理，集成鉴权、权限校验与操作日志记录。
+              </p>
+            </article>
+            <article class="card">
+              <h3 data-i18n="features.f5.title">推送即时同步</h3>
+              <p data-i18n="features.f5.desc">
+                push 后标签自动入库，无需手动同步；最新标签会自动同步为 latest 引用。
+              </p>
+            </article>
+            <article class="card">
+              <h3 data-i18n="features.f6.title">审计日志</h3>
+              <p data-i18n="features.f6.desc">
+                完整的操作记录，支持搜索、筛选、导出与按时间清理。
+              </p>
+            </article>
+            <article class="card">
+              <h3 data-i18n="features.f7.title">中英双语界面</h3>
+              <p data-i18n="features.f7.desc">
+                内置 zh-CN / en-US 两套文案，可在界面中即时切换。
+              </p>
+            </article>
+            <article class="card">
+              <h3 data-i18n="features.f8.title">主题切换</h3>
+              <p data-i18n="features.f8.desc">
+                浅色 / 深色 / 跟随系统三种模式，由 CSS 变量驱动，偏好本地留存。
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 三层架构 ============ -->
+      <section class="section section-alt" id="architecture">
+        <div class="container">
+          <header class="section-head">
+            <h2 data-i18n="arch.title">三层架构</h2>
+            <p data-i18n="arch.subtitle">
+              命名空间用于团队 / 环境等管理分组；镜像仓库的路径只由「项目」和「仓库」决定。
+            </p>
+          </header>
+
+          <ol class="layers">
+            <li class="layer">
+              <span class="layer-idx">01</span>
+              <h3 data-i18n="arch.l1.title">命名空间</h3>
+              <p data-i18n="arch.l1.desc">管理分组，用于划分团队或环境，不参与镜像仓库路径。</p>
+            </li>
+            <li class="layer">
+              <span class="layer-idx">02</span>
+              <h3 data-i18n="arch.l2.title">项目</h3>
+              <p data-i18n="arch.l2.desc">
+                仓库的容器与授权边界，镜像路径的首段即项目名。
+              </p>
+            </li>
+            <li class="layer">
+              <span class="layer-idx">03</span>
+              <h3 data-i18n="arch.l3.title">仓库</h3>
+              <p data-i18n="arch.l3.desc">镜像的实际载体，承载标签、大小与推送时间等元数据。</p>
+            </li>
+          </ol>
+
+          <div class="split">
+            <div class="code-card">
+              <h4 data-i18n="arch.pathTitle">镜像路径规则</h4>
+              <pre><code><span class="c-cmt"># default 项目：单段路径，全员可见可拉取</span>
+idocker.vip/nginx:latest
+
+<span class="c-cmt"># 其他项目：两段路径「项目/仓库」</span>
+idocker.vip/wvp/media-worker:latest</code></pre>
+            </div>
+            <div class="prose">
+              <h4 data-i18n="arch.defaultTitle">内置 default 项目</h4>
+              <p data-i18n="arch.defaultDesc">
+                default 命名空间下的 default 项目是受保护的基础镜像公共库，不可删除、不可改名、不可停用。其中的镜像对所有登录用户可见、可拉取；推送则仅限管理员或被授权成员。
+              </p>
+              <p class="muted" data-i18n="arch.defaultNote">
+                保护规则同时作用于删除、改名与停用，无法通过先改名再删除绕过。
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 角色权限 ============ -->
+      <section class="section" id="roles">
+        <div class="container">
+          <header class="section-head">
+            <h2 data-i18n="roles.title">角色与权限</h2>
+            <p data-i18n="roles.subtitle">
+              系统角色决定后台可及范围，仓库成员角色决定 Docker 侧的读写能力。
+            </p>
+          </header>
+
+          <div class="table-wrap">
+            <table>
+              <caption class="sr-only" data-i18n="roles.tableCaption">
+                系统角色与权限范围对照表
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col" data-i18n="roles.th.role">角色</th>
+                  <th scope="col" data-i18n="roles.th.scope">访问范围</th>
+                  <th scope="col" data-i18n="roles.th.docker">Docker 权限</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>admin</code></td>
+                  <td data-i18n="roles.admin.scope">所有资源、所有项目，无需成员关系</td>
+                  <td>pull / push / delete</td>
+                </tr>
+                <tr>
+                  <td><code>project_manager</code></td>
+                  <td data-i18n="roles.pm.scope">所辖项目的成员管理</td>
+                  <td>pull / push / delete</td>
+                </tr>
+                <tr>
+                  <td><code>developer</code></td>
+                  <td data-i18n="roles.dev.scope">被授权仓库的镜像读写</td>
+                  <td>pull / push / delete</td>
+                </tr>
+                <tr>
+                  <td><code>operator</code></td>
+                  <td data-i18n="roles.op.scope">被授权仓库的只读访问</td>
+                  <td>pull</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="callout">
+            <strong data-i18n="roles.memberTitle">仓库成员是 Docker 权限的唯一来源</strong>
+            <p data-i18n="roles.memberDesc">
+              仓库级成员表（repository_members）记录「谁在哪个仓库里是什么角色」，角色枚举为
+              project_manager / developer / operator，每个仓库对每个用户只保留一条成员记录。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 快速开始 ============ -->
+      <section class="section section-alt" id="quickstart">
+        <div class="container">
+          <header class="section-head">
+            <h2 data-i18n="qs.title">快速开始</h2>
+            <p data-i18n="qs.subtitle">
+              Web 用户即仓库用户：登录 Docker 使用的就是平台账号。
+            </p>
+          </header>
+
+          <div class="steps">
+            <article class="step">
+              <h3><span class="step-no">1</span><span data-i18n="qs.s1.title">登录仓库</span></h3>
+              <div class="code-line">
+                <pre><code>docker login idocker.vip</code></pre>
+                <button class="copy-btn" type="button" data-copy="docker login idocker.vip">
+                  <span data-i18n="common.copy">复制</span>
+                </button>
+              </div>
+              <p class="muted" data-i18n="qs.s1.desc">
+                输入平台账号与密码。登录成功后凭据保存在本地 Docker 配置中。
+              </p>
+            </article>
+
+            <article class="step">
+              <h3><span class="step-no">2</span><span data-i18n="qs.s2.title">拉取镜像</span></h3>
+              <div class="code-line">
+                <pre><code>docker pull idocker.vip/nginx:latest</code></pre>
+                <button
+                  class="copy-btn"
+                  type="button"
+                  data-copy="docker pull idocker.vip/nginx:latest"
+                >
+                  <span data-i18n="common.copy">复制</span>
+                </button>
+              </div>
+              <p class="muted" data-i18n="qs.s2.desc">
+                default 项目的基础镜像全员可拉取；项目镜像请替换为「项目/仓库」路径。
+              </p>
+            </article>
+
+            <article class="step">
+              <h3><span class="step-no">3</span><span data-i18n="qs.s3.title">推送镜像</span></h3>
+              <div class="code-line">
+                <pre><code>docker tag my-app:latest idocker.vip/wvp/my-app:latest
+docker push idocker.vip/wvp/my-app:latest</code></pre>
+                <button
+                  class="copy-btn"
+                  type="button"
+                  data-copy="docker tag my-app:latest idocker.vip/wvp/my-app:latest
+docker push idocker.vip/wvp/my-app:latest"
+                >
+                  <span data-i18n="common.copy">复制</span>
+                </button>
+              </div>
+              <p class="muted" data-i18n="qs.s3.desc">
+                推送成功后标签即时入库；当仓库存在多个标签时，创建时间最新的标签会自动同步为 latest。
+              </p>
+            </article>
+          </div>
+
+          <div class="split">
+            <div class="code-card">
+              <h4 data-i18n="qs.deployTitle">自托管部署</h4>
+              <pre><code><span class="c-cmt"># 构建镜像（compose 未声明 build 段）</span>
+docker build -t idocker-registry:1.0.2 .
+
+<span class="c-cmt"># 启动服务</span>
+docker compose up -d</code></pre>
+            </div>
+            <div class="prose">
+              <h4 data-i18n="qs.accountTitle">默认管理员</h4>
+              <p data-i18n="qs.accountDesc">
+                首次启动会创建默认的管理员账号
+                <code>admin</code>
+                与默认命名空间 <code>default</code>。请登录后立即修改默认密码。
+              </p>
+              <p class="muted" data-i18n="qs.accountNote">
+                默认管理员密码请查阅部署文档；本页不展示明文凭据。
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 技术栈 ============ -->
+      <section class="section" id="stack">
+        <div class="container">
+          <header class="section-head">
+            <h2 data-i18n="stack.title">技术栈</h2>
+            <p data-i18n="stack.subtitle">
+              前后端分离的两个子系统，各自独立安装依赖与构建。
+            </p>
+          </header>
+
+          <div class="grid grid-stack">
+            <div class="stack-col">
+              <h3 data-i18n="stack.frontend">前端 <code>idocker-registry-ui</code></h3>
+              <ul class="tags">
+                <li>Vue 3 Composition API</li>
+                <li>TypeScript</li>
+                <li>Vite</li>
+                <li>Pinia</li>
+                <li>Vue Router</li>
+                <li>Axios</li>
+                <li>vue-i18n</li>
+                <li>SCSS 变量主题</li>
+              </ul>
+            </div>
+            <div class="stack-col">
+              <h3 data-i18n="stack.backend">后端 <code>idocker-registry-server</code></h3>
+              <ul class="tags">
+                <li>Node.js</li>
+                <li>Express</li>
+                <li>SQLite (WAL)</li>
+                <li>JWT 认证</li>
+                <li>bcrypt 哈希</li>
+                <li>Winston 日志</li>
+                <li>http-proxy-middleware</li>
+                <li>Docker Registry v2</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <caption class="sr-only" data-i18n="stack.apiCaption">REST API 端点概览</caption>
+              <thead>
+                <tr>
+                  <th scope="col" data-i18n="stack.th.endpoint">端点</th>
+                  <th scope="col" data-i18n="stack.th.desc">说明</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>/api/auth/*</code></td>
+                  <td data-i18n="stack.api.auth">登录、注册、刷新令牌</td>
+                </tr>
+                <tr>
+                  <td><code>/api/users/*</code></td>
+                  <td data-i18n="stack.api.users">用户管理（仅 admin）</td>
+                </tr>
+                <tr>
+                  <td><code>/api/namespaces/*</code></td>
+                  <td data-i18n="stack.api.ns">命名空间 CRUD</td>
+                </tr>
+                <tr>
+                  <td><code>/api/projects/*</code></td>
+                  <td data-i18n="stack.api.projects">项目管理</td>
+                </tr>
+                <tr>
+                  <td><code>/api/repository/*</code></td>
+                  <td data-i18n="stack.api.repo">仓库管理、镜像标签、仓库成员</td>
+                </tr>
+                <tr>
+                  <td><code>/api/audit/*</code></td>
+                  <td data-i18n="stack.api.audit">审计日志</td>
+                </tr>
+                <tr>
+                  <td><code>/api/sync/*</code></td>
+                  <td data-i18n="stack.api.sync">镜像同步</td>
+                </tr>
+                <tr>
+                  <td><code>/v2/*</code></td>
+                  <td data-i18n="stack.api.v2">Docker Registry API 代理</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 常见问题 ============ -->
+      <section class="section section-alt" id="faq">
+        <div class="container">
+          <header class="section-head">
+            <h2 data-i18n="faq.title">常见问题</h2>
+          </header>
+
+          <div class="faq">
+            <details>
+              <summary data-i18n="faq.q1">为什么 push 提示仓库不存在？</summary>
+              <p data-i18n="faq.a1">
+                非管理员不能通过 push 创建新仓库。请先在 Web UI 中创建好项目与仓库，再执行 push。
+              </p>
+            </details>
+            <details>
+              <summary data-i18n="faq.q2">docker pull 不写标签会拉到哪个版本？</summary>
+              <p data-i18n="faq.a2">
+                未指定标签时拉取 latest。平台会把创建时间最新的标签自动同步为 latest 引用，因此不写标签也能拿到最新版本。
+              </p>
+            </details>
+            <details>
+              <summary data-i18n="faq.q3">default 项目可以删除或改名吗？</summary>
+              <p data-i18n="faq.a3">
+                不可以。default 命名空间与 default 项目受保护，删除、改名、停用均会被拒绝。
+              </p>
+            </details>
+            <details>
+              <summary data-i18n="faq.q4">忘记密码或需要重置用户怎么办？</summary>
+              <p data-i18n="faq.a4">
+                密码需包含至少 6 个字符且至少 1 个特殊符号。管理员可在用户管理中重置；用户本人可在个人中心修改密码。
+              </p>
+            </details>
+            <details>
+              <summary data-i18n="faq.q5">时区与时间显示不一致？</summary>
+              <p data-i18n="faq.a5">
+                服务端统一使用 Asia/Shanghai，数据库以 UTC ISO 存储，Web 界面按浏览器时区展示，属预期行为。
+              </p>
+            </details>
+            <details>
+              <summary data-i18n="faq.q6">可以删除已推送的镜像标签吗？</summary>
+              <p data-i18n="faq.a6">
+                可以。内部 registry 已启用删除能力，具备删除权限的角色可在镜像详情中删除标签。
+              </p>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 结语 CTA ============ -->
+      <section class="cta-band">
+        <div class="container cta-inner">
+          <h2 data-i18n="cta.title">把镜像仓库管起来</h2>
+          <p data-i18n="cta.subtitle">
+            自托管部署，数据与凭据都留在自己的基础设施上。
+          </p>
+          <a class="btn btn-primary" id="consoleLinkBottom" href="#" data-i18n="nav.console"
+            >进入控制台</a
+          >
+        </div>
+      </section>
+    </main>
+
+    <!-- ============ 页脚 ============ -->
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <div class="footer-brand">
+          <img src="assets/idocker.png" alt="" class="footer-mark" />
+          <div>
+            <strong>iDocker Registry</strong>
+            <p data-i18n="footer.tagline">企业级 Docker 镜像仓库管理平台</p>
+          </div>
+        </div>
+        <nav class="footer-links" aria-label="页脚导航">
+          <a href="#features" data-i18n="nav.features">核心特性</a>
+          <a href="#roles" data-i18n="nav.roles">角色权限</a>
+          <a href="#quickstart" data-i18n="nav.quickstart">快速开始</a>
+          <a href="#faq" data-i18n="nav.faq">常见问题</a>
+        </nav>
+        <p class="footer-official">
+          <span data-i18n="footer.official">官方资源</span>
+          <a href="https://github.com/idocker/idocker-registry" target="_blank" rel="noopener"
+            >GitHub</a
+          >
+          <a href="https://hub.docker.com/r/idockervip/idocker-registry" target="_blank" rel="noopener"
+            >Docker Hub</a
+          >
+          <a href="https://www.idocker.vip" target="_blank" rel="noopener">www.idocker.vip</a>
+        </p>
+        <p class="footer-meta">
+          <span data-i18n="footer.copyright">Powered by idocker-registry.</span>
+          <span class="sep" aria-hidden="true">·</span>
+          <span>v1.2.21</span>
+          <span class="sep" aria-hidden="true">·</span>
+          <span data-i18n="footer.license">MIT 许可证</span>
+        </p>
+      </div>
+    </footer>
+
+    <script src="assets/app.js"></script>
+  </body>
+</html>
