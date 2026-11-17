@@ -38,11 +38,13 @@ WORKDIR /app
 # apk 会拉取当前 Alpine 仓库里的最新版，而 distribution 3.x 与 2.8 存在已知行为差异
 # （例如 http.secret 缺失时，3.x 直接拒启、2.8 只警告；上传/删除等路径也需实测）。
 # 3.x 迁移要单独安排，不能让它随 apk 被动升级进来：
-# 版本漂移曾直接导致重建镜像后容器起不来，所以这里钉死在已验证的 2.8.3-r24。
-# 若构建报 "unable to select packages: docker-registry-2.8.3-r24"，说明 Alpine 仓库
-# 已把 2.8.x 撤下：要么改用带 Alpine 小版本的基础镜像 tag，要么提前做 3.x 迁移。
+# 版本漂移曾直接导致重建镜像后容器起不来，所以这里钉死在上游 2.8.3（Alpine 打包修订号随
+# 基础镜像跟进：2.8.3-r24 → 2.8.3-r25，上游版本不变）。
+# 若构建报 "unable to select packages: docker-registry-2.8.3-rXX"，先用
+# `apk policy docker-registry` 看仓库里当前的打包修订号并同步这里；确认仓库只剩 3.x 时
+# 才需要改用带 Alpine 小版本的基础镜像 tag，或提前做 3.x 迁移。
 RUN --mount=type=cache,target=/var/cache/apk \
-    apk add --no-cache docker-registry=2.8.3-r24 tzdata
+    apk add --no-cache docker-registry=2.8.3-r25 tzdata
 
 # 从构建阶段拷贝生产依赖与前端产物
 # 用 COPY --chown 而不是事后 chown -R：node_modules 有数万个文件，
