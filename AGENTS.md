@@ -6,6 +6,16 @@ iDocker是一个Docker Registry管理平台，提供Web UI来管理Docker镜像�
 - **server** (Node.js/Express) - REST API + Docker Registry v2 proxy
 - **ui** (Vue 3/TypeScript) - SPA前端
 
+## 官方资源
+
+| 项 | 地址 |
+|----|------|
+| 源码仓库（公开） | https://github.com/idocker/idocker-registry.git |
+| Docker Hub 镜像 | [`idockervip/idocker-registry:2.0.4`](https://hub.docker.com/r/idockervip/idocker-registry) |
+| 官网 / 产品主页 | https://www.idocker.vip |
+
+> 本工作空间的 `origin` 是内网 `git.joyeasy.xyz/idocker/idocker-registry.git`，与上面的公开 GitHub 仓库不是同一地址。
+
 ## 项目结构
 
 ```

@@ -8,6 +8,8 @@
 [简体中文](README.md) | [English](README.en.md)
 
 [![Docker Hub](https://img.shields.io/badge/docker-idockervip%2Fidocker--registry-2496ED?logo=docker&logoColor=white)](https://hub.docker.com/r/idockervip/idocker-registry)
+[![GitHub](https://img.shields.io/badge/github-idocker%2Fidocker--registry-181717?logo=github&logoColor=white)](https://github.com/idocker/idocker-registry)
+[![Homepage](https://img.shields.io/badge/home-www.idocker.vip-0aa1dd)](https://www.idocker.vip)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 </div>
@@ -106,7 +108,7 @@ docker run -d --name idocker-registry \
 仓库自带 `docker-compose.yaml`，可以直接用官方镜像，不必修改文件：
 
 ```bash
-git clone <your-repo-url> idocker-registry && cd idocker-registry
+git clone https://github.com/idocker/idocker-registry.git idocker-registry && cd idocker-registry
 mkdir -p registry data logs && sudo chown -R 1000:1000 registry data logs
 
 IDOCKER_IMAGE=idockervip/idocker-registry:2.0.4 docker compose up -d
@@ -361,6 +363,14 @@ node --check idocker-registry-server/routes/projects.js
 ```
 
 ---
+
+## 官方地址
+
+| 项 | 地址 |
+|----|------|
+| 源码仓库 | https://github.com/idocker/idocker-registry |
+| 镜像发布 | [`idockervip/idocker-registry:2.0.4`](https://hub.docker.com/r/idockervip/idocker-registry) |
+| 官网 / 产品主页 | https://www.idocker.vip |
 
 ## 贡献
 

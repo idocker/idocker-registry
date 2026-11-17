@@ -5,6 +5,17 @@ description: Use when building, starting, restarting, or debugging the running i
 
 # iDocker 构建与部署
 
+## 官方资源（对外地址以此为准）
+
+| 项 | 地址 |
+|----|------|
+| 源码（GitHub） | https://github.com/idocker/idocker-registry.git |
+| Docker Hub 镜像 | `idockervip/idocker-registry:2.0.4`（https://hub.docker.com/r/idockervip/idocker-registry） |
+| 官网 / 产品主页 | https://www.idocker.vip |
+
+> 本工作空间的 `git remote origin` 指向内网 `git.joyeasy.xyz`，与上面的公开 GitHub 仓库**不是同一地址**；
+> 写文档、发布说明时用 GitHub 那条，做本仓库推送时用 remote 里那条。
+
 ## 本工作空间的真实情况（已逐条核对文件）
 
 | 事实 | 实际值 |

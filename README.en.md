@@ -8,6 +8,8 @@
 [简体中文](README.md) | [English](README.en.md)
 
 [![Docker Hub](https://img.shields.io/badge/docker-idockervip%2Fidocker--registry-2496ED?logo=docker&logoColor=white)](https://hub.docker.com/r/idockervip/idocker-registry)
+[![GitHub](https://img.shields.io/badge/github-idocker%2Fidocker--registry-181717?logo=github&logoColor=white)](https://github.com/idocker/idocker-registry)
+[![Homepage](https://img.shields.io/badge/home-www.idocker.vip-0aa1dd)](https://www.idocker.vip)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 </div>
@@ -106,7 +108,7 @@ Set `IDOCKER_REGISTRY_URL` to your real public address (e.g. `https://registry.e
 The repository ships a `docker-compose.yaml`. Use the official image without editing anything:
 
 ```bash
-git clone <your-repo-url> idocker-registry && cd idocker-registry
+git clone https://github.com/idocker/idocker-registry.git idocker-registry && cd idocker-registry
 mkdir -p registry data logs && sudo chown -R 1000:1000 registry data logs
 
 IDOCKER_IMAGE=idockervip/idocker-registry:2.0.4 docker compose up -d
@@ -359,6 +361,14 @@ Paginated responses include `pagination: { page, limit, total, totalPages, hasNe
 ```
 
 ---
+
+## Official links
+
+| Item | URL |
+|------|-----|
+| Source repository | https://github.com/idocker/idocker-registry |
+| Published image | [`idockervip/idocker-registry:2.0.4`](https://hub.docker.com/r/idockervip/idocker-registry) |
+| Homepage | https://www.idocker.vip |
 
 ## Contributing
 

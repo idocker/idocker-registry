@@ -34,6 +34,8 @@ iDocker 是一个 **Docker Registry 管理平台**，提供 Web UI 来管理 Doc
 
 > **注意**: NODE_ENV=production 时服务运行在 7518；开发模式 UI 在 8030，API 代理到 8031
 
+**官方资源**：源码 <https://github.com/idocker/idocker-registry> ・ 镜像 `idockervip/idocker-registry:2.0.4`（<https://hub.docker.com/r/idockervip/idocker-registry>）・ 官网 <https://www.idocker.vip>
+
 ---
 
 ## 2. 技术栈速查
