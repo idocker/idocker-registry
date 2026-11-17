@@ -14,6 +14,21 @@
 
 ---
 
+## Overview
+
+iDocker Registry is a self-hosted Docker registry that adds a web UI and team permissions on top of the standard Registry v2 API, packaged as **a single container**.
+
+Once it is running:
+
+- Manage images with plain `docker login` / `push` / `pull` — fully compatible with the official client
+- Organize images as namespace → project → repository in the browser, and grant permissions per repository
+- Every login, push, delete, and permission change is recorded in the audit log
+- Metadata lives in a built-in SQLite database, image layers on local disk — no external database or middleware
+
+It is aimed at small teams, a single internal server, or anyone who wants a private image hub free of public registry rate limits and quotas.
+
+---
+
 ## Why this one
 
 Harbor is full-featured, but storing a handful of images shouldn't require a fleet of containers and an external database. iDocker Registry packs the everyday capabilities into **a single container**:
