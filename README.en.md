@@ -10,6 +10,7 @@
 [![Docker Hub](https://img.shields.io/badge/docker-idockervip%2Fidocker--registry-2496ED?logo=docker&logoColor=white)](https://hub.docker.com/r/idockervip/idocker-registry)
 [![GitHub](https://img.shields.io/badge/github-idocker%2Fidocker--registry-181717?logo=github&logoColor=white)](https://github.com/idocker/idocker-registry)
 [![Homepage](https://img.shields.io/badge/home-www.idocker.vip-0aa1dd)](https://www.idocker.vip)
+[![Email](https://img.shields.io/badge/email-liu.menjoy%40gmail.com-EA4335?logo=gmail&logoColor=white)](mailto:liu.menjoy@gmail.com)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 </div>
