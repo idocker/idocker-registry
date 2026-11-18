@@ -422,6 +422,53 @@ a:hover {
   background: var(--bg-alt);
 }
 
+/* ==================== 界面预览 ==================== */
+
+.shots-section {
+  background: var(--bg-alt);
+  padding: 64px 0 70px;
+}
+
+.shots-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.shot {
+  margin: 0;
+}
+
+.shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-2);
+  /* 截图是深色界面，浅色主题下加一圈内描边避免边缘发虚 */
+  background: #22272e;
+}
+
+.shot figcaption {
+  margin-top: 12px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+@media (max-width: 880px) {
+  .shots-grid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .shots-section {
+    padding: 52px 0 56px;
+  }
+}
+
 .section-head {
   width: 100%;
   max-width: 46em;

@@ -20,7 +20,7 @@ python3 -m http.server 8080     # 然后打开 http://localhost:8080
 
 ```
 web/
-├── index.html          # 单页站点：Hero / 特性 / 架构 / 权限 / 快速开始 / 技术栈 / FAQ
+├── index.html          # 单页站点：Hero / 界面预览 / 特性 / 架构 / 权限 / 快速开始 / 技术栈 / FAQ
 ├── README.md           # 本文件
 ├── PLAN.md             # 规划：信息架构、内容来源对照、待决策项
 ├── .check.mjs          # 静态自检（i18n 键 / 锚点 / 资源 / 外链）
@@ -30,6 +30,8 @@ web/
     ├── app.js          # 语言切换、主题切换、复制命令、移动端导航
     ├── logo.png        # 复用 idocker-registry-ui/src/assets/logo.png
     ├── idocker.png     # 复用 idocker-registry-ui/src/assets/idocker.png
+    ├── idocker-admin.png   # 界面预览：仓库管理（与 docs/images/repository-management.png 同源）
+    ├── idocker-images.png  # 界面预览：镜像详情（与 docs/images/image-tags.png 同源）
     └── favicon.svg     # 自绘品牌图标（仓库内 favicon.ico 是占位文件，未沿用）
 ```
 
@@ -38,7 +40,7 @@ web/
 - **控制台地址**：`assets/app.js` 顶部的 `CONSOLE_URL`（默认 `https://idocker.vip`）
 - **页脚官方链接**：`index.html` 页脚 `footer-official` 行（GitHub / Docker Hub / 官网 / 联系邮箱），
   新增外链域名要同步加进 `.check.mjs` 的 `ALLOWED_HOSTS`，新增邮箱加到 `ALLOWED_MAILS`
-- **页脚版本号**：`index.html` 中 `web/index.html` 的 `v1.2.21`
+- **页脚版本号**：`index.html` 中 `web/index.html` 的 `v2.0.6`（与镜像 tag 同步）
 - **中文文案**：直接写在 `index.html` 的 `data-i18n` 节点里（同时是中文源，无需另建字典）
 - **英文文案**：`assets/app.js` 里的 `EN` 对象，键与 `data-i18n` 一一对应
 - **配色**：`assets/styles.css` 顶部的 `:root`（浅色）与 `body.dark-theme`（深色），

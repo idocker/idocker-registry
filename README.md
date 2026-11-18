@@ -71,6 +71,17 @@ Harbor 功能齐全，但为了存几个镜像就要维护一组容器和外部�
 
 ---
 
+## 界面预览
+
+<p align="center">
+  <img src="docs/images/repository-management.png" alt="仓库管理界面" width="49%">
+  <img src="docs/images/image-tags.png" alt="镜像详情与标签列表" width="49%">
+</p>
+
+左侧是仓库管理（按命名空间 / 项目归档，可见性与成员数量一目了然），右侧是镜像详情（标签、大小、架构与可复制的 pull / push 命令）。
+
+---
+
 ## 快速开始
 
 ```bash
@@ -86,7 +97,7 @@ docker run -d --name idocker-registry \
   -v "$PWD/data:/app/data" \
   -v "$PWD/logs:/app/logs" \
   --restart unless-stopped \
-  idockervip/idocker-registry:2.0.4
+  idockervip/idocker-registry:2.0.6
 ```
 
 浏览器打开 `http://localhost:7588`：
@@ -123,12 +134,12 @@ sudo chown -R 1000:1000 registry data logs
 git clone https://github.com/idocker/idocker-registry.git idocker-registry && cd idocker-registry
 ```
 
-不想 clone 整个仓库的话，把下面这份最小 compose 存成 `docker-compose.yaml` 即可。结构、端口、卷、健康检查与仓库内的版本一致，仅镜像默认值和对外地址不同（这里默认用 Hub 官方镜像，方便直接跑）：
+不想 clone 整个仓库的话，把下面这份最小 compose 存成 `docker-compose.yaml` 即可。结构、端口、卷、健康检查与仓库内的版本一致，镜像与标签同样写死：
 
 ```yaml
 services:
   idocker-registry:
-    image: ${IDOCKER_IMAGE:-idockervip/idocker-registry:2.0.4}
+    image: idockervip/idocker-registry:2.0.6
     container_name: idocker-registry
     ports:
       - "7588:7518"
@@ -137,7 +148,10 @@ services:
       - ./data:/app/data
       - ./logs:/app/logs
     environment:
-      - IDOCKER_REGISTRY_URL=http://localhost:7588   # 改成你的对外地址
+      # 对外访问地址，二选一：
+      #   本机/局域网直接访问 → http://localhost:7588 （docker login 也要带端口）
+      #   域名对外访问       → https://registry.example.com（需自备反向代理）
+      - IDOCKER_REGISTRY_URL=http://localhost:7588
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:7518/health"]
@@ -149,12 +163,55 @@ services:
 
 **3. 确认对外地址**
 
-`environment` 里的 `IDOCKER_REGISTRY_URL` 决定界面上展示的镜像路径和跨域来源，**必须改成实际访问地址**（如 `https://registry.example.com`）。仓库自带的那份写的是官方站点 `https://idocker.vip`，自建时请务必替换。
+`environment` 里的 `IDOCKER_REGISTRY_URL` 决定界面上展示的镜像路径和跨域来源。两种填法：
+
+**本机 / 局域网访问（不做反向代理）**
+
+```yaml
+- IDOCKER_REGISTRY_URL=http://localhost:7588
+- IDOCKER_REGISTRY_URL=http://192.168.1.10:7588
+```
+
+直接用宿主端口访问，`docker login` 里也要带端口（`docker login localhost:7588`）。适合试用与内网小范围使用。
+
+**域名访问（需反向代理）**
+
+```yaml
+- IDOCKER_REGISTRY_URL=https://registry.example.com
+```
+
+容器只监听容器内的明文 HTTP `7518`（宿主 `7588`），**不处理 TLS**。要绑域名就得自己在前置一层反向代理（Nginx / Caddy / Traefik 等）做 TLS 终止并转发到 `127.0.0.1:7588`。Nginx 示例：
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name registry.example.com;
+
+    # 镜像层可能很大，默认 1m 会直接 413
+    client_max_body_size 0;
+    # 大层上传/下载要放宽超时
+    proxy_read_timeout 900s;
+    proxy_send_timeout 900s;
+    proxy_request_buffering off;
+
+    location / {
+        proxy_pass http://127.0.0.1:7588;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+两个容易踩的点：`client_max_body_size 0` 不放开，push 大镜像直接 413；`proxy_request_buffering off` 不关，代理会先把整个层缓存到磁盘再转发，大镜像会额外吃满代理机磁盘。
+
+仓库自带的那份 compose 写的是官方站点 `https://idocker.vip`，自建时请务必替换成你自己的地址。
 
 **4. 启动与验证**
 
 ```bash
-IDOCKER_IMAGE=idockervip/idocker-registry:2.0.4 docker compose up -d
+docker compose up -d
 docker compose ps                      # 等 start_period 后状态应为 healthy
 curl -s localhost:7588/health           # 返回 200
 docker compose logs -f idocker-registry # 排查用，Ctrl-C 退出
@@ -173,7 +230,7 @@ docker compose logs -f idocker-registry # 排查用，Ctrl-C 退出
 | 停止（保留数据） | `docker compose down` |
 | 停止并删除容器与匿名卷 | `docker compose down -v`（数据在 bind mount 的宿主目录里，不受影响） |
 
-`IDOCKER_IMAGE` 可省略：仓库自带的那份默认取 `idocker-registry:2.0.5`（本地构建的 tag），上面这份独立片段默认取 Hub 官方镜像。用 Hub 镜像时显式指定版本最稳。也可以从源码构建，见「开发」。
+镜像与标签在 compose 里**写死**（`image: idockervip/idocker-registry:2.0.6`），不需要设 `IDOCKER_IMAGE` 之类的变量；换版本直接改这一行。也可以从源码构建，见「开发」。
 
 ### 目录说明
 
@@ -235,10 +292,13 @@ sudo cp -a data data.bak-$(date +%F)
 
 > 数据库是 WAL 模式，最新写入可能还在 `registry.db-wal` 中，**不要单独拷贝 `registry.db`**——要么拷整个目录，要么先停容器。
 
-升级只需换镜像重启，数据库结构会在启动时自动补齐：
+升级只需换镜像重启，数据库结构会在启动时自动补齐。因为 compose 里镜像已写死，改 tag 后再 `up`：
 
 ```bash
-IDOCKER_IMAGE=idockervip/idocker-registry:<新版本> docker compose up -d
+# 1) 编辑 docker-compose.yaml，把 image 的标签改成新版本
+#    image: idockervip/idocker-registry:<新版本>
+# 2) 拉取并重建容器
+docker compose up -d
 ```
 
 ### 释放磁盘
@@ -309,6 +369,8 @@ docker push registry.example.com/wvp/api:v1.2.3
 
 ## 开发
 
+> 上手改代码前建议先读 [`docs/development-guide.md`](docs/development-guide.md)：里面有后端 Model-Route-Service 分层、前端结构、数据库 Schema、完整 API 清单、权限矩阵与开发约定。
+
 后端和内部 registry 跑在容器里（源码挂载，改完自动重启），前端在宿主机跑 Vite：
 
 ```bash
@@ -328,7 +390,8 @@ cd idocker-registry-ui && npm install && npm run dev:client
 ### 从源码构建
 
 ```bash
-docker build -t idocker-registry:latest .
+# 构建出的 tag 与 docker-compose.yaml 里写死的 image 保持一致
+docker build -t idockervip/idocker-registry:2.0.6 .
 docker compose up -d
 ```
 
@@ -406,6 +469,7 @@ node --check idocker-registry-server/routes/projects.js
 ├── docker-compose.yaml         # 生产部署
 ├── docker-compose.dev.yaml     # 开发部署（源码挂载 + 热更新）
 ├── deploy/                     # registry 配置、启动脚本、GC 手册
+├── docs/                       # 开发者文档（见下方链接）
 ├── idocker-registry-server/    # Node/Express 后端
 │   ├── config/                 # 环境变量、数据库与迁移
 │   ├── models/                 # 数据访问层
@@ -428,7 +492,7 @@ node --check idocker-registry-server/routes/projects.js
 | 项 | 地址 |
 |----|------|
 | 源码仓库 | https://github.com/idocker/idocker-registry |
-| 镜像发布 | [`idockervip/idocker-registry:2.0.4`](https://hub.docker.com/r/idockervip/idocker-registry) |
+| 镜像发布 | [`idockervip/idocker-registry:2.0.6`](https://hub.docker.com/r/idockervip/idocker-registry) |
 | 官网 / 产品主页 | https://www.idocker.vip |
 
 ## 贡献

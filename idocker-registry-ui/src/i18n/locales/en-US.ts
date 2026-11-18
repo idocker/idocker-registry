@@ -788,7 +788,9 @@ export default {
   // Footer
   footer: {
     copyright: 'Powered by idocker-registry.',
-    versionPrefix: 'iDocker Registry v'
+    versionPrefix: 'iDocker Registry v',
+    officialLinks: 'Official links',
+    website: 'Website'
   },
 
   // Components

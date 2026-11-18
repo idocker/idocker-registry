@@ -71,6 +71,17 @@ If you need image signing, vulnerability scanning, or cross-datacenter replicati
 
 ---
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/images/repository-management.png" alt="Repository management" width="49%">
+  <img src="docs/images/image-tags.png" alt="Image detail and tags" width="49%">
+</p>
+
+On the left, repository management (organised by namespace and project, with visibility and member counts at a glance). On the right, image detail (tags, size, architecture, and copyable pull / push commands).
+
+---
+
 ## Quick Start
 
 ```bash
@@ -86,7 +97,7 @@ docker run -d --name idocker-registry \
   -v "$PWD/data:/app/data" \
   -v "$PWD/logs:/app/logs" \
   --restart unless-stopped \
-  idockervip/idocker-registry:2.0.4
+  idockervip/idocker-registry:2.0.6
 ```
 
 Open `http://localhost:7588`:
@@ -123,12 +134,12 @@ sudo chown -R 1000:1000 registry data logs
 git clone https://github.com/idocker/idocker-registry.git idocker-registry && cd idocker-registry
 ```
 
-If you'd rather not clone the whole repository, save this minimal compose file as `docker-compose.yaml`. Its structure, ports, volumes, and healthcheck match the one in the repo — only the default image and the public URL differ (this one uses the official Docker Hub image so it runs as-is):
+If you'd rather not clone the whole repository, save this minimal compose file as `docker-compose.yaml`. Its structure, ports, volumes, and healthcheck match the one in the repo, and the image and tag are hard-coded the same way:
 
 ```yaml
 services:
   idocker-registry:
-    image: ${IDOCKER_IMAGE:-idockervip/idocker-registry:2.0.4}
+    image: idockervip/idocker-registry:2.0.6
     container_name: idocker-registry
     ports:
       - "7588:7518"
@@ -137,7 +148,10 @@ services:
       - ./data:/app/data
       - ./logs:/app/logs
     environment:
-      - IDOCKER_REGISTRY_URL=http://localhost:7588   # change to your public URL
+      # Public base URL — pick one:
+      #   direct host/LAN access → http://localhost:7588 (docker login needs the port too)
+      #   domain access          → https://registry.example.com (needs your own reverse proxy)
+      - IDOCKER_REGISTRY_URL=http://localhost:7588
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:7518/health"]
@@ -149,12 +163,55 @@ services:
 
 **3. Set the public URL**
 
-`IDOCKER_REGISTRY_URL` in `environment` determines the image paths shown in the UI and the CORS origin. **Change it to your real address** (e.g. `https://registry.example.com`). The copy shipped in the repository points at the official site `https://idocker.vip`, so always replace it for your own deployment.
+`IDOCKER_REGISTRY_URL` in `environment` determines the image paths shown in the UI and the CORS origin. There are two ways to set it.
+
+**Direct host / LAN access (no reverse proxy)**
+
+```yaml
+- IDOCKER_REGISTRY_URL=http://localhost:7588
+- IDOCKER_REGISTRY_URL=http://192.168.1.10:7588
+```
+
+Access it over the published host port; `docker login` must include the port as well (`docker login localhost:7588`). Good for evaluation and small internal use.
+
+**Domain access (reverse proxy required)**
+
+```yaml
+- IDOCKER_REGISTRY_URL=https://registry.example.com
+```
+
+The container only speaks plain HTTP on `7518` inside the container (host `7588`) and **does not terminate TLS**. To serve a domain, put a reverse proxy (Nginx / Caddy / Traefik, …) in front of it to terminate TLS and forward to `127.0.0.1:7588`. Nginx example:
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name registry.example.com;
+
+    # image layers can be large; the 1m default returns 413 immediately
+    client_max_body_size 0;
+    # relax timeouts for large layer uploads/downloads
+    proxy_read_timeout 900s;
+    proxy_send_timeout 900s;
+    proxy_request_buffering off;
+
+    location / {
+        proxy_pass http://127.0.0.1:7588;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Two things people trip over: without `client_max_body_size 0` large pushes fail with 413; without `proxy_request_buffering off` the proxy buffers each whole layer to its own disk before forwarding, which can fill the proxy host.
+
+The copy shipped in the repository points at the official site `https://idocker.vip`, so always replace it for your own deployment.
 
 **4. Start and verify**
 
 ```bash
-IDOCKER_IMAGE=idockervip/idocker-registry:2.0.4 docker compose up -d
+docker compose up -d
 docker compose ps                       # should report healthy after start_period
 curl -s localhost:7588/health           # returns 200
 docker compose logs -f idocker-registry # for troubleshooting, Ctrl-C to exit
@@ -173,7 +230,7 @@ Common commands:
 | Stop (keep data) | `docker compose down` |
 | Stop and remove container and anonymous volumes | `docker compose down -v` (data lives in the bind-mounted host directories and is unaffected) |
 
-`IDOCKER_IMAGE` can be omitted: the repo's own file defaults to `idocker-registry:2.0.5` (a locally built tag), while the standalone snippet above defaults to the official Docker Hub image. Passing the version explicitly is the safest choice. You can also build from source — see *Development*.
+The image and tag are **hard-coded** in the compose file (`image: idockervip/idocker-registry:2.0.6`), so no `IDOCKER_IMAGE` or similar variable is needed; change that line to switch versions. You can also build from source — see *Development*.
 
 ### Directories
 
@@ -233,10 +290,13 @@ sudo cp -a data data.bak-$(date +%F)
 
 > The database uses WAL mode, so the newest writes may still be in `registry.db-wal`. **Do not copy `registry.db` on its own** — copy the entire directory, or stop the container first.
 
-Upgrading is just replacing the image; the schema is brought up to date on startup:
+Upgrading is just replacing the image; the schema is brought up to date on startup. Since the tag is hard-coded in the compose file, edit it and bring the stack up again:
 
 ```bash
-IDOCKER_IMAGE=idockervip/idocker-registry:<new-version> docker compose up -d
+# 1) edit docker-compose.yaml and bump the tag:
+#    image: idockervip/idocker-registry:<new-version>
+# 2) pull and recreate
+docker compose up -d
 ```
 
 ### Reclaiming disk space
@@ -307,6 +367,8 @@ The built-in `default` namespace and `default` project are protected: they canno
 
 ## Development
 
+> Before changing code, read [`docs/development-guide.md`](docs/development-guide.md) — it covers the backend Model-Route-Service layers, frontend structure, database schema, the full API list, the permission matrix, and coding conventions.
+
 The backend and internal registry run in a container with the source mounted (changes restart it automatically); the frontend runs Vite on the host:
 
 ```bash
@@ -326,7 +388,8 @@ Open `http://localhost:8030`. Backend edits apply immediately; changes to `packa
 ### Building from source
 
 ```bash
-docker build -t idocker-registry:latest .
+# the built tag must match the hard-coded image in docker-compose.yaml
+docker build -t idockervip/idocker-registry:2.0.6 .
 docker compose up -d
 ```
 
@@ -404,6 +467,7 @@ Paginated responses include `pagination: { page, limit, total, totalPages, hasNe
 ├── docker-compose.yaml         # production deployment
 ├── docker-compose.dev.yaml     # development (source mounted, live reload)
 ├── deploy/                     # registry config, entrypoints, GC guide
+├── docs/                       # developer documentation (see link below)
 ├── idocker-registry-server/    # Node/Express backend
 │   ├── config/                 # env, database and migrations
 │   ├── models/                 # data access layer
@@ -426,7 +490,7 @@ Paginated responses include `pagination: { page, limit, total, totalPages, hasNe
 | Item | URL |
 |------|-----|
 | Source repository | https://github.com/idocker/idocker-registry |
-| Published image | [`idockervip/idocker-registry:2.0.4`](https://hub.docker.com/r/idockervip/idocker-registry) |
+| Published image | [`idockervip/idocker-registry:2.0.6`](https://hub.docker.com/r/idockervip/idocker-registry) |
 | Homepage | https://www.idocker.vip |
 
 ## Contributing

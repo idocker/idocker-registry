@@ -789,7 +789,9 @@ export default {
   // 页面底部
   footer: {
     copyright: 'Powered by idocker-registry.',
-    versionPrefix: 'iDocker Registry v'
+    versionPrefix: 'iDocker Registry v',
+    officialLinks: '官方资源链接',
+    website: '官网'
   },
 
   // 组件

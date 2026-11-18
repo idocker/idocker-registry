@@ -2,7 +2,7 @@
 
 > 本文件是 `web/` 产品站的规划底稿：写清信息架构、每一条事实的来源，
 > 以及仍需决策的取舍。所有内容均取自仓库内的 `README.md`、`AGENTS.md`、
-> `DEVELOPMENT_REFERENCE.md` 与源码，**没有引入外部事实**。
+> `docs/development-guide.md` 与源码，**没有引入外部事实**。
 
 ## 1. 目标与受众
 
@@ -17,13 +17,14 @@
 
 1. **顶栏** — logo、6 个锚点导航、语言切换、主题切换、进入控制台
 2. **Hero** — 一句话定位 + 三条 Docker 命令示例
-3. **核心特性** — 8 张卡片
-4. **三层架构** — 命名空间 / 项目 / 仓库 + 镜像路径规则 + default 项目保护说明
-5. **角色与权限** — 4 角色对照表 + 仓库成员机制说明
-6. **快速开始** — 登录 / 拉取 / 推送三步（可复制）+ 自托管部署 + 默认管理员提示
-7. **技术栈** — 前后端技术标签 + REST API 端点表
-8. **常见问题** — 6 条 FAQ（`<details>` 折叠）
-9. **结语 CTA + 页脚** — 版本、许可证
+3. **界面预览** — 两张真实界面截图（仓库管理 / 镜像详情），浅色下带描边
+4. **核心特性** — 8 张卡片
+5. **三层架构** — 命名空间 / 项目 / 仓库 + 镜像路径规则 + default 项目保护说明
+6. **角色与权限** — 4 角色对照表 + 仓库成员机制说明
+7. **快速开始** — 登录 / 拉取 / 推送三步（可复制）+ 自托管部署 + 默认管理员提示
+8. **技术栈** — 前后端技术标签 + REST API 端点表
+9. **常见问题** — 6 条 FAQ（`<details>` 折叠）
+10. **结语 CTA + 页脚** — 版本、许可证、官方链接（GitHub / Docker Hub / 官网 / 邮箱）
 
 ## 3. 内容 → 事实来源对照
 
@@ -49,9 +50,9 @@
 | 非 admin 不能靠 push 创建新仓库 | `AGENTS.md` 第 6 节 ⚠️ 条目 |
 | 标签可删除（内部 registry 已开启 delete） | `AGENTS.md` 第 6 节内部 registry 配置 |
 | 许可证 MIT | `README.md` 文末 |
-| 版本号 v1.2.21 | `idocker-registry-ui/package.json` 的 `version`（UI 页脚同源） |
+| 版本号 v2.0.6 | `idocker-registry-ui/package.json` 的 `version`（UI 页脚同源） |
 | 品牌色 / logo / 图标 | `idocker-registry-ui/src/styles/variables.scss`、`src/assets/{logo,idocker}.png` |
-| 页脚官方链接：GitHub / Docker Hub / 官网 / 邮箱 | 项目方提供（源码 <https://github.com/idocker/idocker-registry>、镜像 `idockervip/idocker-registry:2.0.4`、主页 <https://www.idocker.vip>、邮箱 <mailto:liu.menjoy@gmail.com>） |
+| 页脚官方链接：GitHub / Docker Hub / 官网 / 邮箱 | 项目方提供（源码 <https://github.com/idocker/idocker-registry>、镜像 `idockervip/idocker-registry:2.0.6`、主页 <https://www.idocker.vip>、邮箱 <mailto:liu.menjoy@gmail.com>） |
 
 ## 4. 刻意的取舍（需要你确认的点）
 

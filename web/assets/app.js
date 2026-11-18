@@ -45,6 +45,14 @@
     'hero.note':
       'A single-segment path belongs to the built-in default project (the shared base-image library); a two-segment path means project/repository.',
 
+    'shots.title': 'Screenshots',
+    'shots.subtitle':
+      'Real screens from a running instance: repository management on the left, image detail with tags on the right.',
+    'shots.c1':
+      'Repository management: organised by namespace and project, with visibility and member counts at a glance',
+    'shots.c2':
+      'Image detail: tags, size and architecture in one table, with copyable pull / push commands',
+
     'features.title': 'Core Features',
     'features.subtitle':
       'Built around day-to-day registry operations: clear structure, visible state, complete records.',
