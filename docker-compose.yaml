@@ -1,9 +1,8 @@
 services:
   idocker-registry:
-    # 镜像可由环境变量覆盖，便于直接使用 Docker Hub 官方镜像而不改文件：
-    #   IDOCKER_IMAGE=idockervip/idocker-registry:2.0.4 docker compose up -d
-    # 不设时用本地构建的 tag。
-    image: ${IDOCKER_IMAGE:-idocker-registry:2.0.5}
+    # 镜像与标签写死，不读 IDOCKER_IMAGE 之类的环境变量：compose 即使读到项目根目录的 .env
+    # 也不会影响这里，部署环境想换版本就直接改这一行。升级见 README「备份与升级」。
+    image: idockervip/idocker-registry:2.0.6
     container_name: idocker-registry
     ports:
       - "7588:7518"
@@ -12,8 +11,21 @@ services:
       - ./data:/app/data
       - ./logs:/app/logs
     environment:
-      # 对外访问地址：决定 CORS 的 origin 与对外 URL 拼接。
+      # 对外访问地址：决定界面上展示的镜像路径、CORS 的 origin 与对外 URL 拼接。
       # 不能省——config/env.js 里的默认值是开发用的 http://localhost:7518。
+      #
+      # 两种填法：
+      # 1) 本机/局域网直接用端口访问（不做反向代理）：
+      #      - IDOCKER_REGISTRY_URL=http://localhost:7588
+      #      - IDOCKER_REGISTRY_URL=http://192.168.1.10:7588
+      #    此时 docker login 也要带端口：docker login localhost:7588
+      #
+      # 2) 绑定域名对外提供服务（需要在前面做反向代理）：
+      #      - IDOCKER_REGISTRY_URL=https://registry.example.com
+      #    域名方式必须自备反向代理（Nginx / Caddy / Traefik 等），把该域名
+      #    转发到本容器的 7588 端口；镜像层上传下载体积大，代理要放开
+      #    client_max_body_size 与读超时，并透传 Host 头。容器本身只监听
+      #    明文 HTTP 的 7518（容器内），TLS 在代理层终止。
       - IDOCKER_REGISTRY_URL=https://idocker.vip
       # JWT 签名密钥无需设置：首次启动会自动生成随机密钥并以 JWT_SECRET=... 写入
       # /app/data/.env，重启后复用。只有需要多实例共享同一密钥时才显式指定：

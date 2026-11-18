@@ -37,7 +37,7 @@ View (*.vue) → services/*.service.ts → utils/http.ts 的 http 单例 → 后
 - **必须用具名导入**：该文件 `export default getHttpService`（默认导出是个函数）。写
   `import http from '@/utils/http'` 拿到的是函数而不是实例。
 - ⚠️ **`composables/useApi.ts` 在整个前端零引用**（`useApi` / `usePaginatedApi` /
-  `useConfirmAction` / `useSearchAndFilter` 均无调用点）。`DEVELOPMENT_REFERENCE.md` 里
+  `useConfirmAction` / `useSearchAndFilter` 均无调用点）。`docs/development-guide.md` 里
   "`services/*.service.ts` → `useApi<T>()`" 的调用链**在实际代码中不存在**，不要按它改造。
 - service 的既有形状：`class XxxService { async getX() {...} }` + 文件末尾
   `export default new XxxService()`；组件里 `import projectService from '@/services/project.service'`。

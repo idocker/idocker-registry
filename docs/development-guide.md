@@ -1,5 +1,8 @@
-# iDocker Registry - 开发参考手册
+# iDocker Registry - 开发者指南
 
+> 本文档面向二次开发与维护者：后端/前端分层、数据库 Schema、API 清单、权限矩阵、
+> 环境变量与开发约定。安装部署与日常使用请看根目录的 [`README.md`](../README.md)。
+>
 > 基于 `idocker-registry-server 1.1.0` + `idocker-registry-ui 1.0.2` 梳理（版本号已按 package.json 校正）
 > 初版生成日期: 2026-07-29 | 校正日期: 2026-09-16 | 用途: 提升后续开发效率
 >
@@ -34,7 +37,7 @@ iDocker 是一个 **Docker Registry 管理平台**，提供 Web UI 来管理 Doc
 
 > **注意**: NODE_ENV=production 时服务运行在 7518；开发模式 UI 在 8030，API 代理到 8031
 
-**官方资源**：源码 <https://github.com/idocker/idocker-registry> ・ 镜像 `idockervip/idocker-registry:2.0.4`（<https://hub.docker.com/r/idockervip/idocker-registry>）・ 官网 <https://www.idocker.vip>
+**官方资源**：源码 <https://github.com/idocker/idocker-registry> ・ 镜像 `idockervip/idocker-registry:2.0.6`（<https://hub.docker.com/r/idockervip/idocker-registry>）・ 官网 <https://www.idocker.vip>
 
 ---
 
@@ -874,5 +877,6 @@ export const MY_NEW_VAR = process.env.MY_NEW_VAR || 'default';
 
 ---
 
-> **本文档由 CodeWhale 自动生成，基于对项目源码的全面扫描分析。**
-> 如有更新，请同步更新本文档或生成新的分析。
+> **维护说明**：本文档基于对项目源码的扫描整理而成。代码变更后请同步更新对应章节
+> （尤其是第 5 节数据库 Schema、第 6 节 API 清单、第 8 节环境变量）；文中标 ⚠️ 的条目
+> 是已核对过的代码事实，改动相关逻辑时请一并复核。

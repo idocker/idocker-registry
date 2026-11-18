@@ -10,7 +10,7 @@ description: Use when building, starting, restarting, or debugging the running i
 | 项 | 地址 |
 |----|------|
 | 源码（GitHub） | https://github.com/idocker/idocker-registry.git |
-| Docker Hub 镜像 | `idockervip/idocker-registry:2.0.4`（https://hub.docker.com/r/idockervip/idocker-registry） |
+| Docker Hub 镜像 | `idockervip/idocker-registry:2.0.6`（https://hub.docker.com/r/idockervip/idocker-registry） |
 | 官网 / 产品主页 | https://www.idocker.vip |
 
 > 本工作空间的 `git remote origin` 指向内网 `git.joyeasy.xyz`，与上面的公开 GitHub 仓库**不是同一地址**；

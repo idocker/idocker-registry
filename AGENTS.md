@@ -11,7 +11,7 @@ iDocker是一个Docker Registry管理平台，提供Web UI来管理Docker镜像�
 | 项 | 地址 |
 |----|------|
 | 源码仓库（公开） | https://github.com/idocker/idocker-registry.git |
-| Docker Hub 镜像 | [`idockervip/idocker-registry:2.0.4`](https://hub.docker.com/r/idockervip/idocker-registry) |
+| Docker Hub 镜像 | [`idockervip/idocker-registry:2.0.6`](https://hub.docker.com/r/idockervip/idocker-registry) |
 | 官网 / 产品主页 | https://www.idocker.vip |
 
 > 本工作空间的 `origin` 是内网 `git.joyeasy.xyz/idocker/idocker-registry.git`，与上面的公开 GitHub 仓库不是同一地址。
@@ -314,6 +314,19 @@ iDocker是一个Docker Registry管理平台，提供Web UI来管理Docker镜像�
 - 通用组件：`*Component.vue`（HeaderComponent）
 - 对话框：`*/dialogs/*.vue`（RegistryMenu, UserMenu）
 
+### 8. 官方资源与界面截图（改动时需同步的四处）
+
+同一组对外信息散落在四处，改地址/换截图时要一并更新：
+
+| 位置 | 文件 |
+|------|------|
+| 程序页脚（左下） | `src/components/FooterComponent.vue` 的 `LINKS` 常量 |
+| 产品站页脚 | `web/index.html` 的 `footer-official` 行（外链受 `.check.mjs` 的 `ALLOWED_HOSTS` / `ALLOWED_MAILS` 约束） |
+| README | 「界面预览」与「官方地址」两节（中英双语） |
+| 文档截图 | `docs/images/`（与 `web/assets/idocker-{admin,images}.png` 同源） |
+
+页脚链接涉及 `footer.website` / `footer.officialLinks` 两个 i18n 键（zh-CN / en-US 都要加）。
+
 ---
 
 ## 开发常用命令
@@ -387,8 +400,7 @@ cd idocker-registry-ui && npm run format
 
 | 项 | 本仓库实际值 |
 |----|--------------|
-| 镜像 | `${IDOCKER_IMAGE:-idocker-registry:2.0.5}`；**没有 `build:` 段**，必须先手工 `docker build`，
- 或用 `IDOCKER_IMAGE=idockervip/idocker-registry:2.0.4 docker compose up -d` 直接用 Docker Hub 官方镜像 |
+| 镜像 | `idockervip/idocker-registry:2.0.6`，**写死在 compose 里**（不读 `IDOCKER_IMAGE` 或任何 `.env` 变量）；**没有 `build:` 段**，必须先手工 `docker build -t idockervip/idocker-registry:2.0.6 .`，或直接拉 Docker Hub 同名镜像 |
 | 容器名 | `idocker-registry` |
 | 端口 | `7588:7518`；内部 registry 7519 不映射到宿主 |
 | 卷 | `./registry`、`./data`、`./logs`（均不入 git，位于**仓库根目录**；宿主需 `chown -R 1000:1000`） |
@@ -457,7 +469,7 @@ docker compose -f docker-compose.dev.yaml up
 - 源码从宿主挂载到 `/app/idocker`，`node --watch`（Node 22 内置，不需 nodemon）监听改动后自动重启
 - 匿名卷 `- /app/idocker/node_modules` 保留镜像内编译好的依赖，不被宿主目录盖掉
 - **热更新不适用**：改 `package.json` 依赖、改前端代码 → 需重建镜像
-  （`docker build -t idocker-registry:2.0.5 .`）
+  （`docker build -t idocker-registry:2.0.6 .`）
 - macOS / Docker Desktop 上若发现改文件不触发重启（宿主文件事件不传入容器），把 dev-entrypoint 里的
   `node --watch` 换成 `npx nodemon --legacy-watch --watch /app/idocker --ignore node_modules index.js`
 

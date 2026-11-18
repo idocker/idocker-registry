@@ -116,6 +116,6 @@ npm run init-db                 # = node config/database.js
 
 ## 相关文档
 
-`DEVELOPMENT_REFERENCE.md`（2026-07-29 生成）与 `AGENTS.md` 信息量大但**有过时与冲突**：
+`docs/development-guide.md`（2026-07-29 生成）与 `AGENTS.md` 信息量大但**有过时与冲突**：
 文档写 server 0.9.0（实际 1.1.0）、写 `/api/sync/all` 为 GET（实际是 `POST /api/sync/all`）、
 把项目成员权限记作 `project_members`（实际代码走 `repository_members`）。以代码为准。
