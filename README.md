@@ -106,16 +106,74 @@ docker run -d --name idocker-registry \
 
 ### 用 compose
 
-仓库自带 `docker-compose.yaml`，可以直接用官方镜像，不必修改文件：
+仓库自带 `docker-compose.yaml`，已配好端口映射、三个数据卷、健康检查与重启策略。
+
+**1. 准备目录**
+
+容器以 uid 1000 运行，目录必须先建好并授权（原因见下一节「目录说明」）：
+
+```bash
+mkdir -p registry data logs
+sudo chown -R 1000:1000 registry data logs
+```
+
+**2. 取 compose 文件**
 
 ```bash
 git clone https://github.com/idocker/idocker-registry.git idocker-registry && cd idocker-registry
-mkdir -p registry data logs && sudo chown -R 1000:1000 registry data logs
-
-IDOCKER_IMAGE=idockervip/idocker-registry:2.0.4 docker compose up -d
 ```
 
-或者从源码构建（见「开发」）。
+不想 clone 整个仓库的话，把下面这份最小 compose 存成 `docker-compose.yaml` 即可。结构、端口、卷、健康检查与仓库内的版本一致，仅镜像默认值和对外地址不同（这里默认用 Hub 官方镜像，方便直接跑）：
+
+```yaml
+services:
+  idocker-registry:
+    image: ${IDOCKER_IMAGE:-idockervip/idocker-registry:2.0.4}
+    container_name: idocker-registry
+    ports:
+      - "7588:7518"
+    volumes:
+      - ./registry:/var/lib/registry
+      - ./data:/app/data
+      - ./logs:/app/logs
+    environment:
+      - IDOCKER_REGISTRY_URL=http://localhost:7588   # 改成你的对外地址
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:7518/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+```
+
+**3. 确认对外地址**
+
+`environment` 里的 `IDOCKER_REGISTRY_URL` 决定界面上展示的镜像路径和跨域来源，**必须改成实际访问地址**（如 `https://registry.example.com`）。仓库自带的那份写的是官方站点 `https://idocker.vip`，自建时请务必替换。
+
+**4. 启动与验证**
+
+```bash
+IDOCKER_IMAGE=idockervip/idocker-registry:2.0.4 docker compose up -d
+docker compose ps                      # 等 start_period 后状态应为 healthy
+curl -s localhost:7588/health           # 返回 200
+docker compose logs -f idocker-registry # 排查用，Ctrl-C 退出
+```
+
+浏览器打开 `http://localhost:7588`，用 `admin / admin123` 登录，随后立即改密。
+
+常用命令：
+
+| 操作 | 命令 |
+|------|------|
+| 启动 / 重建 | `docker compose up -d` |
+| 查看状态 | `docker compose ps` |
+| 看日志 | `docker compose logs -f idocker-registry` |
+| 重启 | `docker compose restart idocker-registry` |
+| 停止（保留数据） | `docker compose down` |
+| 停止并删除容器与匿名卷 | `docker compose down -v`（数据在 bind mount 的宿主目录里，不受影响） |
+
+`IDOCKER_IMAGE` 可省略：仓库自带的那份默认取 `idocker-registry:2.0.5`（本地构建的 tag），上面这份独立片段默认取 Hub 官方镜像。用 Hub 镜像时显式指定版本最稳。也可以从源码构建，见「开发」。
 
 ### 目录说明
 

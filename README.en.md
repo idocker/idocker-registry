@@ -106,16 +106,74 @@ Set `IDOCKER_REGISTRY_URL` to your real public address (e.g. `https://registry.e
 
 ### With compose
 
-The repository ships a `docker-compose.yaml`. Use the official image without editing anything:
+The repository ships a `docker-compose.yaml` with port mapping, the three data volumes, a healthcheck, and a restart policy already set up.
+
+**1. Create the data directories**
+
+The container runs as uid 1000, so the directories must exist with the right owner first (see *Directories* below):
+
+```bash
+mkdir -p registry data logs
+sudo chown -R 1000:1000 registry data logs
+```
+
+**2. Get the compose file**
 
 ```bash
 git clone https://github.com/idocker/idocker-registry.git idocker-registry && cd idocker-registry
-mkdir -p registry data logs && sudo chown -R 1000:1000 registry data logs
-
-IDOCKER_IMAGE=idockervip/idocker-registry:2.0.4 docker compose up -d
 ```
 
-Or build from source (see *Development*).
+If you'd rather not clone the whole repository, save this minimal compose file as `docker-compose.yaml`. Its structure, ports, volumes, and healthcheck match the one in the repo — only the default image and the public URL differ (this one uses the official Docker Hub image so it runs as-is):
+
+```yaml
+services:
+  idocker-registry:
+    image: ${IDOCKER_IMAGE:-idockervip/idocker-registry:2.0.4}
+    container_name: idocker-registry
+    ports:
+      - "7588:7518"
+    volumes:
+      - ./registry:/var/lib/registry
+      - ./data:/app/data
+      - ./logs:/app/logs
+    environment:
+      - IDOCKER_REGISTRY_URL=http://localhost:7588   # change to your public URL
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:7518/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+```
+
+**3. Set the public URL**
+
+`IDOCKER_REGISTRY_URL` in `environment` determines the image paths shown in the UI and the CORS origin. **Change it to your real address** (e.g. `https://registry.example.com`). The copy shipped in the repository points at the official site `https://idocker.vip`, so always replace it for your own deployment.
+
+**4. Start and verify**
+
+```bash
+IDOCKER_IMAGE=idockervip/idocker-registry:2.0.4 docker compose up -d
+docker compose ps                       # should report healthy after start_period
+curl -s localhost:7588/health           # returns 200
+docker compose logs -f idocker-registry # for troubleshooting, Ctrl-C to exit
+```
+
+Open `http://localhost:7588`, sign in with `admin / admin123`, and change the password immediately.
+
+Common commands:
+
+| Action | Command |
+|--------|---------|
+| Start / recreate | `docker compose up -d` |
+| Status | `docker compose ps` |
+| Follow logs | `docker compose logs -f idocker-registry` |
+| Restart | `docker compose restart idocker-registry` |
+| Stop (keep data) | `docker compose down` |
+| Stop and remove container and anonymous volumes | `docker compose down -v` (data lives in the bind-mounted host directories and is unaffected) |
+
+`IDOCKER_IMAGE` can be omitted: the repo's own file defaults to `idocker-registry:2.0.5` (a locally built tag), while the standalone snippet above defaults to the official Docker Hub image. Passing the version explicitly is the safest choice. You can also build from source — see *Development*.
 
 ### Directories
 
