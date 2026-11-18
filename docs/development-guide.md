@@ -3,7 +3,7 @@
 > 本文档面向二次开发与维护者：后端/前端分层、数据库 Schema、API 清单、权限矩阵、
 > 环境变量与开发约定。安装部署与日常使用请看根目录的 [`README.md`](../README.md)。
 >
-> 基于 `idocker-registry-server 1.1.0` + `idocker-registry-ui 1.0.2` 梳理（版本号已按 package.json 校正）
+> 基于 `idocker-registry-server 1.1.0` + `idocker-registry-ui 2.0.6` 梳理（版本号已按 package.json 校正）
 > 初版生成日期: 2026-07-29 | 校正日期: 2026-09-16 | 用途: 提升后续开发效率
 >
 > **校正说明**：原版多处与实际代码不符，已逐条核对修正。文中标 ⚠️ 处均为「已验证的代码事实」。

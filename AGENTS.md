@@ -367,6 +367,40 @@ cd idocker-registry-ui && npm run format
   否则 lock 与 package.json 不一致。
 - 用户说「提交」= 仅 `git commit`；说「提交推送」= commit + push。
 
+### 镜像发布流程（固定分工，勿自行推到 Docker Hub）
+
+**我方只负责推到自建仓库 `idocker.vip`，Docker Hub 由用户手工同步。**
+每次发版按下面四步，不要在本地凭据里找 Docker Hub 的 token 去推（也不要把 Hub
+凭据写进任何脚本）。
+
+```bash
+# 1) 构建：本地 tag 与部署用的 tag 保持一致
+cd /workspace/idocker-registry
+docker build -t idockervip/idocker-registry:<版本> -t idockervip/idocker-registry:latest .
+
+# 2) 打上自建仓库的标签
+docker tag idockervip/idocker-registry:<版本> idocker.vip/idocker-registry:<版本>
+docker tag idockervip/idocker-registry:<版本> idocker.vip/idocker-registry:latest
+
+# 3) 推到自建仓库（凭据已在 ~/.docker/config.json 中，无需 docker login）
+docker push idocker.vip/idocker-registry:<版本>
+docker push idocker.vip/idocker-registry:latest
+
+# 4) 核实远端 digest 与本地一致
+timeout 30 curl -sS -u '<user>:<pass>' \
+  -o /dev/null -D - -H 'Accept: application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.index.v1+json' \
+  'https://idocker.vip/v2/idocker-registry/manifests/<版本>' | grep -i docker-content-digest
+```
+
+验证可用性与标签列表：
+
+```bash
+curl -sS -u '<user>:<pass>' 'https://idocker.vip/v2/idocker-registry/tags/list'
+```
+
+> 本环境直连 `registry-1.docker.io` 不可达（DNS 指向 Facebook 段、443 被封），
+> 这是用户改为手工同步 Docker Hub 的原因之一。不要把「推 Hub 失败」当成待修故障。
+
 ---
 
 ## 线上运行位置（生产环境；本节未在源码区验证）
@@ -500,12 +534,12 @@ docker compose -f docker-compose.dev.yaml up
 - `tsconfig.json` 是 `"strict": false`，类型检查比预期宽松，不要假设严格模式在兜底。
 
 **部署 / 构建**
-- `.dockerignore` **未排除 `.env`**，`COPY idocker-registry-server /app/idocker` 会把开发用的
-  `idocker-registry-server/.env`（含明文 registry 凭据）打进镜像，并由容器内 dotenv 加载，
-  造成开发配置串味到生产进程。
+- ✅ **已修复**：`.dockerignore` 过去未排除 `.env`，`COPY idocker-registry-server /app/idocker` 会把开发用的
+  `idocker-registry-server/.env`（含明文 registry 凭据）打进镜像并由 dotenv 加载。现在 `.dockerignore`
+  已排除 `.env` 与 `idocker-registry-server/.env`，且该 `.env` 文件已移除。这两条规则不要误删。
 - `deploy/build.sh` / `deploy/build.bat` / `deploy/.env` 是**旧架构残留的孤儿**：无人引用，
   其中的端口 8080、`REGISTRY_URL=http://localhost:5000`、tag `:latest` 均与当前镜像
-  （7518/7519、`:2.0.0`）不符，不要用。
+  （7518/7519、`:2.0.6`）不符，不要用。
 - `idocker-registry-ui/Dockerfile` 引用不存在的 `idocker-registry-ui/server/` 目录，
   `COPY` 就会失败 —— 死文件，不要基于它构建。
 - `deploy/docker-entrypoint.sh` 未 trap/转发 SIGTERM，PID 1 是 shell，`docker stop` 不会优雅终止子进程。

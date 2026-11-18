@@ -7,8 +7,8 @@ description: Use when reading or modifying the iDocker Registry frontend (idocke
 
 ## 坐标与命令
 
-- 前端根：`idocker-registry-ui/`（version 1.0.2）。工作空间默认**无 `node_modules`**，
-  先 `npm install`（需要网络）。
+- 前端根：`idocker-registry-ui/`（version 2.0.6，与镜像 tag 同步递增）。
+  `node_modules` 已就位；只有在干净 clone 或依赖改动后才需要 `npm install`（需要网络）。
 - 宿主 Node 为 v18.19.1；镜像内用 `node:22-alpine` 构建。
 
 ```bash
